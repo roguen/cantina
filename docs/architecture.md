@@ -73,9 +73,10 @@ the theater PC.
 
 A filesystem notification is only a reconciliation hint. Startup and periodic scans
 must recover missed events. An arrival remains provisional until size and modification
-time are stable, all handles are closed or bounded retries expire, path containment is
-verified, and the song parses within resource limits. No setlist or YARG mutation may
-occur before the authoritative index accepts the song.
+time remain unchanged across the defined quiet window, a bounded read probe and
+validation succeed, a final snapshot is still unchanged, path containment is verified,
+and the song parses within resource limits. No setlist or YARG mutation may occur
+before the authoritative index accepts the song.
 
 Programmatic iPad search/download remains behind replaceable chart-catalog and
 chart-acquirer interfaces. It can be enabled only when Bridge publishes a versioned
@@ -89,8 +90,9 @@ detected -> stabilizing -> validating -> indexed -> refresh-pending
          -> YARG-visible -> queued -> cued
 ```
 
-Any non-terminal state can end as `failed`; an explicit future acquisition job can
-also end as `canceled`. A future direct provider may prepend `requested -> acquiring`.
+Any non-terminal state can end as `failed` or `canceled`. A cancellation, exception, or
+crash around an external YARG operation can end as `ambiguous` when its effect cannot
+be observed safely. A future direct provider may prepend `requested -> acquiring`.
 Every transition has a bounded outcome and an idempotency key.
 
 **Play next** means insert immediately after the active setlist cursor. If fresh YARG
@@ -106,12 +108,27 @@ eventually carries an idempotency key. Client state is a projection and may be
 discarded at any time.
 
 Acquisition progress and pending play intent follow the same rule. Reconciliation may
-recover an imported song after restart, but it must not repeat a download, setlist
-insertion, refresh, or cue. An expired play intent is surfaced for confirmation rather
-than executed late.
+recover an imported song after restart. The target durable command journal must prevent
+duplicate index and setlist mutations; its persistence mechanism remains owned by
+issue #7. If Barkeep crashes after an external YARG request and cannot observe whether
+it took effect, the outcome is `ambiguous`; Barkeep never blindly repeats a refresh or
+cue. An expired play intent is surfaced for confirmation rather than executed late.
 
 Decoded YARG state carries a reception timestamp and becomes `stale` after a defined
 timeout. Unknown data is represented as unknown, never inferred from an old packet.
+
+## Testing boundary
+
+The deterministic theater harness composes the real application coordinator with
+scripted semantic implementations of the arrival, index, YARG, setlist, and journal
+ports. It runs in a separate executable and is never registered with the production
+web host. It uses symbolic songs and session states; it does not fabricate YARG wire
+packets, keyboard/controller behavior, Bridge APIs, SNG validity, or filesystem proof.
+
+The harness proves application transition order, cancellation and adapter-fault
+propagation, process-local atomic command leases and replay, fresh-state cue policy,
+and cross-platform deterministic output. It does not prove persistence across a crash
+or restart. Target-PC spikes remain the only evidence for external adapters.
 
 ## Deliberate non-goals
 

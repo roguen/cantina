@@ -5,4 +5,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Cantina.Barkeep.Tests/Cantina.Barkeep.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Cantina.TestHarness/Cantina.TestHarness.csproj" />
+  </Folder>
 </Solution>

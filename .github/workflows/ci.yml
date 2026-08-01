@@ -30,6 +30,8 @@ jobs:
         run: dotnet build --configuration Release --no-restore
       - name: Test
         run: dotnet test --configuration Release --no-build
+      - name: Run deterministic theater harness
+        run: dotnet run --project tools/Cantina.TestHarness/Cantina.TestHarness.csproj --configuration Release --no-build -- run all
 
   client:
     name: Client
@@ -55,6 +57,27 @@ jobs:
       - name: Build
         run: npm run build
 
+  repository-policy:
+    name: Repository policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Allow development-branch pushes
+        shell: bash
+        run: |
+          printf '%s\n' 'refs/heads/codex/example 1111111111111111111111111111111111111111 refs/heads/codex/example 0000000000000000000000000000000000000000' |
+            .githooks/pre-push origin https://github.com/roguen/cantina.git
+      - name: Reject direct main pushes
+        shell: bash
+        run: |
+          if printf '%s\n' 'refs/heads/main 1111111111111111111111111111111111111111 refs/heads/main 0000000000000000000000000000000000000000' |
+            .githooks/pre-push origin https://github.com/roguen/cantina.git
+          then
+            echo 'The pre-push guard accepted a direct main update.' >&2
+            exit 1
+          fi
+
   publish-windows:
     name: Publish Windows artifact
     needs: [server, client]
@@ -76,3 +99,29 @@ jobs:
           name: barkeep-win-x64
           path: artifacts/barkeep-win-x64
           if-no-files-found: error
+
+  regression-gate:
+    name: Regression gate
+    if: always()
+    needs: [server, client, repository-policy, publish-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every regression dependency
+        shell: bash
+        env:
+          SERVER_RESULT: ${{ needs.server.result }}
+          CLIENT_RESULT: ${{ needs.client.result }}
+          REPOSITORY_POLICY_RESULT: ${{ needs.repository-policy.result }}
+          WINDOWS_ARTIFACT_RESULT: ${{ needs.publish-windows.result }}
+        run: |
+          for result in \
+            "$SERVER_RESULT" \
+            "$CLIENT_RESULT" \
+            "$REPOSITORY_POLICY_RESULT" \
+            "$WINDOWS_ARTIFACT_RESULT"
+          do
+            if [ "$result" != 'success' ]; then
+              echo "Regression dependency finished with: $result" >&2
+              exit 1
+            fi
+          done

@@ -23,15 +23,33 @@ authoritative setlist or control service.
 
 ## Acquisition job
 
-A durable, idempotent request to obtain, validate, index, refresh, and optionally add a
-specific provider chart to the setlist. The initial manual Geomitron Bridge handoff
-begins at arrival detection; it is not falsely reported as a programmatic download job.
+The target representation of an idempotent request to obtain, validate, index, refresh,
+and optionally add a specific provider chart to the setlist. Durability remains open
+in issue #7. The initial manual Geomitron Bridge handoff begins at arrival detection;
+it is not falsely reported as a programmatic download job.
 
 ## Play-next intent
 
 A request to place an exact indexed song immediately after the active setlist cursor.
 If fresh YARG state proves the game is idle, Barkeep may cue it immediately. It is not
 permission to interrupt an active song later.
+
+## Queued
+
+The exact Cantina song reference has been inserted into Barkeep's authoritative
+Setlist. It does not mean YARG has loaded or started the song.
+
+## Cued
+
+The selected YARG adapter has returned its bounded success condition for asking stock
+YARG to load the exact song. The target-PC control spike must define that condition;
+`cued` never means playback or scoring has begun merely because a command was sent.
+
+## Ambiguous outcome
+
+Barkeep knows an external operation was requested but cannot safely prove whether it
+took effect, usually because of a crash or lost acknowledgement. Ambiguous refreshes
+or cues are not retried automatically.
 
 ## YARG session
 
