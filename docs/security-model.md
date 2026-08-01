@@ -38,5 +38,10 @@ Bridge must be installed and updated explicitly by the operator. Cantina neither
 bundles nor silently updates it, never reuses GitHub credentials for it, and does not
 serve downloaded audio or chart archives to LAN clients.
 
+The test harness is a separate local executable with semantic in-memory fakes. It is
+never registered as a production endpoint, never relaxes authentication or path
+validation, never reads production configuration, and never touches a real song
+directory. A harness scenario cannot be selected through the LAN client.
+
 The security decision must keep ordinary theater use simple. That usability constraint
 does not justify an unauthenticated control endpoint.

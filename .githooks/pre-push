@@ -1,0 +1,13 @@
+#!/bin/sh
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+while read -r local_ref local_oid remote_ref remote_oid
+do
+    if [ "$remote_ref" = "refs/heads/main" ]; then
+        echo "Cantina: direct pushes to main are disabled." >&2
+        echo "Push a focused branch, open a pull request, and merge only after Regression gate passes." >&2
+        exit 1
+    fi
+done
+
+exit 0

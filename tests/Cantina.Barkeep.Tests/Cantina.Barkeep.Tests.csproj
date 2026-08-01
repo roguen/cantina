@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Cantina.Barkeep\Cantina.Barkeep.csproj" />
+    <ProjectReference Include="..\..\tools\Cantina.TestHarness\Cantina.TestHarness.csproj" />
   </ItemGroup>
 
 </Project>
