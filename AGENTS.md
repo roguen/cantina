@@ -1,7 +1,7 @@
 # Cantina — working context
 
 Cantina is an iPad web remote for stock YARG. Read `README.md`,
-`docs/architecture.md`, and the wiki Decision Log before changing architecture.
+`docs/architecture.md`, and `project/Decision-Log.md` before changing architecture.
 
 ## Current state
 
@@ -23,7 +23,8 @@ the corresponding spike is captured on the theater PC.
 1. `main` stays stable. The empty-repository bootstrap is the only direct-main
    exception; all subsequent work uses a branch and pull request.
 2. Specifications in `docs/` change with the code. Living decisions, roadmap state,
-   environment notes, and time accounting live in the wiki.
+   environment notes, and time accounting belong in the wiki. They temporarily live
+   in `project/` until the private-repository hosting limitation in issue #13 closes.
 3. Decision Log and Time Log entries are append-only. A reversal supersedes an older
    decision; it never rewrites it.
 4. Open a GitHub issue when a bug, enhancement, or unresolved argument is identified.
