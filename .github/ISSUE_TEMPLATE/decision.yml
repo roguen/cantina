@@ -1,0 +1,26 @@
+name: Decision
+description: Track an unresolved argument with a resolution to close against.
+title: "[Decision]: "
+labels:
+  - decision
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: State the decision without embedding the answer.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence required
+      description: What must be measured or demonstrated?
+    validations:
+      required: true
+  - type: textarea
+    id: close
+    attributes:
+      label: Resolution to close against
+    validations:
+      required: true

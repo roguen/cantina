@@ -1,0 +1,38 @@
+# Operating systems and editors
+.DS_Store
+.idea/
+.vscode/
+*.suo
+*.user
+
+# .NET
+**/bin/
+**/obj/
+TestResults/
+coverage/
+/artifacts/
+
+# Node and Vite
+**/node_modules/
+**/dist/
+*.tsbuildinfo
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.cer
+*.crt
+*.key
+*.pem
+
+# Local runtime state
+/data/
+/logs/
+/songs/
+
+# Packet captures may contain local network details. Commit only reviewed fixtures.
+*.pcap
+*.pcapng
