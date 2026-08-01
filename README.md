@@ -63,8 +63,9 @@ normative component contract.
 ## Project records
 
 - Versioned specifications live in [`docs/`](docs/).
-- Living material lives in the [wiki](https://github.com/roguen/cantina/wiki):
-  Working Agreement, Roadmap, Decision Log, Environment, and Time Log.
+- Living material temporarily lives in [`project/`](project/) because GitHub does not
+  provide a wiki for this private repository on its current plan. Issue
+  [#13](https://github.com/roguen/cantina/issues/13) gates migration to the wiki.
 - Open work and unresolved arguments live in
   [GitHub Issues](https://github.com/roguen/cantina/issues).
 
