@@ -104,3 +104,32 @@ visibility change. The current GitHub plan also leaves the wiki and branch prote
 unavailable while private; issues
 [#13](https://github.com/roguen/cantina/issues/13) and
 [#14](https://github.com/roguen/cantina/issues/14) track those constraints.
+
+## D-007 · Keep Geomitron Bridge behind a verified acquisition boundary
+
+- Date: 2026-08-01
+- Status: Accepted with target validation pending
+
+Context: Cantina must obtain new music through Geomitron Bridge, make it visible to
+stock YARG, and queue it for immediate play. Bridge 3.4.0 and the latest published
+3.4.5 release are GPL desktop GUI applications without a supported external CLI, API,
+deep link, or OS-level IPC. Their Electron IPC, settings, database, and provider URLs
+are private implementation details.
+
+Decision: Keep Bridge independently installed and integrate first through a dedicated,
+explicitly configured YARG song source. Barkeep reconciles stable `.sng` arrivals,
+validates and indexes them, requests a safe YARG rescan, proves the exact song is
+visible, then fulfills an idempotent play-next intent. Direct iPad acquisition stays
+behind replaceable chart-catalog and chart-acquirer interfaces until a versioned
+upstream Bridge surface or approved independent provider contract exists.
+
+Rejected: Copying or embedding GPL Bridge code; injecting its private Electron IPC;
+reading or editing its private settings/database; enabling remote debugging; GUI
+automation; and calling undocumented provider download URLs as if they were a public
+Cantina contract.
+
+Consequences: Manual search and download in Bridge is the honest first workflow.
+`.sng` is the supported handoff baseline; folder extraction requires separate proof.
+Bridge remains an optional operator-installed application and its output is untrusted.
+Issue [#17](https://github.com/roguen/cantina/issues/17) owns the target-PC proof and
+future automation decision.

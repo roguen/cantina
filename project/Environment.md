@@ -32,3 +32,12 @@ change to the target.
 Local macOS checks and GitHub-hosted Windows builds are portability evidence only.
 Issue [#9](https://github.com/roguen/cantina/issues/9) remains the authority for the
 actual Windows 10 artifact smoke test.
+
+## Bridge reference observed on 2026-08-01
+
+The brief's Bridge 3.4.0 remains the target fact until the theater PC is inspected.
+The latest published upstream release observed during design was 3.4.5, released on
+2025-04-13. Upstream `master` was newer but still declared 3.4.5, so it is treated as
+unreleased source rather than an installed contract. Issue
+[#17](https://github.com/roguen/cantina/issues/17) must record the actual installed
+version and pin the tested behavior; Cantina never silently installs or updates Bridge.
