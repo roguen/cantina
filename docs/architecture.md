@@ -20,6 +20,7 @@ Barkeep is an ASP.NET Core process running in the logged-in Windows session on t
 theater PC unless the deployment spike proves another shape works. It owns:
 
 - configured song sources and the searchable index;
+- acquisition jobs, completed-library-arrival reconciliation, and pending play intent;
 - the live setlist and its cursor; persistence policy remains unresolved in issue #7;
 - command identifiers, outcomes, and idempotency;
 - decoded YARG state and its freshness;
@@ -45,12 +46,69 @@ consumer. Photonics may corroborate behavior but its GPL implementation is not c
 The control interface must not expose SendInput, virtual-controller, or menu-driving
 details above the adapter. A future upstream hook replaces that adapter only.
 
+### Song acquisition
+
+[Geomitron Bridge](https://github.com/Geomitron/Bridge) is an optional, separately
+installed GPL desktop application. It is not Barkeep and it does not run inside the
+Cantina process. Its supported releases expose no external CLI, API, deep link, or
+operating-system IPC contract. Cantina therefore does not call Bridge's private
+Electron IPC, inspect its settings or database, automate its window, or copy its code.
+
+The first supported compatibility path is a filesystem handoff:
+
+```text
+operator searches/downloads in Geomitron Bridge
+    └── completed .sng appears in a dedicated configured YARG song source
+          └── Barkeep reconciles, stabilizes, validates, and indexes the arrival
+                └── YARG control adapter requests Scan Songs at a safe point
+                      └── Barkeep proves the exact song is visible
+                            └── setlist play-next intent is fulfilled
+```
+
+Bridge's library path is configured through Bridge, while Barkeep is configured with
+the same allowlisted directory independently. Barkeep never discovers that path from
+Bridge's private files. `.sng` is the baseline handoff format; extracted folder mode
+remains unsupported until issue #17 proves its containment and completion behavior on
+the theater PC.
+
+A filesystem notification is only a reconciliation hint. Startup and periodic scans
+must recover missed events. An arrival remains provisional until size and modification
+time are stable, all handles are closed or bounded retries expire, path containment is
+verified, and the song parses within resource limits. No setlist or YARG mutation may
+occur before the authoritative index accepts the song.
+
+Programmatic iPad search/download remains behind replaceable chart-catalog and
+chart-acquirer interfaces. It can be enabled only when Bridge publishes a versioned
+external contract or an independent provider is documented and approved. The client
+submits provider identifiers and intent, never arbitrary URLs or destination paths.
+
+The manual handoff uses these observable states:
+
+```text
+detected -> stabilizing -> validating -> indexed -> refresh-pending
+         -> YARG-visible -> queued -> cued
+```
+
+Any non-terminal state can end as `failed`; an explicit future acquisition job can
+also end as `canceled`. A future direct provider may prepend `requested -> acquiring`.
+Every transition has a bounded outcome and an idempotency key.
+
+**Play next** means insert immediately after the active setlist cursor. If fresh YARG
+state proves the game is idle, Barkeep may cue it immediately. A delayed acquisition
+or refresh never interrupts an active song and never upgrades itself to an implicit
+play-now command.
+
 ## State ownership
 
 Barkeep is authoritative for live setlist state. This does not yet promise durability
 across process, YARG, or PC restarts; issue #7 owns that decision. Each mutating request
 eventually carries an idempotency key. Client state is a projection and may be
 discarded at any time.
+
+Acquisition progress and pending play intent follow the same rule. Reconciliation may
+recover an imported song after restart, but it must not repeat a download, setlist
+insertion, refresh, or cue. An expired play intent is surfaced for confirmation rather
+than executed late.
 
 Decoded YARG state carries a reception timestamp and becomes `stale` after a defined
 timeout. Unknown data is represented as unknown, never inferred from an old packet.

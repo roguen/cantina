@@ -5,6 +5,13 @@ iPad-installed web app will browse the theater's song library, build a setlist, 
 songs, and show the live state that stock YARG exposes. **Barkeep** is the bridge
 process running beside YARG on the theater PC.
 
+[Geomitron Bridge](https://github.com/Geomitron/Bridge) is a separate desktop
+application that can supply new songs. Cantina will recognize its completed downloads,
+refresh YARG, and place the exact imported song next in the setlist. Bridge has no
+supported external automation interface today, so searching for and starting a
+download remains in Bridge until issue
+[#17](https://github.com/roguen/cantina/issues/17) proves a supported boundary.
+
 ## Status
 
 **M0 · Foundations. Nothing controls YARG yet.** The repository currently proves that
@@ -21,9 +28,13 @@ iPad mini · Home Screen web app
           ▼
 Barkeep · ASP.NET Core process on the theater PC
           ├── indexes configured YARG song sources
+          ├── validates completed Geomitron Bridge arrivals
           ├── owns the setlist and reports command outcomes
           ├── listens to YARG's UDP data stream
           └── drives stock YARG through one replaceable control interface
+
+Geomitron Bridge · separately installed desktop app
+          └── writes completed .sng downloads to a configured YARG song source
 ```
 
 The client is React and TypeScript. Barkeep targets .NET 10. The Windows-native
@@ -58,7 +69,8 @@ npm run build --prefix src/cantina-client
 
 See [`docs/development.md`](docs/development.md) for the local workflow and target-PC
 acceptance boundary, and [`docs/architecture.md`](docs/architecture.md) for the
-normative component contract.
+normative component contract. [`docs/bridge-integration.md`](docs/bridge-integration.md)
+defines the acquisition handoff and its current automation limit.
 
 ## Project records
 

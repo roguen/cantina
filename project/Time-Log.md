@@ -30,3 +30,18 @@ start was not captured.
   Windows publish jobs and uploaded a 49,884,381-byte `barkeep-win-x64` artifact.
 - A post-merge branch-protection request returned HTTP 403 with GitHub's instruction to
   upgrade to Pro or make the repository public; the repository remained private.
+
+## 2026-08-01 · Bridge requirement session 002
+
+- Recorded: 2026-08-01 16:18 CDT
+- Duration: not captured
+- Inspected Geomitron Bridge 3.4.0, latest release 3.4.5, and upstream default-branch
+  source for licensing, supported launch surfaces, configuration, download lifecycle,
+  and YARG interoperability.
+- Confirmed that Bridge exposes no supported external CLI, API, deep link, or OS-level
+  IPC and that completed chart folders or `.sng` files are its viable handoff boundary.
+- Recorded D-007, added the normative Bridge integration contract, and extended the
+  architecture, security model, glossary, environment notes, and roadmap.
+- Created issue [#17](https://github.com/roguen/cantina/issues/17) and cross-linked its
+  refresh, exact-selection, identity, LAN-security, and recovery requirements into
+  issues #3–#7.
