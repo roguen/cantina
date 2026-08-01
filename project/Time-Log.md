@@ -25,3 +25,8 @@ start was not captured.
 - GitHub kept the wiki disabled and rejected protected-branch enforcement for the
   private repository on its current plan. Opened #13 and #14 and began the documented
   fallback on branch `codex/m0-records-and-ci`.
+- Pull request #15 merged as `d9ef37d` after its push and pull-request CI runs passed.
+- Main run 30717785137 passed the client, Ubuntu server, Windows server, and locked
+  Windows publish jobs and uploaded a 49,884,381-byte `barkeep-win-x64` artifact.
+- A post-merge branch-protection request returned HTTP 403 with GitHub's instruction to
+  upgrade to Pro or make the repository public; the repository remained private.

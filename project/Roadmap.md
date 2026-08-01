@@ -10,8 +10,9 @@ target-environment evidence.
 - [x] Decision Log begins with PWA over native
 - [x] Issues opened for all seven kickoff questions
 - [x] Meaningful local server and client checks
-- [ ] CI green on `main` — tracked by
-  [#1](https://github.com/roguen/cantina/issues/1)
+- [x] CI green on `main` — run
+  [30717785137](https://github.com/roguen/cantina/actions/runs/30717785137), tracked by
+  closed issue [#1](https://github.com/roguen/cantina/issues/1)
 - [ ] Self-contained artifact proven on Windows 10 Pro 22H2 —
   [#9](https://github.com/roguen/cantina/issues/9)
 - [ ] Living pages migrated from the temporary fallback to the wiki —
