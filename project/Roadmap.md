@@ -32,6 +32,9 @@ target-environment evidence.
   [#4](https://github.com/roguen/cantina/issues/4)
 - [ ] Prove coexistence with the theater lighting consumer —
   [#11](https://github.com/roguen/cantina/issues/11)
+- [ ] Choose and prove the Geomitron Bridge acquisition boundary, completed-arrival
+  detection, YARG refresh, and exact-song handoff —
+  [#17](https://github.com/roguen/cantina/issues/17)
 - [ ] Commit spike proofs and `docs/yarg-interface.md`
 - [ ] Record a stock-YARG go/no-go decision
 
@@ -40,6 +43,8 @@ target-environment evidence.
 - [ ] Choose the authoritative metadata source —
   [#5](https://github.com/roguen/cantina/issues/5)
 - [ ] Resilient incremental indexing with explicit skip reasons
+- [ ] Reconcile stable Bridge `.sng` arrivals exactly once and map provider identity to
+  Cantina song identity — [#17](https://github.com/roguen/cantina/issues/17)
 - [ ] Full-text search across title, artist, album, and charter
 - [ ] Album-art selection, serving, and cache invalidation
 
@@ -49,10 +54,16 @@ target-environment evidence.
   [#6](https://github.com/roguen/cantina/issues/6)
 - [ ] Installable Home Screen experience and automatic reconnection
 - [ ] One-handed browse and search with persistent connection state
+- [ ] Show honest acquisition, validation, refresh, and play-next progress; direct
+  Bridge search/download stays disabled until a supported external contract exists —
+  [#17](https://github.com/roguen/cantina/issues/17)
 
 ## M4 · Control
 
 - [ ] Cue a selected song through one replaceable control interface
+- [ ] Refresh stock YARG, prove the exact imported song is visible, and fulfill
+  play-next without interrupting an active song —
+  [#17](https://github.com/roguen/cantina/issues/17)
 - [ ] Report bounded success and honest failure on the iPad
 - [ ] Define Holocron and theater-contention behavior —
   [#8](https://github.com/roguen/cantina/issues/8)
@@ -64,6 +75,8 @@ target-environment evidence.
 - [ ] Define proven, missing, unknown, and stale live-state fields —
   [#12](https://github.com/roguen/cantina/issues/12)
 - [ ] Safe score-screen auto-advance with a cancel window
+- [ ] Recover acquisition and play intent without duplicate install, setlist insertion,
+  refresh, or late cue — [#17](https://github.com/roguen/cantina/issues/17)
 - [ ] Record measured end-to-end latency
 
 ## Beyond
