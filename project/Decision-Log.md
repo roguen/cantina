@@ -133,3 +133,31 @@ Consequences: Manual search and download in Bridge is the honest first workflow.
 Bridge remains an optional operator-installed application and its output is untrusted.
 Issue [#17](https://github.com/roguen/cantina/issues/17) owns the target-PC proof and
 future automation decision.
+
+## D-008 · Test theater orchestration through semantic fakes
+
+- Date: 2026-08-01
+- Status: Accepted
+
+Context: Cantina needs repeatable regression coverage before the Bridge filesystem and
+stock-YARG wire/control spikes establish their real contracts. A harness that invents
+packets, menus, chart validity, or Bridge APIs would create false confidence and could
+leak test controls into the LAN host.
+
+Decision: Put orchestration behind provider-neutral semantic ports and run the real
+application coordinator in a separate deterministic executable with scripted fakes.
+Use symbolic identities, logical ordering, exact transcripts, explicit failure, and
+cross-platform hosted runs. Keep the harness out of Barkeep startup and production
+configuration.
+
+Rejected: Depending on the theater PC for every regression; fabricating YARG UDP or
+input behavior before M1 evidence; calling Bridge internals; committing song fixtures;
+real-time sleeps; and adding a production HTTP test endpoint.
+
+Consequences: The harness can prove transition order, process-local atomic command
+leases and replay, cancellation and adapter-fault handling, deferral, fresh-idle cue
+policy, and bounded failure now. It cannot prove durable crash/restart recovery or
+close any external-adapter or target-PC claim. Issue
+[#19](https://github.com/roguen/cantina/issues/19) owns the initial harness and CI
+regression gate; issue [#7](https://github.com/roguen/cantina/issues/7) owns the
+production persistence decision.

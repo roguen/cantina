@@ -35,6 +35,8 @@ target-environment evidence.
 - [ ] Choose and prove the Geomitron Bridge acquisition boundary, completed-arrival
   detection, YARG refresh, and exact-song handoff —
   [#17](https://github.com/roguen/cantina/issues/17)
+- [x] Deterministic application-policy theater harness and stable CI regression gate —
+  [#19](https://github.com/roguen/cantina/issues/19)
 - [ ] Commit spike proofs and `docs/yarg-interface.md`
 - [ ] Record a stock-YARG go/no-go decision
 

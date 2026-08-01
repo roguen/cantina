@@ -45,3 +45,27 @@ start was not captured.
 - Created issue [#17](https://github.com/roguen/cantina/issues/17) and cross-linked its
   refresh, exact-selection, identity, LAN-security, and recovery requirements into
   issues #3–#7.
+
+## 2026-08-01 · Test harness session 003
+
+- Recorded: 2026-08-01 16:39 CDT
+- Duration: not captured
+- Reconfirmed that GitHub rejects branch protection and repository rulesets for the
+  private repository on its current plan; kept issue #14 open and did not change
+  repository visibility.
+- Created issue [#19](https://github.com/roguen/cantina/issues/19) and branch
+  `codex/test-harness` before implementation.
+- Added a deterministic semantic theater harness, application coordinator seams,
+  scenario regression tests, a tracked direct-main push guard, and a stable CI
+  `Regression gate` across server, client, repository-policy, and Windows artifact
+  jobs.
+- Recorded D-008 and documented the harness contract, safety boundary, workflow, and
+  target-PC evidence limit.
+- Independent review found and resolved concurrency-hang, claim-finalization, refresh
+  ambiguity, cross-platform output, and locked-restore defects; the final review
+  reported no remaining P0, P1, or P2 findings.
+- Local result: locked restore and format passed; the Release build completed with zero
+  warnings and errors; 20 server tests and all 14 harness scenarios passed; LF-only
+  JSON validation passed; one client test, lint, and production build passed with zero
+  npm vulnerabilities; the direct-main guard and workflow YAML checks passed; and the
+  locked self-contained `win-x64` publish succeeded.

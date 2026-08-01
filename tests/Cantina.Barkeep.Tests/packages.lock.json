@@ -406,6 +406,12 @@
       },
       "cantina.barkeep": {
         "type": "Project"
+      },
+      "cantina.testharness": {
+        "type": "Project",
+        "dependencies": {
+          "Cantina.Barkeep": "[0.1.0, )"
+        }
       }
     }
   }

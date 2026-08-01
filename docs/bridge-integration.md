@@ -93,3 +93,7 @@ Issue #17 closes only with evidence from the Windows 10 theater PC for Bridge 3.
 the explicitly adopted release, both `.sng` and rejected/approved folder behavior,
 slow and failed writes, duplicate and restart recovery, stock-YARG scanning, exact-song
 resolution, idle and active-session queue behavior, and measured end-to-end latency.
+
+The deterministic harness in [`test-harness.md`](test-harness.md) exercises these
+application-level policies with symbolic inputs. It does not satisfy this target-PC
+proof gate or claim that a synthetic payload is a valid `.sng` file.

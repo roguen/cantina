@@ -21,7 +21,9 @@ the corresponding spike is captured on the theater PC.
 ## Standing rules
 
 1. `main` stays stable. The empty-repository bootstrap is the only direct-main
-   exception; all subsequent work uses a branch and pull request.
+   exception; all subsequent work uses a focused branch and pull request. Never push
+   `main` directly. Merge only after the stable `Regression gate` check succeeds, then
+   verify the post-merge `main` run.
 2. Specifications in `docs/` change with the code. Living decisions, roadmap state,
    environment notes, and time accounting belong in the wiki. They temporarily live
    in `project/` until the private-repository hosting limitation in issue #13 closes.
@@ -37,6 +39,9 @@ the corresponding spike is captured on the theater PC.
    chart as untrusted input.
 7. Never commit song content, credentials, private certificates, or unreviewed packet
    captures.
+8. Test harnesses use semantic fakes and symbolic identities. They do not invent YARG
+   packets or input behavior, expose production test endpoints, read real song folders,
+   or call Geomitron Bridge/private providers.
 
 ## Vocabulary
 
@@ -59,6 +64,7 @@ the corresponding spike is captured on the theater PC.
 
 ## Validation
 
-Before handing off a change, run the commands in `docs/development.md`. Windows-specific
+Before handing off a change, run the complete regression sequence in
+`docs/development.md`, including the deterministic theater harness. Windows-specific
 claims require a recorded test on the theater PC; GitHub's Windows runner is not a
 substitute.
