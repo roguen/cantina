@@ -6,10 +6,15 @@
 - Commit `8e6c268` is the single direct-to-main exception used to bootstrap an empty
   repository.
 - All subsequent changes begin with an issue, use a focused branch, and land through a
-  pull request after CI succeeds.
+  pull request after the stable `Regression gate` check succeeds. Direct pushes to
+  `main` are prohibited.
 - GitHub cannot enforce branch protection for this private repository on its current
   plan. Issue [#14](https://github.com/roguen/cantina/issues/14) tracks making the rule
-  server-enforced; until then it remains a mandatory project convention.
+  server-enforced. Until then the repository supplies a tracked pre-push hook, each
+  clone configures `core.hooksPath=.githooks`, and the rule remains a mandatory project
+  convention. A hook is defense in depth, not a server-side control.
+- After merging through GitHub, verify the complete post-merge `main` run. A failure is
+  fixed forward through a new issue, branch, and pull request.
 
 ## Where information lives
 
@@ -29,7 +34,9 @@
 
 ## Evidence
 
-- CI runs on every push and pull request and must prove behavior, not only syntax.
+- CI runs on every push and pull request and must prove behavior, not only syntax. The
+  `Regression gate` succeeds only when the Linux and Windows server tests and harness,
+  client tests/lint/build, repository policy, and Windows artifact all succeed.
 - Hosted CI and non-target host results do not close Windows-session, YARG, iPad, or
   theater-hardware claims.
 - Target claims name the tested OS, YARG version, artifact, scenario, and observed

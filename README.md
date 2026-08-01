@@ -65,12 +65,16 @@ npm ci --prefix src/cantina-client
 npm test --prefix src/cantina-client
 npm run lint --prefix src/cantina-client
 npm run build --prefix src/cantina-client
+
+dotnet run --project tools/Cantina.TestHarness --configuration Release --no-build -- run all
 ```
 
 See [`docs/development.md`](docs/development.md) for the local workflow and target-PC
 acceptance boundary, and [`docs/architecture.md`](docs/architecture.md) for the
 normative component contract. [`docs/bridge-integration.md`](docs/bridge-integration.md)
-defines the acquisition handoff and its current automation limit.
+defines the acquisition handoff and its current automation limit, and
+[`docs/test-harness.md`](docs/test-harness.md) defines the deterministic theater
+simulator and its evidence boundary.
 
 ## Project records
 
