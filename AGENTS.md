@@ -31,7 +31,11 @@ the corresponding spike is captured on the theater PC.
    Close it through the implementing commit or pull request.
 5. Do not copy Photonics code into this LGPL repository. It is GPL corroborating
    evidence. Prefer YARG's producer and YALCY's LGPL parser as implementation sources.
-6. Never commit song content, credentials, private certificates, or unreviewed packet
+6. Geomitron Bridge is a separately installed GPL application. Do not copy or embed
+   its source, depend on its private Electron IPC/settings/database, automate its UI,
+   or treat its undocumented provider URLs as a Cantina API. Treat every downloaded
+   chart as untrusted input.
+7. Never commit song content, credentials, private certificates, or unreviewed packet
    captures.
 
 ## Vocabulary
@@ -48,6 +52,8 @@ the corresponding spike is captured on the theater PC.
   upstream API without touching higher layers.
 - The YARG data-stream parser should become a dependency-light, separately testable
   project once the M1 capture fixes the wire contract.
+- Song acquisition stays behind replaceable catalog/acquirer boundaries. The initial
+  Geomitron Bridge path is a verified filesystem handoff, not programmatic automation.
 - A Windows service is not assumed. Interactive desktop input may require a logged-in
   user process; settle that with evidence before choosing deployment packaging.
 
