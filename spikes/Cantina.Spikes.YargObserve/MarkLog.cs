@@ -43,7 +43,7 @@ internal sealed class MarkLog
 
         foreach (var mark in _marks)
         {
-            yield return Line($"  mark {mark.Index} at {mark.Elapsed.TotalSeconds:0.000}s scene={mark.Scene} byte7=0x{mark.Datagram[7]:X2} \"{mark.Label}\"");
+            yield return Line($"  mark {mark.Index} at {mark.Elapsed.TotalSeconds:0.000}s scene={mark.Scene} play={(YargPlayState)mark.Datagram[7]} \"{mark.Label}\"");
         }
 
         if (_marks.Count < 2)
@@ -103,7 +103,7 @@ internal sealed class MarkLog
     {
         4 => "  (datagram version)",
         6 => "  (scene)",
-        7 => "  <<< BYTE 7, the field under test",
+        7 => "  (play state: 0 no song, 1 playing, 2 paused)",
         8 => "  (venue size)",
         13 => "  (song section)",
         14 => "  (guitar notes)",
