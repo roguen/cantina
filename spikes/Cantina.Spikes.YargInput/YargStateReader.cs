@@ -83,6 +83,52 @@ internal sealed class YargStateReader : IDisposable
     }
 
     /// <summary>
+    /// Waits until the state has held steady for <paramref name="stableFor"/>, and returns it.
+    ///
+    /// This exists because focusing YARG is itself a state change: <c>PauseOnFocusLoss</c> is
+    /// true, so the operator clicking back into the game resumes it. Taking a baseline while
+    /// that is still settling would let a focus-induced transition be misread as the injected
+    /// key landing — a false positive, and the worst possible outcome for this spike.
+    ///
+    /// Null means the state never held still, which is itself worth reporting.
+    /// </summary>
+    public async Task<YargState?> WaitForStableAsync(
+        TimeSpan stableFor,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        var overall = System.Diagnostics.Stopwatch.StartNew();
+        var candidate = _current;
+        var held = System.Diagnostics.Stopwatch.StartNew();
+
+        while (overall.Elapsed < timeout)
+        {
+            await Task.Delay(10, cancellationToken).ConfigureAwait(false);
+
+            var current = _current;
+
+            if (current is null)
+            {
+                continue;
+            }
+
+            if (candidate is null || current.Value != candidate.Value)
+            {
+                candidate = current;
+                held.Restart();
+                continue;
+            }
+
+            if (held.Elapsed >= stableFor)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Waits for the state to differ from <paramref name="baseline"/>, returning how long it
     /// took. A null result means nothing changed inside the timeout, which for this spike is
     /// the finding, not an error.
