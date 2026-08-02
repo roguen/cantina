@@ -196,7 +196,25 @@ internal sealed class CaptureStats
         yield return Line($"  senders:           {Format(Senders)}");
         yield return Line($"  destinations:      {Format(Destinations)}  <- broadcast vs unicast answer");
         yield return Line($"  max players seen:  {MaxPlayers}");
-        yield return Line($"  scene order:       {(SceneOrder.Count > 0 ? string.Join(" -> ", SceneOrder) : "none")}");
+        // Cap this. With two producers on the port the order alternates thousands of times
+        // and floods everything useful off the screen.
+        var order = SceneOrder.Count switch
+        {
+            0 => "none",
+            <= 24 => string.Join(" -> ", SceneOrder),
+            _ => string.Join(" -> ", SceneOrder.Take(12)) +
+                 $"  ... [{SceneOrder.Count} transitions total] ...  " +
+                 string.Join(" -> ", SceneOrder.TakeLast(4)),
+        };
+
+        yield return Line($"  scene order:       {order}");
+
+        if (Senders.Count > 1)
+        {
+            yield return $"  WARNING: {Senders.Count} distinct senders on this port. More than one YARG";
+            yield return "  instance is broadcasting, so scene and play state are interleaved between";
+            yield return "  games and belong to neither. Close all but one before trusting any reading.";
+        }
         yield return Line($"  currentSong populated: {CurrentSongObserved}");
         yield return Line($"  yarg process at end:   {yargRunning}");
 
