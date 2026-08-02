@@ -18,7 +18,7 @@ spike is captured on the theater PC.
 - Remote: iPad mini 6th generation on iPadOS 26.
 - Holocron shares the PC, projector, receiver, and audio endpoint, but is out of scope.
 - Work now happens on the Windows theater PC itself. The original bootstrap ran on a
-  non-target Codex host; anything it claimed about the target is portability evidence only.
+  non-target host; anything it claimed about the target is portability evidence only.
 - YARG, YARC Launcher, and Geomitron Bridge are **not yet installed** on this host, so
   no target-PC spike can be run until they are.
 

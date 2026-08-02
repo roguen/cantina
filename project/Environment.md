@@ -16,22 +16,13 @@ instead of silently updating this table.
 | Intended development host | The same Windows theater PC; no Mac-dependent workflow |
 | Shared with | Holocron on the same PC, projector, receiver, and audio endpoint |
 
-## Bootstrap environment observed on 2026-08-01
+## Bootstrap environment
 
-The initial Codex workspace ran on a non-target host despite the brief naming the Windows theater
-PC as the development host. This is recorded as an environment discrepancy, not a
-change to the target.
-
-| Item | Observed bootstrap value |
-|---|---|
-| Host | redacted |
-| .NET | SDK 10.0.301 and runtime 10.0.9 |
-| Node.js | 24.13.0 |
-| npm | 11.6.2 |
-
-Local checks and GitHub-hosted Windows builds are portability evidence only.
-Issue [#9](https://github.com/roguen/cantina/issues/9) remains the authority for the
-actual Windows 10 artifact smoke test.
+The repository was bootstrapped on a non-target host before work moved to the theater PC.
+Nothing produced there closes a target claim: portable local checks and GitHub-hosted
+builds are portability evidence only. Issue
+[#9](https://github.com/roguen/cantina/issues/9) remains the authority for the actual
+Windows 10 artifact smoke test.
 
 ## Windows working host adopted on 2026-08-01
 
