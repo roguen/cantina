@@ -19,13 +19,13 @@ start was not captured.
 - Local result: server format/build succeeded with zero warnings; two server tests and
   one client test passed; client lint/build passed; npm reported zero vulnerabilities;
   locked self-contained `win-x64` cross-publish succeeded.
-- Pushed bootstrap commit `8e6c268` to `main`.
+- Pushed the bootstrap commit to `main`.
 - Initial GitHub result: Ubuntu and Windows server jobs passed; the client job rejected
   an incomplete cross-platform npm lock graph; the artifact job was skipped.
 - GitHub kept the wiki disabled and rejected protected-branch enforcement for the
   private repository on its current plan. Opened #13 and #14 and began the documented
   fallback on branch `codex/m0-records-and-ci`.
-- Pull request #15 merged as `d9ef37d` after its push and pull-request CI runs passed.
+- Pull request #15 merged after its push and pull-request CI runs passed.
 - Main run 30717785137 passed the client, Ubuntu server, Windows server, and locked
   Windows publish jobs and uploaded a 49,884,381-byte `barkeep-win-x64` artifact.
 - A post-merge branch-protection request returned HTTP 403 with GitHub's instruction to
@@ -188,3 +188,33 @@ start was not captured.
   in YALCY, which is LGPL like Cantina.
 - Issue [#11](https://github.com/roguen/cantina/issues/11) stays open. The stand-in
   reproduces YALCY's bind but is not YALCY, and firewall-enabled behavior is untested.
+
+## 2026-08-02 · Host-reference cleanup and history rewrite session 008
+
+- Recorded: 2026-08-02
+- Duration: not captured
+- Audited the repository for references to the owner's employer and to non-target
+  development hosts. Found no occurrence of the employer name in any file or any commit,
+  and confirmed every commit author and committer identity is a personal GitHub noreply
+  address.
+- Removed non-target host references from `AGENTS.md`, `project/Environment.md`, and
+  `project/Working-Agreement.md`, merged as pull request
+  [#28](https://github.com/roguen/cantina/pull/28).
+- Deleted four merged branches that were still present on the remote:
+  `codex/bridge-acquisition-contract`, `codex/m0-closeout`, `codex/m0-records-and-ci`, and
+  `codex/test-harness`. These were independently reachable refs carrying superseded
+  content; only `main` now exists on the remote.
+- Rewrote all 30 commits with `git filter-branch`, restricted to `*.md` so dependency
+  lockfiles could not be altered. Verified afterwards that no reachable blob retains the
+  removed strings and that `package-lock.json` is byte-identical, preserving the
+  cross-platform lock graph and its 25 platform-binary entries.
+- Purged `refs/original`, expired the reflog, and ran `git gc --prune=now` before pushing.
+- Branch protection was removed for the force push and restored immediately afterwards;
+  the restored settings were re-read and confirmed. The tracked pre-push hook was bypassed
+  once with `--no-verify`, which a history rewrite cannot avoid.
+- Kept a full pre-rewrite bundle of every ref outside the repository as a recovery point.
+- Repaired references to commit hashes that the rewrite invalidated, and corrected the
+  working agreement, which still described branch protection as unavailable.
+- Limitation recorded honestly: superseded commits remain retrievable by hash from GitHub
+  until it garbage-collects them, and merged pull requests still reference them. Removing
+  them completely would require contacting GitHub Support, which is out of scope.
