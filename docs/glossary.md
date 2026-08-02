@@ -10,16 +10,24 @@ as a generic UI verb, but it is not a second state model.
 
 ## Barkeep
 
-The bridge application/process running on the theater PC. The executable and host
-project use this name. In code and unqualified project prose, **bridge** refers to this
-role, not to the external product below.
+The Cantina server application/process running on the theater PC. The executable and
+host project use this name. Barkeep is never called "the bridge"; see the rejected term
+below.
 
 ## Geomitron Bridge
 
-The optional, separately installed GPL desktop application used to search for and
-download rhythm-game charts. Always include **Geomitron** when the distinction from
-Barkeep could be unclear. Its completed `.sng` output is an acquisition source, not an
-authoritative setlist or control service.
+The optional, separately installed GPL-3.0 desktop application used to search for and
+download rhythm-game charts, maintained by an independent open-source project at
+<https://github.com/Geomitron/Bridge>. Always written in full. The code identifier stem
+is `GeomitronBridge` and the configuration key stem is `geomitronBridge`. Its completed
+`.sng` output is an acquisition source, not an authoritative setlist or control service.
+
+## Chart acquisition
+
+The neutral role Geomitron Bridge fills: obtaining a chart from outside the theater and
+landing it where Barkeep can index it. Use this phrase for the role, and the product
+name only for the product. The replaceable interfaces are the chart catalog and the
+chart acquirer.
 
 ## Acquisition job
 
@@ -59,4 +67,12 @@ names such as `YargSessionState` and `IYargController`.
 ## Rejected: Stage
 
 `Stage` is not canonical because it conflicts with deployment stages, theater staging,
-and YARG's own scene/state vocabulary. It may appear in ordinary prose only.
+and YARG's own scene/state vocabulary — including the Stage Kit, a real lighting device
+in this exact problem domain. It may appear in ordinary prose only.
+
+## Rejected: bridge as a role word
+
+`bridge` does not describe Barkeep. It collided with Geomitron Bridge in the README, the
+architecture spec, and harness fixture names before D-009 retired it. Barkeep is the
+Cantina server. Bare `Bridge` is acceptable only inside verbatim upstream URLs, file
+paths, and release titles.

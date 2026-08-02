@@ -161,3 +161,91 @@ close any external-adapter or target-PC claim. Issue
 [#19](https://github.com/roguen/cantina/issues/19) owns the initial harness and CI
 regression gate; issue [#7](https://github.com/roguen/cantina/issues/7) owns the
 production persistence decision.
+
+## D-009 · Name Geomitron Bridge in full and retire "bridge" as a Barkeep role word
+
+- Date: 2026-08-01
+- Status: Accepted
+
+Context: "Bridge" names two unrelated things in project material. Barkeep was described
+as "the bridge process," while Geomitron Bridge is a separate GPL desktop application
+maintained by an independent open-source project. D-003 ratified vocabulary without
+resolving this collision, and the glossary had to add a disambiguation rule after the
+fact. The ambiguity already reached the README, the architecture spec, and harness
+fixture names.
+
+Decision: Retire "bridge" as a role word for Barkeep. Barkeep is the Cantina server
+process on the theater PC; it is never "the bridge." **Geomitron Bridge** is always
+written with its vendor name, uses `GeomitronBridge` as its code identifier stem and
+`geomitronBridge` in configuration keys, and is never shortened to bare "Bridge." The
+neutral role word for what it supplies is **chart acquisition**, matching the existing
+chart-catalog and chart-acquirer interfaces. Every document that names Geomitron Bridge
+attributes it as an independent open-source project with its upstream URL and its
+GPL-3.0 license.
+
+Rejected: Keeping "bridge" for Barkeep behind a disambiguation rule, because the rule
+makes every future reader and identifier carry the correction instead of removing the
+collision. Coining a Cantina-side nickname for Geomitron Bridge, because it obscures an
+independent project's real name and the license obligations attached to it.
+
+Consequences: `docs/bridge-integration.md` becomes
+`docs/geomitron-bridge-integration.md`. README, architecture, glossary, agent
+instructions, and roadmap drop bare "Bridge." Harness fixture identities that read
+`Bridge-001.sng` are renamed when the regression suite can run on the Windows working
+host. Bare `Bridge` remains acceptable only inside verbatim upstream URLs, file paths,
+and release titles.
+
+## D-010 · Scope live YARG state to what the datagram actually carries
+
+- Date: 2026-08-01
+- Status: Accepted
+
+Context: The kickoff brief promised current song, playback position, and score screen on
+the iPad. YALCY's LGPL parser (`YALCY/Udp/UdpIntake.cs` and `UdpIntake.Enums.cs` on
+`master`) shows YARG's datagram is a fixed-layout state snapshot of 49 bytes plus two
+bytes per player, headed by magic `0x59415247`. It carries scene, pause, venue size,
+BPM, a three-value song section, instrument note bitmasks, vocal and harmony pitches,
+lighting and camera fields, and per-player star power. It carries no song identity, no
+playback position, and no score value.
+
+Decision: Live state promises only fields the datagram carries. Score-screen detection
+uses the `CurrentScene` byte, not the lighting cue. Song identity is known only for
+songs Barkeep itself cued; a song chosen at the theater PC is reported as unknown and
+never guessed. No playback progress indicator is derived from BPM and beat pulses.
+Because the missing fields are exactly what capability 4 requires, the upstream YARG
+interface leaves "Beyond" and becomes in-scope work for M4 and M5.
+
+Rejected: Dead-reckoning position from BPM and beat pulses, because there is no song
+length, no seek signal, and no reconciliation, so the indicator would drift and
+misreport with no way for the iPad to detect that it had. Inferring the score screen
+from the lighting cue, because the scene byte states it directly and the UDP and DMX
+cue enumerations use different values. Leaving the upstream interface unscheduled in
+"Beyond," because M4 and M5 cannot meet the brief's stated capability without it.
+
+Consequences: `docs/yarg-interface.md` records the wire contract as provisional evidence
+read from YALCY, pending target-PC capture in issue
+[#2](https://github.com/roguen/cantina/issues/2). Issue
+[#12](https://github.com/roguen/cantina/issues/12) gains a "present but unpopulated"
+category, because the DMX wiki lists sing-alongs, spotlights, and camera cuts as not yet
+implemented while their datagram bytes still exist. Roadmap M4 and M5 carry the
+upstream-hook work.
+
+## D-011 · Publish the repository
+
+- Date: 2026-08-01
+- Status: Accepted, supersedes D-006
+
+Context: D-006 kept Cantina private during bootstrap and accepted the resulting loss of
+the wiki and of branch protection. The owner made the repository public on 2026-08-01.
+Public visibility was always the intent, because upstream contribution to YARG is a
+stated goal.
+
+Decision: Cantina is public. This supersedes D-006, which stays recorded.
+
+Consequences: Issue [#10](https://github.com/roguen/cantina/issues/10)'s release gate is
+satisfied. The wiki is available, so issue
+[#13](https://github.com/roguen/cantina/issues/13) can migrate the living pages out of
+the `project/` fallback. Branch protection is available on the current plan, so issue
+[#14](https://github.com/roguen/cantina/issues/14) can close with GitHub-enforced rules
+instead of a bypassable client-side hook. History, Actions output, and issues are now
+publicly readable; nothing may be committed on an assumption of privacy.

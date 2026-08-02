@@ -69,3 +69,37 @@ start was not captured.
   JSON validation passed; one client test, lint, and production build passed with zero
   npm vulnerabilities; the direct-main guard and workflow YAML checks passed; and the
   locked self-contained `win-x64` publish succeeded.
+
+## 2026-08-01 · Windows working host and naming session 004
+
+- Recorded: 2026-08-01
+- Duration: not captured
+- Reviewed the kickoff brief against the existing repository and reported that it
+  described a greenfield state that no longer existed; M0 was already complete.
+- Read YALCY's `UdpIntake` parser, the YARG DMX and Advanced wiki pages, and Photonics'
+  setup documentation to establish the YARG network surface.
+- Findings: YARG's datagram is its own format, header magic `0x59415247` on default port
+  36107, and is not RB3E, which uses port 21070 and is an output in YALCY. It is a
+  fixed-layout state snapshot of 49 bytes plus two per player. It carries an explicit
+  scene byte, a better auto-advance trigger than the lighting cue, and it carries no
+  song identity, no playback position, and no score value. The UDP and DMX cue
+  enumerations use different values.
+- Owner kept the existing `main`, made the repository public, and accepted the naming
+  remediation.
+- Recorded D-009 for Geomitron Bridge naming, D-010 for live-state scope and moving the
+  upstream interface into M4 and M5, and D-011 for publication, superseding D-006.
+- Added `docs/yarg-interface.md` as a provisional wire contract, explicitly pending
+  capture in issue [#2](https://github.com/roguen/cantina/issues/2).
+- Renamed `docs/bridge-integration.md` to `docs/geomitron-bridge-integration.md` and
+  removed bare "Bridge" from current documents. Append-only Decision Log and Time Log
+  history was left unchanged.
+- Renamed harness fixture identities to `GeomitronBridge-00N.sng` and
+  `geomitron-bridge-handoff`.
+- Adopted the Windows 10 Pro 22H2 theater PC as the working host and installed .NET SDK
+  10.0.302 and Node.js 24.18.1; the host previously carried only the .NET 8 runtime.
+- YARG, YARC Launcher, and Geomitron Bridge are not installed on this host, so no M1
+  spike could be run.
+- Local result on Windows: locked restore, format verification, and a zero-warning,
+  zero-error Release build passed; 20 server tests passed; all 14 harness scenarios
+  passed; the client audited 64 packages with zero vulnerabilities and passed its test,
+  lint, and production build.

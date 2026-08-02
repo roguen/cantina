@@ -22,11 +22,12 @@ Run the complete regression sequence below, push only the development branch, op
 pull request, and wait for `Regression gate` to succeed. Merge through GitHub, switch
 back to `main`, fast-forward from `origin/main`, and verify the post-merge `main` run.
 
-GitHub currently returns HTTP 403 for branch protection and rulesets because Cantina is
-private on a plan without that entitlement. The hook is useful defense in this clone,
-but is not server enforcement and can be bypassed. Issue
+Branch protection and rulesets previously returned HTTP 403 because Cantina was private
+on a plan without that entitlement. Publication (D-011) removed that barrier, so
+server-side protection can now be enabled. Until it is, the hook is useful defense in
+this clone but is not server enforcement and can be bypassed. Issue
 [#14](https://github.com/roguen/cantina/issues/14) remains open until protection is
-available without changing repository visibility unexpectedly.
+actually turned on.
 
 ## Validate the server
 
@@ -66,9 +67,10 @@ server operating-system jobs, publishes the Windows artifact, and exposes one st
 
 ## Target-PC acceptance boundary
 
-The initial workspace is a non-target host and CI uses hosted machines. Neither can close a claim
-about the theater PC. Before M1 or deployment work is accepted, record evidence from the
-actual Windows 10 Pro 22H2 machine for:
+Work now happens on the Windows 10 Pro 22H2 host itself, and the full regression runs
+there. That is necessary but not sufficient: YARG, YARC Launcher, and Geomitron Bridge
+are not yet installed, and hosted CI still uses hosted machines. Before M1 or deployment
+work is accepted, record evidence from the actual theater PC for:
 
 - launching the self-contained `win-x64` Barkeep artifact;
 - listening to YARG while the normal lighting application is running;
