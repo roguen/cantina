@@ -37,8 +37,8 @@
 - CI runs on every push and pull request and must prove behavior, not only syntax. The
   `Regression gate` succeeds only when the Linux and Windows server tests and harness,
   client tests/lint/build, repository policy, and Windows artifact all succeed.
-- Hosted CI and macOS development results do not close Windows-session, YARG, iPad, or
-  theater-hardware claims.
+- Hosted CI and any non-target development host do not close Windows-session, YARG, iPad,
+  or theater-hardware claims.
 - Target claims name the tested OS, YARG version, artifact, scenario, and observed
   result.
 
