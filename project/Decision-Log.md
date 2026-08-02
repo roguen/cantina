@@ -161,3 +161,115 @@ close any external-adapter or target-PC claim. Issue
 [#19](https://github.com/roguen/cantina/issues/19) owns the initial harness and CI
 regression gate; issue [#7](https://github.com/roguen/cantina/issues/7) owns the
 production persistence decision.
+
+## D-009 · Name Geomitron Bridge in full and retire "bridge" as a Barkeep role word
+
+- Date: 2026-08-01
+- Status: Accepted
+
+Context: "Bridge" names two unrelated things in project material. Barkeep was described
+as "the bridge process," while Geomitron Bridge is a separate GPL desktop application
+maintained by an independent open-source project. D-003 ratified vocabulary without
+resolving this collision, and the glossary had to add a disambiguation rule after the
+fact. The ambiguity already reached the README, the architecture spec, and harness
+fixture names.
+
+Decision: Retire "bridge" as a role word for Barkeep. Barkeep is the Cantina server
+process on the theater PC; it is never "the bridge." **Geomitron Bridge** is always
+written with its vendor name, uses `GeomitronBridge` as its code identifier stem and
+`geomitronBridge` in configuration keys, and is never shortened to bare "Bridge." The
+neutral role word for what it supplies is **chart acquisition**, matching the existing
+chart-catalog and chart-acquirer interfaces. Every document that names Geomitron Bridge
+attributes it as an independent open-source project with its upstream URL and its
+GPL-3.0 license.
+
+Rejected: Keeping "bridge" for Barkeep behind a disambiguation rule, because the rule
+makes every future reader and identifier carry the correction instead of removing the
+collision. Coining a Cantina-side nickname for Geomitron Bridge, because it obscures an
+independent project's real name and the license obligations attached to it.
+
+Consequences: `docs/bridge-integration.md` becomes
+`docs/geomitron-bridge-integration.md`. README, architecture, glossary, agent
+instructions, and roadmap drop bare "Bridge." Harness fixture identities that read
+`Bridge-001.sng` are renamed when the regression suite can run on the Windows working
+host. Bare `Bridge` remains acceptable only inside verbatim upstream URLs, file paths,
+and release titles.
+
+## D-010 · Scope live YARG state to what stock YARG actually exposes
+
+- Date: 2026-08-01
+- Status: Accepted; revised before merge after the issue #2 capture disproved its premise
+
+Context: The kickoff brief promised current song, playback position, and score screen on
+the iPad. An initial reading of YALCY's LGPL parser suggested the datagram carried none
+of the three, and this entry originally concluded that an upstream hook was required for
+song identity. Captures on the theater PC then corrected that conclusion, so this entry
+was revised before it merged rather than shipped and immediately superseded.
+
+Captured evidence (issue [#2](https://github.com/roguen/cantina/issues/2), three runs,
+over 54,000 datagrams, zero rejections): YARG 0.15 stable broadcasts a **47-byte,
+version-3** datagram to `255.255.255.255:36107` at about **90.7 Hz**. It carries scene,
+venue size, BPM, a three-value song section, note bitmasks, vocal and harmony pitches,
+and lighting and camera fields. It carries no song identity, no playback position, and no
+score value — and because version 3 predates the version-4 tail, no per-player star power
+either.
+
+The captures also found a second surface the first reading missed: `currentSong.json` and
+`currentSong.txt`, beside YARG's settings. They populate while a song is loaded and carry
+a stable content hash, the song's path, and human-readable metadata.
+
+Decision: Live state promises only what stock YARG actually exposes, across **both**
+surfaces. Score-screen detection uses the `CurrentScene` byte, not the lighting cue. Song
+identity comes from watching `currentSong.json`, cached from the moment it populates and
+carried through the score screen, because the file clears about 86 ms after the scene
+changes. No playback progress indicator is derived from BPM and beat pulses. Playback
+position is the only remaining structural gap, so the upstream YARG interface leaves
+"Beyond" and becomes in-scope work for M4 and M5 — scoped to **position**, not identity.
+
+Rejected: Dead-reckoning position from BPM and beat pulses, because there is no song
+length, no seek signal, and no reconciliation, so the indicator would drift and misreport
+with no way for the iPad to detect that it had. Inferring the score screen from the
+lighting cue, because the scene byte states it directly and the UDP and DMX cue
+enumerations use different values — captures show cue 30 at the menu and 31 on the score
+screen, against the DMX table's 10 and 20. Reporting song identity as unknown whenever
+Barkeep did not cue the song, which is what this entry said before the capture: the game
+states the answer on disk, so refusing to read it would be a self-inflicted limitation.
+
+Consequences: `docs/yarg-interface.md` is evidence-backed rather than provisional. Byte 7,
+named `PauseState` upstream, read `true` for the whole of gameplay and `false` at menu and
+score; its meaning is unresolved and nothing may depend on it. Barkeep must decimate the
+90 Hz stream before the WebSocket and debounce the transient empty window seen when a song
+restarts, or the iPad will flicker. Issue
+[#11](https://github.com/roguen/cantina/issues/11) is still unproven: no capture has run
+with YALCY or Photonics already bound to 36107. Issue
+[#12](https://github.com/roguen/cantina/issues/12) gains a "present but unpopulated"
+category, because the DMX wiki lists sing-alongs, spotlights, and camera cuts as not yet
+implemented while their datagram bytes still exist. Roadmap M4 and M5 carry the
+upstream-position work.
+
+## D-011 · Publish the repository
+
+- Date: 2026-08-01
+- Status: Accepted, supersedes D-006
+
+Context: D-006 kept Cantina private during bootstrap and accepted the resulting loss of
+the wiki and of branch protection. The owner made the repository public on 2026-08-01.
+Public visibility was always the intent, because upstream contribution to YARG is a
+stated goal.
+
+Decision: Cantina is public. This supersedes D-006, which stays recorded.
+
+Consequences: Publication happened **before** issue
+[#10](https://github.com/roguen/cantina/issues/10)'s release gate was worked. None of
+its audit items ran first: history and large-object scanning for credentials, paths,
+captures, certificates, and copyrighted song content; review of issues, Actions
+logs/artifacts, releases, environments, secrets, webhooks, and installed apps;
+third-party notice and clean-room verification, especially around Photonics GPL
+evidence; policy-document review; least-privilege workflow permissions; and a
+recoverable backup. Those checks are now retrospective rather than preventive, and #10
+stays open until they are done. The wiki is available, so issue
+[#13](https://github.com/roguen/cantina/issues/13) can migrate the living pages out of
+the `project/` fallback. Branch protection is available on the current plan, so issue
+[#14](https://github.com/roguen/cantina/issues/14) can close with GitHub-enforced rules
+instead of a bypassable client-side hook. History, Actions output, and issues are now
+publicly readable; nothing may be committed on an assumption of privacy.
