@@ -5,9 +5,11 @@ Cantina is an iPad web remote for stock YARG. Read `README.md`,
 
 ## Current state
 
-M0 foundations are being established. No YARG integration is proven. Do not describe
-the UDP stream, input injection, song selection, or target deployment as complete until
-the corresponding spike is captured on the theater PC.
+M0 foundations are established and the repository is public. No YARG integration is
+proven. `docs/yarg-interface.md` is **provisional**: it is read from YALCY's parser and
+YARG's documentation, not from captured packets. Do not describe the UDP stream, input
+injection, song selection, or target deployment as complete until the corresponding
+spike is captured on the theater PC.
 
 ## Target facts
 
@@ -15,8 +17,10 @@ the corresponding spike is captured on the theater PC.
 - Game target: YARG 0.15 stable, installed through YARC Launcher.
 - Remote: iPad mini 6th generation on iPadOS 26.
 - Holocron shares the PC, projector, receiver, and audio endpoint, but is out of scope.
-- This repository was initially bootstrapped from a non-target Codex host. Portable builds
-  here and hosted CI are not evidence that Windows-session integration works.
+- Work now happens on the Windows theater PC itself. The original bootstrap ran on a
+  non-target Codex host; anything it claimed about the target is portability evidence only.
+- YARG, YARC Launcher, and Geomitron Bridge are **not yet installed** on this host, so
+  no target-PC spike can be run until they are.
 
 ## Standing rules
 
@@ -46,8 +50,14 @@ the corresponding spike is captured on the theater PC.
 ## Vocabulary
 
 - **Setlist**: ordered songs plus the current cursor.
-- **Barkeep**: the bridge process.
-- **YARG session**: the running game. Do not introduce `Stage` as a canonical type.
+- **Barkeep**: the Cantina server process. Never call it "the bridge" (D-009).
+- **Geomitron Bridge**: the independent GPL-3.0 chart-acquisition app, always named in
+  full; code stem `GeomitronBridge`, config stem `geomitronBridge`. Never bare `Bridge`
+  except in upstream URLs, file paths, and release titles.
+- **Chart acquisition**: the role Geomitron Bridge fills. Use the role word for the
+  role and the product name for the product.
+- **YARG session**: the running game. Do not introduce `Stage` as a canonical type; it
+  collides with YARG's own Stage Kit.
 
 ## Architecture boundaries
 

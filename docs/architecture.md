@@ -46,13 +46,22 @@ consumer. Photonics may corroborate behavior but its GPL implementation is not c
 The control interface must not expose SendInput, virtual-controller, or menu-driving
 details above the adapter. A future upstream hook replaces that adapter only.
 
+[`yarg-interface.md`](yarg-interface.md) holds the provisional wire contract and, more
+importantly, the list of things the datagram does **not** carry. Two of those absences
+are structural: there is no song identity and no playback position. Barkeep therefore
+knows the current song only when it cued that song itself, reports it as unknown
+otherwise, and never derives a playback-progress indicator from BPM and beat pulses.
+Score-screen detection uses the scene byte, not the lighting cue. D-010 records this and
+moves the upstream observation interface into M4 and M5.
+
 ### Song acquisition
 
 [Geomitron Bridge](https://github.com/Geomitron/Bridge) is an optional, separately
 installed GPL desktop application. It is not Barkeep and it does not run inside the
 Cantina process. Its supported releases expose no external CLI, API, deep link, or
-operating-system IPC contract. Cantina therefore does not call Bridge's private
-Electron IPC, inspect its settings or database, automate its window, or copy its code.
+operating-system IPC contract. Cantina therefore does not call Geomitron Bridge's
+private Electron IPC, inspect its settings or database, automate its window, or copy its
+code.
 
 The first supported compatibility path is a filesystem handoff:
 
@@ -65,9 +74,9 @@ operator searches/downloads in Geomitron Bridge
                             └── setlist play-next intent is fulfilled
 ```
 
-Bridge's library path is configured through Bridge, while Barkeep is configured with
-the same allowlisted directory independently. Barkeep never discovers that path from
-Bridge's private files. `.sng` is the baseline handoff format; extracted folder mode
+Geomitron Bridge's library path is configured through its own UI, while Barkeep is
+configured with the same allowlisted directory independently. Barkeep never discovers
+that path from its private files. `.sng` is the baseline handoff format; folder mode
 remains unsupported until issue #17 proves its containment and completion behavior on
 the theater PC.
 
@@ -79,8 +88,9 @@ and the song parses within resource limits. No setlist or YARG mutation may occu
 before the authoritative index accepts the song.
 
 Programmatic iPad search/download remains behind replaceable chart-catalog and
-chart-acquirer interfaces. It can be enabled only when Bridge publishes a versioned
-external contract or an independent provider is documented and approved. The client
+chart-acquirer interfaces. It can be enabled only when Geomitron Bridge publishes a
+versioned external contract or an independent provider is documented and approved. The
+client
 submits provider identifiers and intent, never arbitrary URLs or destination paths.
 
 The manual handoff uses these observable states:
@@ -123,7 +133,8 @@ The deterministic theater harness composes the real application coordinator with
 scripted semantic implementations of the arrival, index, YARG, setlist, and journal
 ports. It runs in a separate executable and is never registered with the production
 web host. It uses symbolic songs and session states; it does not fabricate YARG wire
-packets, keyboard/controller behavior, Bridge APIs, SNG validity, or filesystem proof.
+packets, keyboard/controller behavior, Geomitron Bridge APIs, SNG validity, or
+filesystem proof.
 
 The harness proves application transition order, cancellation and adapter-fault
 propagation, process-local atomic command leases and replay, fresh-state cue policy,
