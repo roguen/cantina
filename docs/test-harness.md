@@ -40,8 +40,9 @@ The harness substitutes deterministic implementations for:
 - atomic, process-local command leases and terminal-result replay.
 
 The production coordinator knows only these semantic ports. No harness component
-launches Bridge, reads its files, calls Electron IPC or Encore, parses an `.sng`, emits
-a YARG packet, drives a menu, synthesizes input, or inspects a real song directory.
+launches Geomitron Bridge, reads its files, calls Electron IPC or Encore, parses an
+`.sng`, emits a YARG packet, drives a menu, synthesizes input, or inspects a real song
+directory.
 
 ## Included scenarios
 
@@ -77,8 +78,8 @@ time; do not sleep, poll the operating system, read environment-specific paths, 
 weaken an assertion to accommodate nondeterminism. The xUnit suite enumerates the
 catalog so a new scenario automatically becomes a test.
 
-If a regression needs real packets, chart archives, input injection, Bridge behavior,
-or Windows-session behavior, it belongs in a reviewed fixture or target-PC spike
+If a regression needs real packets, chart archives, input injection, Geomitron Bridge
+behavior, or Windows-session behavior, it belongs in a reviewed fixture or target-PC spike
 instead. Never encode a guessed external contract merely to make the harness green.
 
 ## Regression gate
@@ -87,18 +88,18 @@ The hosted server matrix builds, tests, and runs every harness scenario on Ubunt
 Windows. The stable `Regression gate` job fails unless both server variants, the
 client, repository-policy check, and self-contained Windows artifact all succeed.
 
-GitHub cannot currently require that check server-side for this private repository on
-its current plan; issue [#14](https://github.com/roguen/cantina/issues/14) owns that
-limitation. Until protection becomes available, every change follows the mandatory
-branch, local regression, pull request, green gate, merge, and post-merge verification
-sequence in [`development.md`](development.md).
+Server-side enforcement of that check became available when the repository was published
+(D-011); issue [#14](https://github.com/roguen/cantina/issues/14) owns turning it on.
+Until it is on, the gate is enforced only by a bypassable client-side hook, so every
+change follows the mandatory branch, local regression, pull request, green gate, merge,
+and post-merge verification sequence in [`development.md`](development.md).
 
 ## Evidence boundary
 
 A pass proves deterministic Cantina application policy and fake-adapter composition on
 the executing OS, including atomic ownership among callers sharing one in-memory
-journal. It does not prove durable replay after a crash or restart, Bridge completion
-detection, SNG parsing, YARG UDP, interactive input, iPad behavior, Windows
+journal. It does not prove durable replay after a crash or restart, Geomitron Bridge
+completion detection, SNG parsing, YARG UDP, interactive input, iPad behavior, Windows
 desktop-session access, or theater hardware. Issue
 [#7](https://github.com/roguen/cantina/issues/7) still owns the durable production
 journal and recovery policy.

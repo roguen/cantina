@@ -10,7 +10,7 @@ public static class ScenarioCatalog
         new(2030, 1, 2, 3, 4, 5, TimeSpan.Zero);
 
     private static readonly SongArrivalCandidate Candidate =
-        new("bridge-handoff", "Bridge-001.sng", "harness-song-001");
+        new("geomitron-bridge-handoff", "GeomitronBridge-001.sng", "harness-song-001");
 
     private static readonly SongIdentity Song = new("song-001");
 
@@ -115,7 +115,7 @@ public static class ScenarioCatalog
             [
                 "arrival.probe:stabilizing",
                 "arrival.probe:ready",
-                "song.validate-index:Bridge-001.sng",
+                "song.validate-index:GeomitronBridge-001.sng",
                 "yarg.observe:idle",
                 "yarg.refresh:song-001",
                 "yarg.resolve:song-001",
@@ -155,7 +155,7 @@ public static class ScenarioCatalog
             ],
             [
                 "arrival.probe:ready",
-                "song.validate-index:Bridge-001.sng",
+                "song.validate-index:GeomitronBridge-001.sng",
                 "yarg.observe:active",
                 "yarg.observe:idle",
                 "yarg.refresh:song-001",
@@ -194,7 +194,7 @@ public static class ScenarioCatalog
             ],
             [
                 "arrival.probe:ready",
-                "song.validate-index:Bridge-001.sng",
+                "song.validate-index:GeomitronBridge-001.sng",
                 "yarg.observe:idle",
                 "yarg.refresh:song-001",
                 "yarg.resolve:song-001",
@@ -271,7 +271,7 @@ public static class ScenarioCatalog
             ],
             [
                 "arrival.probe:blocked",
-                "song.validate-index:Bridge-001.sng",
+                "song.validate-index:GeomitronBridge-001.sng",
                 "yarg.observe:idle",
                 "yarg.refresh:song-001",
                 "yarg.resolve:song-001",
@@ -293,7 +293,7 @@ public static class ScenarioCatalog
             [Fresh(YargActivity.Idle, true), Fresh(YargActivity.Idle, false)]);
         var conflictingRequest = new ImportPlayNextRequest(
             Request.IdempotencyKey,
-            Candidate with { RelativePath = "Bridge-002.sng" });
+            Candidate with { RelativePath = "GeomitronBridge-002.sng" });
 
         var first = await world.Coordinator.RunAsync(Request, cancellationToken);
         var conflict = await world.Coordinator.RunAsync(
@@ -317,7 +317,7 @@ public static class ScenarioCatalog
             ],
             [
                 "arrival.probe:ready",
-                "song.validate-index:Bridge-001.sng",
+                "song.validate-index:GeomitronBridge-001.sng",
                 "yarg.observe:idle",
                 "yarg.refresh:song-001",
                 "yarg.resolve:song-001",
@@ -376,7 +376,7 @@ public static class ScenarioCatalog
             ],
             [
                 "arrival.probe:ready",
-                "song.validate-index:Bridge-001.sng",
+                "song.validate-index:GeomitronBridge-001.sng",
                 "yarg.observe:idle",
                 "yarg.refresh:song-001",
                 "yarg.resolve:song-001",
@@ -416,7 +416,7 @@ public static class ScenarioCatalog
             ],
             [
                 "arrival.probe:ready",
-                "song.validate-index:Bridge-001.sng",
+                "song.validate-index:GeomitronBridge-001.sng",
                 "yarg.observe:idle",
                 "yarg.observe:idle",
                 "yarg.refresh:song-001",
@@ -456,7 +456,7 @@ public static class ScenarioCatalog
             ],
             [
                 "arrival.probe:ready",
-                "song.validate-index:Bridge-001.sng",
+                "song.validate-index:GeomitronBridge-001.sng",
                 "yarg.observe:idle",
                 "yarg.refresh:song-001",
                 "yarg.resolve:song-001",
@@ -493,7 +493,7 @@ public static class ScenarioCatalog
             ],
             [
                 "arrival.probe:ready",
-                "song.validate-index:Bridge-001.sng",
+                "song.validate-index:GeomitronBridge-001.sng",
                 "yarg.observe:idle",
                 "yarg.refresh:song-001",
             ]);
@@ -562,7 +562,7 @@ public static class ScenarioCatalog
             ],
             [
                 "arrival.probe:ready",
-                "song.validate-index:Bridge-001.sng",
+                "song.validate-index:GeomitronBridge-001.sng",
                 "yarg.observe:idle",
                 "yarg.refresh:song-001",
             ]);
@@ -631,7 +631,7 @@ public static class ScenarioCatalog
             ],
             [
                 "arrival.probe:ready",
-                "song.validate-index:Bridge-001.sng",
+                "song.validate-index:GeomitronBridge-001.sng",
                 "yarg.observe:idle",
                 "yarg.refresh:song-001",
                 "yarg.resolve:song-001",

@@ -2,14 +2,15 @@
 
 Cantina is a LAN remote for [YARG](https://github.com/YARC-Official/YARG). An
 iPad-installed web app will browse the theater's song library, build a setlist, cue
-songs, and show the live state that stock YARG exposes. **Barkeep** is the bridge
-process running beside YARG on the theater PC.
+songs, and show the live state that stock YARG exposes. **Barkeep** is the Cantina
+server process running beside YARG on the theater PC.
 
-[Geomitron Bridge](https://github.com/Geomitron/Bridge) is a separate desktop
-application that can supply new songs. Cantina will recognize its completed downloads,
-refresh YARG, and place the exact imported song next in the setlist. Bridge has no
-supported external automation interface today, so searching for and starting a
-download remains in Bridge until issue
+[Geomitron Bridge](https://github.com/Geomitron/Bridge) is an independent open-source
+chart-acquisition application (GPL-3.0), separately installed by the operator and not
+part of Cantina. Cantina will recognize its completed downloads, refresh YARG, and place
+the exact imported song next in the setlist. Geomitron Bridge has no supported external
+automation interface today, so searching for and starting a download stays inside
+Geomitron Bridge until issue
 [#17](https://github.com/roguen/cantina/issues/17) proves a supported boundary.
 
 ## Status
@@ -46,11 +47,15 @@ input synthesis without changing the client or setlist logic.
 | Term | Meaning |
 |---|---|
 | **Setlist** | The ordered collection of songs plus the cursor identifying the current song. |
-| **Barkeep** | The bridge application/process on the theater PC. |
+| **Barkeep** | The Cantina server application/process on the theater PC. |
 | **YARG session** | The running YARG instance Barkeep observes and controls. |
+| **Geomitron Bridge** | The independent GPL-3.0 chart-acquisition application the operator installs separately. Never shortened to "Bridge". |
 
-`Stage` is not a canonical code term: it is overloaded by theater, deployment, and
-YARG scene terminology.
+`Stage` is not a canonical code term: it is overloaded by theater staging, deployment
+stages, and YARG's own scene and Stage Kit terminology.
+
+`bridge` is not a role word for Barkeep. Barkeep is the Cantina server; writing "the
+bridge" reintroduces the collision with Geomitron Bridge that D-009 removed.
 
 ## Development
 
@@ -71,17 +76,20 @@ dotnet run --project tools/Cantina.TestHarness --configuration Release --no-buil
 
 See [`docs/development.md`](docs/development.md) for the local workflow and target-PC
 acceptance boundary, and [`docs/architecture.md`](docs/architecture.md) for the
-normative component contract. [`docs/bridge-integration.md`](docs/bridge-integration.md)
-defines the acquisition handoff and its current automation limit, and
+normative component contract. [`docs/yarg-interface.md`](docs/yarg-interface.md) records
+what stock YARG does and does not expose — including the absence of song identity and
+playback position — and is provisional until captured on the theater PC.
+[`docs/geomitron-bridge-integration.md`](docs/geomitron-bridge-integration.md) defines
+the acquisition handoff and its current automation limit, and
 [`docs/test-harness.md`](docs/test-harness.md) defines the deterministic theater
 simulator and its evidence boundary.
 
 ## Project records
 
 - Versioned specifications live in [`docs/`](docs/).
-- Living material temporarily lives in [`project/`](project/) because GitHub does not
-  provide a wiki for this private repository on its current plan. Issue
-  [#13](https://github.com/roguen/cantina/issues/13) gates migration to the wiki.
+- Living material still lives in [`project/`](project/), a fallback adopted while the
+  repository was private and had no wiki. Publication (D-011) removed that limitation;
+  issue [#13](https://github.com/roguen/cantina/issues/13) owns the migration.
 - Open work and unresolved arguments live in
   [GitHub Issues](https://github.com/roguen/cantina/issues).
 
