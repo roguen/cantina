@@ -101,7 +101,15 @@ internal sealed record YargDatagram
     public required byte DatagramVersion { get; init; }
     public required byte Platform { get; init; }
     public required YargScene Scene { get; init; }
-    public required bool Paused { get; init; }
+
+    /// <summary>
+    /// Byte 7. YALCY names this <c>PauseState</c>, but captures contradict that name: it
+    /// read non-zero for the whole of gameplay and zero at menu and score. Exposed raw and
+    /// unnamed until a deliberate pause-and-unpause capture settles it. See
+    /// <c>docs/yarg-interface.md</c>.
+    /// </summary>
+    public required byte Byte7 { get; init; }
+
     public required byte VenueSize { get; init; }
     public required float BeatsPerMinute { get; init; }
     public required byte SongSection { get; init; }
@@ -189,7 +197,7 @@ internal sealed record YargDatagram
             DatagramVersion = version,
             Platform = data[5],
             Scene = (YargScene)data[6],
-            Paused = data[7] != 0,
+            Byte7 = data[7],
             VenueSize = data[8],
             BeatsPerMinute = BinaryPrimitives.ReadSingleLittleEndian(data[9..]),
             SongSection = data[13],
@@ -223,6 +231,6 @@ internal sealed record YargDatagram
 
     /// <summary>One-line summary of the fields this spike is trying to confirm.</summary>
     public string Describe() =>
-        $"scene={Scene} paused={Paused} bpm={BeatsPerMinute:0.##} cue={LightingCue} " +
+        $"scene={Scene} byte7=0x{Byte7:X2} bpm={BeatsPerMinute:0.##} cue={LightingCue} " +
         $"beat={Beat} section={SongSection} players={StarPower.Count}";
 }
