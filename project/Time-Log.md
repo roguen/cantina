@@ -163,3 +163,28 @@ start was not captured.
   [#11](https://github.com/roguen/cantina/issues/11).
 - Local result: zero-warning Release build, clean format, 20 server tests, 14 harness
   scenarios, and a live run rendering `play=NoSong` on the score screen.
+
+## 2026-08-01 · Listener coexistence session 007
+
+- Recorded: 2026-08-01
+- Duration: not captured
+- Merged [#25](https://github.com/roguen/cantina/pull/25); issue
+  [#2](https://github.com/roguen/cantina/issues/2) closed.
+- Confirmed no lighting application is installed on the theater PC: no YALCY, Photonics,
+  Lightjams, or QLC+. YARG's own settings show `StageKitEnabled` true and `DMXEnabled`
+  false.
+- Added `--no-reuse`, which reproduces YALCY's bare `new UdpClient(port)` bind so a second
+  instance can stand in for a lighting consumer, and made a failed bind report a named
+  error instead of crashing.
+- Ran three two-process tests against live YARG traffic, both startup orders: no-reuse
+  first then reuse fails with `AccessDenied`; reuse first then no-reuse fails with
+  `AddressAlreadyInUse`; both with `SO_REUSEADDR` bind and both receive every datagram at
+  about 90.6/s.
+- Finding: coexistence requires `SO_REUSEADDR` on both listeners, startup order is not a
+  workaround, and YALCY does not set it. Barkeep and YALCY cannot currently share the
+  theater PC, and no change confined to Cantina can fix it.
+- The failure is loud rather than silent; the bind throws, so Barkeep can name the fault.
+- Recorded D-013 and added a second, far more tractable upstream target: one socket option
+  in YALCY, which is LGPL like Cantina.
+- Issue [#11](https://github.com/roguen/cantina/issues/11) stays open. The stand-in
+  reproduces YALCY's bind but is not YALCY, and firewall-enabled behavior is untested.

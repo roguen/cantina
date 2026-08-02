@@ -78,6 +78,36 @@ Read `DIFFS BETWEEN CONSECUTIVE MARKS`:
 `BYTE ACTIVITY` supports this: it separates offsets that moved from offsets frozen for the
 whole run, so a candidate flag is easy to spot.
 
+### Procedure: listener coexistence (#11)
+
+`--no-reuse` binds the way YALCY does — a bare `new UdpClient(port)` with no options — so a
+second instance can stand in for a lighting consumer without installing one.
+
+Run two instances against live YARG traffic and compare accepted counts, in both orders:
+
+```bash
+# terminal 1, the stand-in, started first
+dotnet run --project spikes/Cantina.Spikes.YargObserve -- --no-reuse --seconds 30
+
+# terminal 2, Cantina's real binding
+dotnet run --project spikes/Cantina.Spikes.YargObserve -- --seconds 20
+```
+
+Captured result on the theater PC, 2026-08-01:
+
+| First | Second | Result |
+|---|---|---|
+| no reuse | reuse | second bind fails, `AccessDenied` |
+| reuse | no reuse | second bind fails, `AddressAlreadyInUse` |
+| reuse | reuse | both bind, both receive every datagram |
+
+Coexistence needs `SO_REUSEADDR` on **both** sides, and startup order does not help. See
+`docs/yarg-interface.md` and D-013.
+
+This stands in for YALCY rather than being YALCY. Running the real application, and testing
+with the firewall enabled, are still open in
+[#11](https://github.com/roguen/cantina/issues/11).
+
 ### Reading the result
 
 The summary block is the deliverable. `destinations` answers broadcast versus unicast.

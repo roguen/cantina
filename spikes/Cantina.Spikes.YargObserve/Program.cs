@@ -58,7 +58,9 @@ void Emit(string line)
 }
 
 Emit(string.Create(CultureInfo.InvariantCulture, $"cantina yarg-observe, started {started:yyyy-MM-dd HH:mm:ss zzz}"));
-Emit(string.Create(CultureInfo.InvariantCulture, $"udp port {options.Port}, SO_REUSEADDR set so a running YALCY or Photonics keeps receiving"));
+Emit(options.ReuseAddress
+    ? string.Create(CultureInfo.InvariantCulture, $"udp port {options.Port}, SO_REUSEADDR set so a running YALCY or Photonics keeps receiving")
+    : string.Create(CultureInfo.InvariantCulture, $"udp port {options.Port}, SO_REUSEADDR NOT set - standing in for YALCY's bind (issue #11)"));
 Emit($"yarg dir {options.YargDirectory}");
 Emit(Directory.Exists(options.YargDirectory)
     ? "yarg dir found"
@@ -92,7 +94,8 @@ songWatcher.ContentChanged += (name, content) =>
 songWatcher.ReadFailed += (name, message) => Emit($"SONGFILE {name} read failed: {message}");
 
 var songTask = RunSafelyAsync(() => songWatcher.RunAsync(lifetime.Token));
-var udpTask = RunSafelyAsync(() => ObserveUdpAsync(options.Port, stats, latest, Emit, lifetime.Token));
+var udpTask = RunSafelyAsync(() =>
+    ObserveUdpAsync(options.Port, options.ReuseAddress, stats, latest, Emit, lifetime.Token));
 var heartbeatTask = RunSafelyAsync(() => HeartbeatAsync(stats, Emit, lifetime.Token));
 // Deliberately not awaited. A blocking console read does not reliably honor cancellation on
 // Windows, so awaiting it would hold the run open past --seconds and past Ctrl+C. It dies
@@ -227,6 +230,7 @@ static async Task ReadMarksAsync(
 
 static async Task ObserveUdpAsync(
     int port,
+    bool reuseAddress,
     CaptureStats stats,
     LatestDatagram latest,
     Action<string> emit,
@@ -236,13 +240,28 @@ static async Task ObserveUdpAsync(
 
     // Same-host coexistence with a lighting consumer is issue #11. YALCY binds with a bare
     // UdpClient and sets no reuse option, so Cantina has to be the accommodating one.
-    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+    // --no-reuse reproduces YALCY's bind so one instance can stand in for it.
+    if (reuseAddress)
+    {
+        socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+    }
 
     // IP_PKTINFO exposes each datagram's destination address, which is how this spike
     // distinguishes broadcast from unicast instead of assuming.
     socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.PacketInformation, true);
 
-    socket.Bind(new IPEndPoint(IPAddress.Any, port));
+    try
+    {
+        socket.Bind(new IPEndPoint(IPAddress.Any, port));
+    }
+    catch (SocketException ex)
+    {
+        // A refused bind is the headline result of the coexistence test, not a crash.
+        emit($"BIND FAILED on port {port} (reuseAddress={reuseAddress}): {ex.SocketErrorCode} - {ex.Message}");
+        return;
+    }
+
+    emit($"bound port {port}, SO_REUSEADDR={reuseAddress}");
 
     var buffer = new byte[2048];
     EndPoint remote = new IPEndPoint(IPAddress.Any, 0);
