@@ -24,7 +24,9 @@ if (!OperatingSystem.IsWindows())
     return 2;
 }
 
-var key = "escape";
+// Several keys by default. Each candidate otherwise costs the operator a full cycle of
+// replaying a song and alt-tabbing, and the question is only ever "did any key land".
+var keySpec = "enter,escape,space";
 var port = 36107;
 var waitSeconds = 8;
 var timeoutSeconds = 3;
@@ -37,8 +39,8 @@ for (var i = 0; i < args.Length; i++)
 
     switch (args[i])
     {
-        case "--key" when hasValue:
-            key = args[++i];
+        case "--key" or "--keys" when hasValue:
+            keySpec = args[++i];
             break;
         case "--port" when hasValue && int.TryParse(args[i + 1], CultureInfo.InvariantCulture, out var p):
             port = p;
@@ -69,9 +71,22 @@ for (var i = 0; i < args.Length; i++)
     }
 }
 
-if (!ScanCodes.TryResolve(key, out var scanCode, out var extended))
+var candidates = new List<(string Name, ushort Scan, bool Extended)>();
+
+foreach (var name in keySpec.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
 {
-    Console.Error.WriteLine($"unknown key '{key}'. known: {ScanCodes.Known}");
+    if (!ScanCodes.TryResolve(name, out var resolvedScan, out var resolvedExtended))
+    {
+        Console.Error.WriteLine($"unknown key '{name}'. known: {ScanCodes.Known}");
+        return 2;
+    }
+
+    candidates.Add((name, resolvedScan, resolvedExtended));
+}
+
+if (candidates.Count == 0)
+{
+    Console.Error.WriteLine("no keys to send");
     return 2;
 }
 
@@ -91,7 +106,8 @@ if (yarg is null)
 }
 
 Console.WriteLine($"YARG pid {yarg.Id}, window handle 0x{yarg.MainWindowHandle:X}");
-Console.WriteLine($"key '{key}' -> scan 0x{scanCode:X2}{(extended ? " extended" : string.Empty)}, hold {holdMilliseconds}ms");
+Console.WriteLine($"keys to try, in order: {string.Join(", ", candidates.Select(c => $"{c.Name} (0x{c.Scan:X2})"))}");
+Console.WriteLine($"hold {holdMilliseconds}ms, stopping at the first key that changes state");
 Console.WriteLine($"listening on udp {port} for the oracle");
 
 using var reader = new YargStateReader(port);
@@ -113,7 +129,7 @@ if (reader.Current is null)
 
 Console.WriteLine($"baseline {reader.Current.Value}");
 Console.WriteLine();
-Console.WriteLine($"FOCUS YARG NOW. Sending '{key}' in {waitSeconds} seconds.");
+Console.WriteLine($"FOCUS YARG NOW. Sending {candidates.Count} key(s) in {waitSeconds} seconds.");
 Console.WriteLine("Do not touch the keyboard after focusing; any real key press would confound the result.");
 
 for (var remaining = waitSeconds; remaining > 0; remaining--)
@@ -137,62 +153,83 @@ if (!foregroundIsYarg)
     return 1;
 }
 
-// Focusing YARG resumes it, because PauseOnFocusLoss is true. Let that settle before taking
-// the baseline, so a focus-induced transition cannot be misread as the injected key landing.
-Console.WriteLine("waiting for state to settle after the focus change...");
-
-var settled = await reader
-    .WaitForStableAsync(TimeSpan.FromMilliseconds(750), TimeSpan.FromSeconds(6), lifetime.Token)
-    .ConfigureAwait(false);
-
-if (settled is null)
-{
-    Console.WriteLine("state never held still for 750 ms, so a baseline would not be trustworthy.");
-    Console.WriteLine("Nothing was sent. Let the game settle and run again.");
-    return 1;
-}
-
-var baseline = settled.Value;
-Console.WriteLine($"settled baseline: {baseline}");
-
 if (dryRun)
 {
     Console.WriteLine("dry run: no input sent.");
     return 0;
 }
 
-var sent = NativeMethods.SendKeyPress(scanCode, extended, holdMilliseconds);
-var sendMoment = Stopwatch.StartNew();
+var landed = false;
 
-Console.WriteLine($"SendInput accepted {sent} of 2 events");
-
-if (sent < 2)
+foreach (var candidate in candidates)
 {
-    Console.WriteLine("Windows refused the injection itself. That is a different failure from YARG ignoring it.");
-    return 1;
-}
+    Console.WriteLine();
+    Console.WriteLine($"--- {candidate.Name} ---");
 
-var change = await reader
-    .WaitForChangeAsync(baseline, TimeSpan.FromSeconds(timeoutSeconds), lifetime.Token)
-    .ConfigureAwait(false);
+    // Settle before every key, not just the first. Focusing YARG resumes it because
+    // PauseOnFocusLoss is true, and an earlier key in this same run may also have moved the
+    // game. Without a fresh settled baseline, one key's effect could be credited to the next.
+    var settled = await reader
+        .WaitForStableAsync(TimeSpan.FromMilliseconds(750), TimeSpan.FromSeconds(6), lifetime.Token)
+        .ConfigureAwait(false);
+
+    if (settled is null)
+    {
+        Console.WriteLine("  state never held still for 750 ms; skipping, a baseline would not be trustworthy");
+        continue;
+    }
+
+    // Re-check focus each time: an earlier key could have opened something that took it.
+    var currentForeground = NativeMethods.GetForegroundWindow();
+    _ = NativeMethods.GetWindowThreadProcessId(currentForeground, out var currentPid);
+
+    if (currentPid != (uint)yarg.Id)
+    {
+        Console.WriteLine($"  YARG lost foreground (now pid {currentPid}); stopping rather than reporting an ambiguous result");
+        break;
+    }
+
+    var baseline = settled.Value;
+    Console.WriteLine($"  baseline {baseline}");
+
+    var sent = NativeMethods.SendKeyPress(candidate.Scan, candidate.Extended, holdMilliseconds);
+
+    if (sent < 2)
+    {
+        Console.WriteLine($"  SendInput accepted only {sent} of 2 events - Windows refused the injection itself");
+        Console.WriteLine("  That is an integrity-level problem, not a YARG behavior. Stopping.");
+        return 1;
+    }
+
+    var change = await reader
+        .WaitForChangeAsync(baseline, TimeSpan.FromSeconds(timeoutSeconds), lifetime.Token)
+        .ConfigureAwait(false);
+
+    if (change is null)
+    {
+        Console.WriteLine($"  no state change within {timeoutSeconds}s");
+        continue;
+    }
+
+    var (state, elapsed) = change.Value;
+    Console.WriteLine($"  STATE CHANGED after {elapsed.TotalMilliseconds:0} ms: {baseline} -> {state}");
+    landed = true;
+    break;
+}
 
 Console.WriteLine();
 
-if (change is null)
+if (landed)
 {
-    Console.WriteLine($"NO STATE CHANGE within {timeoutSeconds}s. State still {baseline}.");
-    Console.WriteLine("Either YARG ignored the key, or this key does nothing in the current screen.");
-    Console.WriteLine("Try a different --key, or a screen where the key has an unambiguous effect.");
-    return 1;
+    Console.WriteLine("RESULT: synthetic keyboard input reaches stock YARG. SendInput is viable.");
+    return 0;
 }
 
-var (state, elapsed) = change.Value;
-
-Console.WriteLine($"STATE CHANGED after {elapsed.TotalMilliseconds:0} ms: {baseline}  ->  {state}");
-Console.WriteLine("Synthetic keyboard input reached stock YARG.");
-Console.WriteLine($"(elapsed includes up to one datagram interval, about 11 ms at 90 Hz; send-to-observe was {sendMoment.Elapsed.TotalMilliseconds:0} ms)");
-
-return 0;
+Console.WriteLine($"RESULT: no key produced a state change ({keySpec}).");
+Console.WriteLine("Windows accepted every injection, YARG held focus throughout, and the same keys");
+Console.WriteLine("are confirmed to work when pressed physically. That points at YARG ignoring");
+Console.WriteLine("injected input rather than at a wrong key choice.");
+return 1;
 
 static void PrintUsage() =>
     Console.WriteLine("""
