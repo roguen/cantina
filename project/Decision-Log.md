@@ -307,3 +307,44 @@ listener coexistence stays with [#11](https://github.com/roguen/cantina/issues/1
 general lesson applies to every remaining spike: a lossy conversion in Cantina's own parser
 can masquerade as a finding about YARG, so unknown fields are captured raw before they are
 interpreted.
+
+## D-013 · Require SO_REUSEADDR, report port conflict as a named failure, and pursue the YALCY fix upstream
+
+- Date: 2026-08-01
+- Status: Accepted; the real-application half of the proof is still open
+
+Context: Barkeep listens on UDP 36107 on the same host as YARG, where a lighting consumer
+may also run. A two-process capture with live YARG traffic tested both startup orders on
+the theater PC:
+
+| First listener | Second listener | Result |
+|---|---|---|
+| no `SO_REUSEADDR` | `SO_REUSEADDR` | second bind fails, `AccessDenied` |
+| `SO_REUSEADDR` | no `SO_REUSEADDR` | second bind fails, `AddressAlreadyInUse` |
+| both `SO_REUSEADDR` | | both bind and both receive every datagram |
+
+Coexistence requires the option on **both** listeners. Startup order does not help.
+YALCY binds with a bare `new UdpClient(36107)` and does not set it, so Barkeep and YALCY
+cannot currently share the theater PC in either order, and nothing confined to Cantina can
+change that.
+
+Decision: Always set `SO_REUSEADDR`, so Cantina is never the reason a second consumer
+fails. Treat a failed bind as a **named, actionable condition** — another application holds
+the YARG data port — surfaced to the iPad as that specific fault, never as an empty or
+frozen live state. Propose the one-line socket-option change to YALCY upstream.
+
+Rejected: Retrying or waiting for the port, which cannot succeed while the other holder
+lacks the option and would present as a hang. Choosing a startup order as a workaround,
+which the capture disproves. Re-broadcasting or proxying the stream for other consumers,
+which makes Cantina a lighting-adjacent component and contradicts the section 2 non-goal.
+Silently continuing with no live state, which is the failure mode the client contract
+exists to prevent.
+
+Consequences: A second upstream contribution target now exists, and it is far more
+tractable than a YARG hook: YALCY is LGPL like Cantina, and the change is one socket
+option. Because the traffic is broadcast, moving a lighting controller to another LAN host
+avoids the conflict entirely, and that is the honest interim workaround. Issue
+[#11](https://github.com/roguen/cantina/issues/11) stays open: these results come from a
+second instance of Cantina's own listener reproducing YALCY's bind rather than from YALCY
+or Photonics themselves, neither of which is installed, and firewall-enabled behavior is
+untested.

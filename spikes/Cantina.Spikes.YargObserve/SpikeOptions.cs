@@ -16,6 +16,14 @@ internal sealed record SpikeOptions
     public required string? OutPath { get; init; }
 
     /// <summary>
+    /// Whether to set <c>SO_REUSEADDR</c>. Cantina always does. Passing <c>--no-reuse</c>
+    /// binds the way YALCY does — a bare <c>new UdpClient(port)</c> with no options — so a
+    /// second instance can stand in for a lighting consumer when proving coexistence
+    /// (issue #11).
+    /// </summary>
+    public required bool ReuseAddress { get; init; }
+
+    /// <summary>
     /// YARG stores per-channel state under Unity's LocalLow. Only the <c>release</c>
     /// channel exists on the theater PC today; a nightly install would use its own folder.
     /// </summary>
@@ -36,6 +44,7 @@ internal sealed record SpikeOptions
         var directory = DefaultYargDirectory;
         var seconds = 0;
         string? outPath = null;
+        var reuseAddress = true;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -58,6 +67,9 @@ internal sealed record SpikeOptions
                     outPath = args[i + 1];
                     i++;
                     break;
+                case "--no-reuse":
+                    reuseAddress = false;
+                    break;
                 case "--help":
                 case "-h":
                     return null;
@@ -73,6 +85,7 @@ internal sealed record SpikeOptions
             YargDirectory = directory,
             Seconds = seconds,
             OutPath = outPath,
+            ReuseAddress = reuseAddress,
         };
     }
 
@@ -88,6 +101,8 @@ internal sealed record SpikeOptions
               --yarg-dir <path>  YARG channel dir (default: LocalLow\YARC\YARG\release)
               --seconds <n>      stop after n seconds (default: run until Ctrl+C)
               --out <path>       append a transcript file for review before committing
+              --no-reuse         bind without SO_REUSEADDR, the way YALCY does, so a second
+                                 instance can stand in for a lighting consumer (issue #11)
               -h, --help         this message
 
             Exit code 0 if at least one datagram was accepted, 1 if none, 2 on bad usage.
