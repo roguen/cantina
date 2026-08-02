@@ -242,8 +242,15 @@ stated goal.
 
 Decision: Cantina is public. This supersedes D-006, which stays recorded.
 
-Consequences: Issue [#10](https://github.com/roguen/cantina/issues/10)'s release gate is
-satisfied. The wiki is available, so issue
+Consequences: Publication happened **before** issue
+[#10](https://github.com/roguen/cantina/issues/10)'s release gate was worked. None of
+its audit items ran first: history and large-object scanning for credentials, paths,
+captures, certificates, and copyrighted song content; review of issues, Actions
+logs/artifacts, releases, environments, secrets, webhooks, and installed apps;
+third-party notice and clean-room verification, especially around Photonics GPL
+evidence; policy-document review; least-privilege workflow permissions; and a
+recoverable backup. Those checks are now retrospective rather than preventive, and #10
+stays open until they are done. The wiki is available, so issue
 [#13](https://github.com/roguen/cantina/issues/13) can migrate the living pages out of
 the `project/` fallback. Branch protection is available on the current plan, so issue
 [#14](https://github.com/roguen/cantina/issues/14) can close with GitHub-enforced rules
