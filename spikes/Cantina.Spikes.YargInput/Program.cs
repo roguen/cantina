@@ -137,8 +137,23 @@ if (!foregroundIsYarg)
     return 1;
 }
 
-var baseline = reader.Current.Value;
-Console.WriteLine($"state immediately before send: {baseline}");
+// Focusing YARG resumes it, because PauseOnFocusLoss is true. Let that settle before taking
+// the baseline, so a focus-induced transition cannot be misread as the injected key landing.
+Console.WriteLine("waiting for state to settle after the focus change...");
+
+var settled = await reader
+    .WaitForStableAsync(TimeSpan.FromMilliseconds(750), TimeSpan.FromSeconds(6), lifetime.Token)
+    .ConfigureAwait(false);
+
+if (settled is null)
+{
+    Console.WriteLine("state never held still for 750 ms, so a baseline would not be trustworthy.");
+    Console.WriteLine("Nothing was sent. Let the game settle and run again.");
+    return 1;
+}
+
+var baseline = settled.Value;
+Console.WriteLine($"settled baseline: {baseline}");
 
 if (dryRun)
 {
