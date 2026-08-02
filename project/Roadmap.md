@@ -25,10 +25,11 @@ target-environment evidence.
 
 ## M1 · Spike results
 
-- [ ] Capture and specify YARG 0.15's UDP stream —
+- [x] Capture and specify YARG 0.15's UDP stream —
   [#2](https://github.com/roguen/cantina/issues/2). Wire contract, broadcast destination,
-  rate, and the `Menu → Gameplay → Score` transition are captured and specified; the
-  byte 7 pause semantics remain unresolved and hold this item open
+  rate, the `Menu → Gameplay → Score` transition, and the byte 7 play state are captured
+  and specified. Listener coexistence stays with
+  [#11](https://github.com/roguen/cantina/issues/11)
 - [ ] Prove a reliable stock-YARG input path —
   [#3](https://github.com/roguen/cantina/issues/3)
 - [ ] Prove or reject deterministic song selection —
@@ -83,9 +84,9 @@ target-environment evidence.
   [#7](https://github.com/roguen/cantina/issues/7)
 - [ ] Define proven, missing, unknown, stale, and present-but-unpopulated live-state
   fields — [#12](https://github.com/roguen/cantina/issues/12)
-- [ ] Show only evidence-backed live state: scene and beat from the datagram, song
-  identity and metadata from `currentSong.json`. No playback-position indicator ships
-  without an upstream source, and byte 7 is unused until its meaning is settled (D-010)
+- [ ] Show only evidence-backed live state: scene, play state, and beat from the datagram,
+  song identity and metadata from `currentSong.json`. No playback-position indicator ships
+  without an upstream source (D-010, D-012)
 - [ ] Decimate the ~90 Hz datagram stream and debounce the transient empty window that a
   song restart produces in `currentSong` (D-010)
 - [ ] Specify the upstream observation interface for **playback position**, the only

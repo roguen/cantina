@@ -19,7 +19,7 @@ internal sealed class CaptureStats
         [.. Enumerable.Range(0, TrackedOffsets).Select(_ => new HashSet<byte>())];
 
     private YargScene? _scene;
-    private byte? _byte7;
+    private YargPlayState? _playState;
     private byte[]? _previous;
 
     public long Accepted { get; private set; }
@@ -81,23 +81,20 @@ internal sealed class CaptureStats
         return !isFirst || datagram.Scene != YargScene.Unknown;
     }
 
-    /// <summary>
-    /// Reports any change in byte 7 after the first observation establishes a baseline.
-    /// Deliberately unnamed: the field's meaning is what the capture is trying to settle.
-    /// </summary>
-    public bool TryTakeByte7Change(YargDatagram datagram, out byte previous)
+    /// <summary>Reports play-state transitions after the first observation sets a baseline.</summary>
+    public bool TryTakePlayStateChange(YargDatagram datagram, out YargPlayState previous)
     {
         ArgumentNullException.ThrowIfNull(datagram);
 
-        previous = _byte7 ?? 0;
+        previous = _playState ?? YargPlayState.NoSong;
 
-        if (_byte7 == datagram.Byte7)
+        if (_playState == datagram.PlayState)
         {
             return false;
         }
 
-        var isFirst = _byte7 is null;
-        _byte7 = datagram.Byte7;
+        var isFirst = _playState is null;
+        _playState = datagram.PlayState;
 
         return !isFirst;
     }
@@ -144,7 +141,7 @@ internal sealed class CaptureStats
             yield break;
         }
 
-        yield return Line($"    byte  7: {_offsetChanges[7]} changes, values [{Render(7)}]  <<< the field under test");
+        yield return Line($"    byte  7: {_offsetChanges[7]} changes, values [{Render(7)}]  (play state)");
 
         var changed = Enumerable
             .Range(0, TrackedOffsets)

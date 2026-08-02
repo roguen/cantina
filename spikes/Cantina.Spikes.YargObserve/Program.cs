@@ -220,7 +220,7 @@ static async Task ReadMarksAsync(
 
         var mark = marks.Add(stopwatch.Elapsed, label.Trim(), scene, datagram);
 
-        emit($"MARK {mark.Index} scene={scene} byte7=0x{datagram[7]:X2} " +
+        emit($"MARK {mark.Index} scene={scene} play={(YargPlayState)datagram[7]} " +
              $"hex={Convert.ToHexString(datagram)}");
     }
 }
@@ -297,9 +297,9 @@ static async Task ObserveUdpAsync(
             emit($"SCENE {previous} -> {datagram.Scene}   ({datagram.Describe()})");
         }
 
-        if (stats.TryTakeByte7Change(datagram, out var previousByte7))
+        if (stats.TryTakePlayStateChange(datagram, out var previousPlayState))
         {
-            emit($"BYTE7 0x{previousByte7:X2} -> 0x{datagram.Byte7:X2}   (scene={datagram.Scene})");
+            emit($"PLAY {previousPlayState} -> {datagram.PlayState}   (scene={datagram.Scene})");
         }
     }
 }

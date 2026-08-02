@@ -273,3 +273,37 @@ the `project/` fallback. Branch protection is available on the current plan, so 
 [#14](https://github.com/roguen/cantina/issues/14) can close with GitHub-enforced rules
 instead of a bypassable client-side hook. History, Actions output, and issues are now
 publicly readable; nothing may be committed on an assumption of privacy.
+
+## D-012 · Adopt datagram byte 7 as the play state
+
+- Date: 2026-08-01
+- Status: Accepted
+
+Context: D-010 recorded byte 7 as unresolved and unusable. It had read non-zero for the
+whole of gameplay and zero at menu and score, which looked like an inverted or misnamed
+pause flag. A capture with two deliberate pause-and-unpause cycles settled it: the field
+is a **three-state enum**, not a boolean — `0` no song, `1` playing, `2` paused — and it
+transitioned cleanly on every pause and unpause.
+
+The apparent contradiction with YALCY's `PauseState` name was **our defect, not YARG's**.
+YALCY reads the offset as a byte; Cantina's first parser coerced it to `byte != 0`, which
+collapsed Playing and Paused into a single `true`. The upstream name is accurate, and this
+project documented its own parsing bug as an upstream quirk before catching it.
+
+Decision: Treat byte 7 as `PlayState` with the three captured values, and read it as a
+byte. Use it as the authoritative song-active signal in preference to `CurrentScene`,
+which cannot distinguish a running song from a paused one. Pause state is promised to the
+iPad as proven, not unknown.
+
+Rejected: Reading the field as a boolean, which is what produced the false contradiction
+and would silently discard the paused state. Continuing to treat it as unusable, which the
+capture no longer supports.
+
+Consequences: `docs/yarg-interface.md` records the values, the transition capture, and the
+boolean trap so the mistake is not repeated. Issue
+[#12](https://github.com/roguen/cantina/issues/12) can classify pause as *proven*. Issue
+[#2](https://github.com/roguen/cantina/issues/2) has no remaining unknowns and can close;
+listener coexistence stays with [#11](https://github.com/roguen/cantina/issues/11). A
+general lesson applies to every remaining spike: a lossy conversion in Cantina's own parser
+can masquerade as a finding about YARG, so unknown fields are captured raw before they are
+interpreted.

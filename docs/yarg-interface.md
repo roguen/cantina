@@ -2,13 +2,13 @@
 
 This document is normative for what Cantina may assume about stock YARG.
 
-**Status: confirmed by capture, with one field unresolved.** The layout below was captured
-from YARG 0.15 stable on the theater PC on 2026-08-01 using
-[`spikes/Cantina.Spikes.YargObserve`](../spikes/README.md). Three runs, two of them 300
-seconds, accepted over 54,000 datagrams with **zero rejections** — so the layout parses real
-traffic rather than merely matching a reading of someone else's parser.
+**Status: confirmed by capture.** The layout below was captured from YARG 0.15 stable on the
+theater PC on 2026-08-01 using [`spikes/Cantina.Spikes.YargObserve`](../spikes/README.md).
+Four runs, three of them 300 seconds, accepted over 80,000 datagrams with **zero
+rejections** — so the layout parses real traffic rather than merely matching a reading of
+someone else's parser.
 
-The exception is byte 7, described under [Unresolved](#unresolved). Do not build on it yet.
+Every field in the datagram is now either confirmed or explicitly marked unpopulated.
 
 Sources: captures on the target machine; [YALCY](https://github.com/YARC-Official/YALCY)
 `YALCY/Udp/UdpIntake.cs` and `UdpIntake.Enums.cs` (LGPL-3.0-or-later, the reference
@@ -55,7 +55,7 @@ Header magic is the four bytes `0x59415247`, ASCII `YARG`, read as a little-endi
 | 4 | 1 | `DatagramVersion` | **3** on this build |
 | 5 | 1 | `Platform` | observed `1` = Windows |
 | 6 | 1 | **`CurrentScene`** | Unknown 0, **Menu 1**, **Gameplay 2**, **Score 3**, Calibration 4, Practice 5 |
-| 7 | 1 | *(named `PauseState` upstream)* | **semantics unresolved — see below** |
+| 7 | 1 | **`PlayState`** | **0 no song, 1 playing, 2 paused** — captured; a three-state enum, not a boolean |
 | 8 | 1 | `VenueSize` | NoVenue, Small, Large |
 | 9 | 4 | `BeatsPerMinute` | IEEE 754 single |
 | 13 | 1 | `SongSection` | only None 0, Chorus 2, Verse 5 |
@@ -166,6 +166,7 @@ Three consequences:
 |---|---|---|
 | Score-screen detection | **Yes** — `CurrentScene = 3`, captured | Auto-advance trigger is proven |
 | Gameplay/menu detection | **Yes** — captured `Menu → Gameplay → Score` | |
+| Pause detection | **Yes** — `PlayState = 2`, captured | Distinguishes paused from playing, which the scene byte cannot |
 | Current song identity | **Yes**, via `currentSong.json` | File watch, not the datagram |
 | Song metadata | **Yes**, via `currentSong.txt` | |
 | **Playback position** | **No** | No progress indicator may be shown |
@@ -188,17 +189,29 @@ evidence that it holds a meaningful value. Issue
 *unknown*, *stale*, and *present but unpopulated*; only the first may reach the iPad as
 fact.
 
-## Unresolved
+## Byte 7 is a three-state play state, not a boolean
 
-**Byte 7 is named `PauseState` upstream, and the captures contradict that name.** It read
-`true` continuously for the entire duration of gameplay — 234 seconds in one run — and
-`false` at the menu and on the score screen. That is the opposite of what a pause flag
-should do for a song nobody paused.
+Captured across two deliberate pause-and-unpause cycles during one song:
 
-The plausible readings are inverted polarity, or a different meaning such as "song in
-progress." Neither is established. **Nothing may depend on byte 7 until a deliberate
-pause-and-unpause during gameplay is captured** and the byte is observed either to change or
-not to.
+```
+  2.509  Score -> Gameplay    0x00 -> 0x01   song starts
+ 43.525                       0x01 -> 0x02   paused
+ 53.112                       0x02 -> 0x01   unpaused
+ 85.890                       0x01 -> 0x02   paused
+ 96.357                       0x02 -> 0x01   unpaused
+248.785  Gameplay -> Score    0x01 -> 0x00   song ends
+```
+
+`0` no song, `1` playing, `2` paused.
+
+**Read it as a byte, never as `!= 0`.** An earlier revision of this document claimed the
+captures contradicted YALCY's `PauseState` name. That was wrong, and the error was ours:
+YALCY reads this offset as a byte, and Cantina's first parser coerced it to a boolean, which
+collapsed Playing and Paused into a single `true` and made the field appear stuck for the
+whole of gameplay. The upstream name is accurate.
+
+`PlayState` is also a **better song-active signal than the scene byte**, because
+`CurrentScene = Gameplay` cannot distinguish a running song from a paused one.
 
 ## Coexistence
 

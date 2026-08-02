@@ -137,3 +137,29 @@ start was not captured.
 - Unresolved and holding [#2](https://github.com/roguen/cantina/issues/2) open: byte 7,
   named `PauseState` upstream, read `true` for all 234 seconds of gameplay and `false` at
   menu and score. A deliberate pause and unpause during gameplay is still required.
+
+## 2026-08-01 · Byte 7 resolution session 006
+
+- Recorded: 2026-08-01
+- Duration: not captured
+- Merged [#21](https://github.com/roguen/cantina/pull/21) and
+  [#22](https://github.com/roguen/cantina/pull/22), returning `main` to a clean state with
+  branch protection enforced and the full regression green locally and in CI.
+- Extended the spike so the byte 7 question could be decided at all: raw unnamed byte
+  reporting, operator marks that freeze and diff the whole datagram, and per-offset change
+  tracking across all 47 bytes. Merged as [#24](https://github.com/roguen/cantina/pull/24).
+- Withdrew the operator-mark instruction before the run. Marking requires focusing the
+  terminal, and alt-tabbing out of a fullscreen game can itself pause it, which would have
+  confounded the measurement.
+- Captured a fourth run with two deliberate pause and unpause cycles.
+- **Byte 7 resolved as a three-state play state**: `0` no song, `1` playing, `2` paused.
+  Transitions were clean at both pauses and both unpauses.
+- Corrected a self-inflicted error. The earlier claim that captures contradicted YALCY's
+  `PauseState` name was wrong: YALCY reads the offset as a byte, and this project's parser
+  coerced it to `byte != 0`, collapsing Playing and Paused. A Cantina parsing defect had
+  been documented as an upstream quirk.
+- Recorded D-012, updated `docs/yarg-interface.md`, and closed
+  [#2](https://github.com/roguen/cantina/issues/2). Listener coexistence remains open in
+  [#11](https://github.com/roguen/cantina/issues/11).
+- Local result: zero-warning Release build, clean format, 20 server tests, 14 harness
+  scenarios, and a live run rendering `play=NoSong` on the score screen.
