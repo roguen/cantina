@@ -33,9 +33,12 @@ if (options.Seconds > 0)
     lifetime.CancelAfter(TimeSpan.FromSeconds(options.Seconds));
 }
 
-using var transcript = options.OutPath is null
-    ? null
-    : new StreamWriter(options.OutPath, append: true, Encoding.UTF8);
+using var transcript = TryOpenTranscript(options.OutPath, out var transcriptError);
+if (transcriptError is not null)
+{
+    Console.Error.WriteLine(transcriptError);
+    return 2;
+}
 
 var started = DateTimeOffset.Now;
 var stopwatch = Stopwatch.StartNew();
@@ -85,6 +88,45 @@ foreach (var line in stats.Summarize(stopwatch.Elapsed, IsYargRunning()))
 return stats.Accepted > 0 ? 0 : 1;
 
 static bool IsYargRunning() => Process.GetProcessesByName("YARG").Length > 0;
+
+// The transcript directory is git-ignored and therefore absent on a fresh clone.
+// Create it rather than failing the capture on a missing folder.
+static StreamWriter? TryOpenTranscript(string? path, out string? error)
+{
+    error = null;
+
+    if (path is null)
+    {
+        return null;
+    }
+
+    try
+    {
+        var fullPath = Path.GetFullPath(path);
+        var directory = Path.GetDirectoryName(fullPath);
+
+        if (!string.IsNullOrEmpty(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        return new StreamWriter(fullPath, append: true, Encoding.UTF8);
+    }
+    catch (IOException ex)
+    {
+        error = $"cannot open transcript '{path}': {ex.Message}";
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        error = $"cannot open transcript '{path}': {ex.Message}";
+    }
+    catch (NotSupportedException ex)
+    {
+        error = $"invalid transcript path '{path}': {ex.Message}";
+    }
+
+    return null;
+}
 
 static async Task RunSafelyAsync(Func<Task> work)
 {
