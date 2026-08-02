@@ -15,17 +15,20 @@ target-environment evidence.
   closed issue [#1](https://github.com/roguen/cantina/issues/1)
 - [ ] Self-contained artifact proven on Windows 10 Pro 22H2 —
   [#9](https://github.com/roguen/cantina/issues/9)
-- [ ] Living pages migrated from the temporary fallback to the wiki —
-  [#13](https://github.com/roguen/cantina/issues/13)
-- [ ] Protected `main` enforced by GitHub —
-  [#14](https://github.com/roguen/cantina/issues/14)
-- [ ] Eventual public-release gate —
+- [ ] Public-release gate — the repository was published on 2026-08-01 (D-011) before
+  this gate's audit items were worked, so they are now retrospective —
   [#10](https://github.com/roguen/cantina/issues/10)
+- [ ] Living pages migrated from the temporary `project/` fallback to the wiki, now
+  unblocked by publication — [#13](https://github.com/roguen/cantina/issues/13)
+- [ ] Protected `main` enforced by GitHub rather than a bypassable client-side hook, now
+  unblocked by publication — [#14](https://github.com/roguen/cantina/issues/14)
 
 ## M1 · Spike results
 
 - [ ] Capture and specify YARG 0.15's UDP stream —
-  [#2](https://github.com/roguen/cantina/issues/2)
+  [#2](https://github.com/roguen/cantina/issues/2). Wire contract, broadcast destination,
+  rate, and the `Menu → Gameplay → Score` transition are captured and specified; the
+  byte 7 pause semantics remain unresolved and hold this item open
 - [ ] Prove a reliable stock-YARG input path —
   [#3](https://github.com/roguen/cantina/issues/3)
 - [ ] Prove or reject deterministic song selection —
@@ -37,7 +40,9 @@ target-environment evidence.
   [#17](https://github.com/roguen/cantina/issues/17)
 - [x] Deterministic application-policy theater harness and stable CI regression gate —
   [#19](https://github.com/roguen/cantina/issues/19)
-- [ ] Commit spike proofs and `docs/yarg-interface.md`
+- [x] Confirm the wire contract in
+  [`docs/yarg-interface.md`](../docs/yarg-interface.md) against captured packets, and
+  commit the spike under `spikes/`
 - [ ] Record a stock-YARG go/no-go decision
 
 ## M2 · Library
@@ -45,8 +50,8 @@ target-environment evidence.
 - [ ] Choose the authoritative metadata source —
   [#5](https://github.com/roguen/cantina/issues/5)
 - [ ] Resilient incremental indexing with explicit skip reasons
-- [ ] Reconcile stable Bridge `.sng` arrivals exactly once and map provider identity to
-  Cantina song identity — [#17](https://github.com/roguen/cantina/issues/17)
+- [ ] Reconcile stable Geomitron Bridge `.sng` arrivals exactly once and map provider
+  identity to Cantina song identity — [#17](https://github.com/roguen/cantina/issues/17)
 - [ ] Full-text search across title, artist, album, and charter
 - [ ] Album-art selection, serving, and cache invalidation
 
@@ -57,8 +62,8 @@ target-environment evidence.
 - [ ] Installable Home Screen experience and automatic reconnection
 - [ ] One-handed browse and search with persistent connection state
 - [ ] Show honest acquisition, validation, refresh, and play-next progress; direct
-  Bridge search/download stays disabled until a supported external contract exists —
-  [#17](https://github.com/roguen/cantina/issues/17)
+  Geomitron Bridge search/download stays disabled until a supported external contract
+  exists — [#17](https://github.com/roguen/cantina/issues/17)
 
 ## M4 · Control
 
@@ -69,19 +74,30 @@ target-environment evidence.
 - [ ] Report bounded success and honest failure on the iPad
 - [ ] Define Holocron and theater-contention behavior —
   [#8](https://github.com/roguen/cantina/issues/8)
+- [ ] Specify the smallest upstream YARG interface the measured control gaps require,
+  behind the existing replaceable adapter (D-010)
 
 ## M5 · Queue and state
 
 - [ ] Decide setlist durability and restart recovery —
   [#7](https://github.com/roguen/cantina/issues/7)
-- [ ] Define proven, missing, unknown, and stale live-state fields —
-  [#12](https://github.com/roguen/cantina/issues/12)
-- [ ] Safe score-screen auto-advance with a cancel window
+- [ ] Define proven, missing, unknown, stale, and present-but-unpopulated live-state
+  fields — [#12](https://github.com/roguen/cantina/issues/12)
+- [ ] Show only evidence-backed live state: scene and beat from the datagram, song
+  identity and metadata from `currentSong.json`. No playback-position indicator ships
+  without an upstream source, and byte 7 is unused until its meaning is settled (D-010)
+- [ ] Decimate the ~90 Hz datagram stream and debounce the transient empty window that a
+  song restart produces in `currentSong` (D-010)
+- [ ] Specify the upstream observation interface for **playback position**, the only
+  field no stock YARG surface exposes (D-010)
+- [ ] Safe score-screen auto-advance on the `CurrentScene` byte, with a cancel window
 - [ ] Recover acquisition and play intent without duplicate install, setlist insertion,
   refresh, or late cue — [#17](https://github.com/roguen/cantina/issues/17)
 - [ ] Record measured end-to-end latency
 
 ## Beyond
 
-Propose the smallest interface upstream to YARG only after working M1–M5 evidence shows
-what stock YARG cannot provide.
+Submit the interface specified in M4 and M5 to YARG upstream, and carry it through
+review. D-010 moved the *specification* work into M4 and M5 because capability 4 cannot
+be met without it; what remains here is the contribution itself, which depends on
+upstream timelines Cantina does not control.
