@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/spikes/">
+    <Project Path="spikes/Cantina.Spikes.YargInput/Cantina.Spikes.YargInput.csproj" />
     <Project Path="spikes/Cantina.Spikes.YargObserve/Cantina.Spikes.YargObserve.csproj" />
   </Folder>
   <Folder Name="/src/">
