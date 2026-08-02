@@ -65,11 +65,26 @@ Emit($"yarg process running at start: {IsYargRunning()}");
 Emit("enable Settings > All Settings > Experimental > UDP Data Stream in YARG, then play one song");
 Emit(new string('-', 78));
 
+// The console stays readable, but the transcript keeps the whole payload: currentSong.json
+// runs to roughly two thousand characters and its field list is the finding.
+void EmitToTranscript(string line)
+{
+    transcript?.WriteLine(line);
+    transcript?.Flush();
+}
+
 var songWatcher = new CurrentSongWatcher(options.YargDirectory, TimeSpan.FromMilliseconds(250));
 songWatcher.ContentChanged += (name, content) =>
 {
     stats.CurrentSongObserved = true;
     Emit($"SONGFILE {name} -> {CurrentSongWatcher.Summarize(content)}");
+
+    if (content.Length > 0)
+    {
+        EmitToTranscript($"----- begin {name} ({content.Length} chars) -----");
+        EmitToTranscript(content);
+        EmitToTranscript($"----- end {name} -----");
+    }
 };
 songWatcher.ReadFailed += (name, message) => Emit($"SONGFILE {name} read failed: {message}");
 
