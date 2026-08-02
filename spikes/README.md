@@ -117,6 +117,60 @@ whether song identity is observable.
 If nothing arrives, the likely causes in order are: the setting is off, YARG is not
 running, or the Windows firewall is dropping inbound UDP on 36107.
 
+## `Cantina.Spikes.YargInput` — issue [#3](https://github.com/roguen/cantina/issues/3)
+
+**This spike sends input.** That is the opposite safety boundary from the observer above,
+which is why it is a separate program rather than a flag.
+
+It answers one question: does stock YARG accept synthetic keyboard input? The oracle is
+YARG's own datagram — a key that lands changes scene or play state, a key that does not
+changes nothing. That is what makes the run decisive instead of watching a projector and
+guessing.
+
+### Why it never takes foreground
+
+YARG's `PauseOnFocusLoss` is **true**. A tool that stole focus to deliver a key would pause
+the game and then measure its own side effect. So the operator keeps YARG focused and this
+process injects from the background — which is exactly the constraint Barkeep will live
+under. It also verifies YARG actually held focus at the moment of sending, so a null result
+cannot be confused with a key delivered somewhere else.
+
+### Why not a virtual controller first
+
+The kickoff brief expected ViGEmBus to rank first. It is **archived** — last pushed
+November 2023 — so it fails issue #3's own bar of a maintainable installation and
+redistribution story. A kernel-mode driver does not go near the theater PC unless
+`SendInput` is proven to fail.
+
+### Run
+
+```bash
+dotnet run --project spikes/Cantina.Spikes.YargInput -- --key escape --wait 8
+```
+
+Start a song first, so the screen has an unambiguous response to the key. Focus YARG during
+the countdown and then keep hands off the keyboard: a real key press would confound the
+result.
+
+```
+  --key <name>   escape, enter, space, backspace, up, down, left, right
+  --wait <n>     seconds to focus YARG before sending (default 8)
+  --timeout <n>  seconds to wait for a state change (default 3)
+  --dry-run      do everything except send
+```
+
+Exit 0 if a state change was observed, 1 if not, 2 on bad usage.
+
+### Reading the result
+
+A `STATE CHANGED` line with a latency proves synthetic input reached YARG. `NO STATE CHANGE`
+means either YARG ignored the key or the key does nothing on that screen — try a screen
+where its effect is unambiguous before concluding `SendInput` is rejected.
+
+`SendInput accepted N of 2` below 2 is a third, distinct outcome: Windows refused the
+injection itself, which usually means an integrity-level mismatch rather than anything about
+YARG.
+
 ### Evidence handling
 
 Transcripts contain local IP addresses and song titles, so `spikes/captures/` and
