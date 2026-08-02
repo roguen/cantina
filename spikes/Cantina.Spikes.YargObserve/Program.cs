@@ -43,6 +43,8 @@ if (transcriptError is not null)
 var started = DateTimeOffset.Now;
 var stopwatch = Stopwatch.StartNew();
 var stats = new CaptureStats();
+var marks = new MarkLog();
+var latest = new LatestDatagram();
 
 void Emit(string line)
 {
@@ -63,6 +65,7 @@ Emit(Directory.Exists(options.YargDirectory)
     : "yarg dir MISSING - currentSong watching will report nothing");
 Emit($"yarg process running at start: {IsYargRunning()}");
 Emit("enable Settings > All Settings > Experimental > UDP Data Stream in YARG, then play one song");
+Emit("press Enter at any time to MARK the timeline; marks around an action show which bytes it moved");
 Emit(new string('-', 78));
 
 // The console stays readable, but the transcript keeps the whole payload: currentSong.json
@@ -89,13 +92,30 @@ songWatcher.ContentChanged += (name, content) =>
 songWatcher.ReadFailed += (name, message) => Emit($"SONGFILE {name} read failed: {message}");
 
 var songTask = RunSafelyAsync(() => songWatcher.RunAsync(lifetime.Token));
-var udpTask = RunSafelyAsync(() => ObserveUdpAsync(options.Port, stats, Emit, lifetime.Token));
+var udpTask = RunSafelyAsync(() => ObserveUdpAsync(options.Port, stats, latest, Emit, lifetime.Token));
 var heartbeatTask = RunSafelyAsync(() => HeartbeatAsync(stats, Emit, lifetime.Token));
+// Deliberately not awaited. A blocking console read does not reliably honor cancellation on
+// Windows, so awaiting it would hold the run open past --seconds and past Ctrl+C. It dies
+// with the process, and any mark it recorded is already in the shared log.
+_ = RunSafelyAsync(() => ReadMarksAsync(latest, marks, stopwatch, Emit, lifetime.Token));
 
 await Task.WhenAll(songTask, udpTask, heartbeatTask).ConfigureAwait(false);
 
 Emit(new string('-', 78));
 foreach (var line in stats.Summarize(stopwatch.Elapsed, IsYargRunning()))
+{
+    Emit(line);
+}
+
+Emit(string.Empty);
+Emit("  OPERATOR MARKS");
+foreach (var line in marks.Summarize())
+{
+    Emit(line);
+}
+
+Emit(string.Empty);
+foreach (var line in stats.SummarizeByteActivity())
 {
     Emit(line);
 }
@@ -173,9 +193,42 @@ static async Task HeartbeatAsync(CaptureStats stats, Action<string> emit, Cancel
     }
 }
 
+// Marks are how a non-event becomes evidence. If byte 7 never moves, that is only
+// meaningful when the transcript also shows the operator performing the action.
+static async Task ReadMarksAsync(
+    LatestDatagram latest,
+    MarkLog marks,
+    Stopwatch stopwatch,
+    Action<string> emit,
+    CancellationToken cancellationToken)
+{
+    while (!cancellationToken.IsCancellationRequested)
+    {
+        var label = await Console.In.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+
+        if (label is null)
+        {
+            // Input is closed or redirected; marking is simply unavailable this run.
+            return;
+        }
+
+        if (!latest.TryGet(out var datagram, out var scene))
+        {
+            emit("MARK ignored: no datagram accepted yet");
+            continue;
+        }
+
+        var mark = marks.Add(stopwatch.Elapsed, label.Trim(), scene, datagram);
+
+        emit($"MARK {mark.Index} scene={scene} byte7=0x{datagram[7]:X2} " +
+             $"hex={Convert.ToHexString(datagram)}");
+    }
+}
+
 static async Task ObserveUdpAsync(
     int port,
     CaptureStats stats,
+    LatestDatagram latest,
     Action<string> emit,
     CancellationToken cancellationToken)
 {
@@ -226,6 +279,8 @@ static async Task ObserveUdpAsync(
         }
 
         stats.Record(datagram, received.ReceivedBytes, sender, destination);
+        stats.ObserveBytes(payload);
+        latest.Set(payload, datagram.Scene);
 
         if (stats.Accepted == 1)
         {
@@ -242,9 +297,9 @@ static async Task ObserveUdpAsync(
             emit($"SCENE {previous} -> {datagram.Scene}   ({datagram.Describe()})");
         }
 
-        if (stats.TryTakePauseChange(datagram))
+        if (stats.TryTakeByte7Change(datagram, out var previousByte7))
         {
-            emit($"PAUSE {(datagram.Paused ? "paused" : "resumed")}");
+            emit($"BYTE7 0x{previousByte7:X2} -> 0x{datagram.Byte7:X2}   (scene={datagram.Scene})");
         }
     }
 }
