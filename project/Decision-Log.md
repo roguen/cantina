@@ -195,40 +195,57 @@ instructions, and roadmap drop bare "Bridge." Harness fixture identities that re
 host. Bare `Bridge` remains acceptable only inside verbatim upstream URLs, file paths,
 and release titles.
 
-## D-010 · Scope live YARG state to what the datagram actually carries
+## D-010 · Scope live YARG state to what stock YARG actually exposes
 
 - Date: 2026-08-01
-- Status: Accepted
+- Status: Accepted; revised before merge after the issue #2 capture disproved its premise
 
 Context: The kickoff brief promised current song, playback position, and score screen on
-the iPad. YALCY's LGPL parser (`YALCY/Udp/UdpIntake.cs` and `UdpIntake.Enums.cs` on
-`master`) shows YARG's datagram is a fixed-layout state snapshot of 49 bytes plus two
-bytes per player, headed by magic `0x59415247`. It carries scene, pause, venue size,
-BPM, a three-value song section, instrument note bitmasks, vocal and harmony pitches,
-lighting and camera fields, and per-player star power. It carries no song identity, no
-playback position, and no score value.
+the iPad. An initial reading of YALCY's LGPL parser suggested the datagram carried none
+of the three, and this entry originally concluded that an upstream hook was required for
+song identity. Captures on the theater PC then corrected that conclusion, so this entry
+was revised before it merged rather than shipped and immediately superseded.
 
-Decision: Live state promises only fields the datagram carries. Score-screen detection
-uses the `CurrentScene` byte, not the lighting cue. Song identity is known only for
-songs Barkeep itself cued; a song chosen at the theater PC is reported as unknown and
-never guessed. No playback progress indicator is derived from BPM and beat pulses.
-Because the missing fields are exactly what capability 4 requires, the upstream YARG
-interface leaves "Beyond" and becomes in-scope work for M4 and M5.
+Captured evidence (issue [#2](https://github.com/roguen/cantina/issues/2), three runs,
+over 54,000 datagrams, zero rejections): YARG 0.15 stable broadcasts a **47-byte,
+version-3** datagram to `255.255.255.255:36107` at about **90.7 Hz**. It carries scene,
+venue size, BPM, a three-value song section, note bitmasks, vocal and harmony pitches,
+and lighting and camera fields. It carries no song identity, no playback position, and no
+score value — and because version 3 predates the version-4 tail, no per-player star power
+either.
+
+The captures also found a second surface the first reading missed: `currentSong.json` and
+`currentSong.txt`, beside YARG's settings. They populate while a song is loaded and carry
+a stable content hash, the song's path, and human-readable metadata.
+
+Decision: Live state promises only what stock YARG actually exposes, across **both**
+surfaces. Score-screen detection uses the `CurrentScene` byte, not the lighting cue. Song
+identity comes from watching `currentSong.json`, cached from the moment it populates and
+carried through the score screen, because the file clears about 86 ms after the scene
+changes. No playback progress indicator is derived from BPM and beat pulses. Playback
+position is the only remaining structural gap, so the upstream YARG interface leaves
+"Beyond" and becomes in-scope work for M4 and M5 — scoped to **position**, not identity.
 
 Rejected: Dead-reckoning position from BPM and beat pulses, because there is no song
-length, no seek signal, and no reconciliation, so the indicator would drift and
-misreport with no way for the iPad to detect that it had. Inferring the score screen
-from the lighting cue, because the scene byte states it directly and the UDP and DMX
-cue enumerations use different values. Leaving the upstream interface unscheduled in
-"Beyond," because M4 and M5 cannot meet the brief's stated capability without it.
+length, no seek signal, and no reconciliation, so the indicator would drift and misreport
+with no way for the iPad to detect that it had. Inferring the score screen from the
+lighting cue, because the scene byte states it directly and the UDP and DMX cue
+enumerations use different values — captures show cue 30 at the menu and 31 on the score
+screen, against the DMX table's 10 and 20. Reporting song identity as unknown whenever
+Barkeep did not cue the song, which is what this entry said before the capture: the game
+states the answer on disk, so refusing to read it would be a self-inflicted limitation.
 
-Consequences: `docs/yarg-interface.md` records the wire contract as provisional evidence
-read from YALCY, pending target-PC capture in issue
-[#2](https://github.com/roguen/cantina/issues/2). Issue
+Consequences: `docs/yarg-interface.md` is evidence-backed rather than provisional. Byte 7,
+named `PauseState` upstream, read `true` for the whole of gameplay and `false` at menu and
+score; its meaning is unresolved and nothing may depend on it. Barkeep must decimate the
+90 Hz stream before the WebSocket and debounce the transient empty window seen when a song
+restarts, or the iPad will flicker. Issue
+[#11](https://github.com/roguen/cantina/issues/11) is still unproven: no capture has run
+with YALCY or Photonics already bound to 36107. Issue
 [#12](https://github.com/roguen/cantina/issues/12) gains a "present but unpopulated"
 category, because the DMX wiki lists sing-alongs, spotlights, and camera cuts as not yet
 implemented while their datagram bytes still exist. Roadmap M4 and M5 carry the
-upstream-hook work.
+upstream-position work.
 
 ## D-011 · Publish the repository
 

@@ -103,3 +103,37 @@ start was not captured.
   zero-error Release build passed; 20 server tests passed; all 14 harness scenarios
   passed; the client audited 64 packages with zero vulnerabilities and passed its test,
   lint, and production build.
+
+## 2026-08-01 · YARG capture session 005
+
+- Recorded: 2026-08-01
+- Duration: not captured
+- Enabled branch protection on `main`: required `Regression gate` check with strict
+  up-to-date branches, pull request required with zero approvals, `enforce_admins` on,
+  force pushes and deletions blocked, conversation resolution required.
+- Corrected an earlier error: YARG and YARC Launcher are installed on this host. A prior
+  filtered directory listing rendered blank rows and was misread as no match.
+- Located YARG's per-channel directory, `settings.json` with `DataStreamEnable`, the song
+  cache, and the `currentSong` files. Configured song sources are an existing Clone Hero
+  library.
+- Built `spikes/Cantina.Spikes.YargObserve` and opened
+  [#22](https://github.com/roguen/cantina/pull/22). Fixed two defects found in use: the
+  transcript path crashed when its git-ignored parent directory was absent, and the
+  console summary truncated `currentSong.json` below its full length.
+- Opened [#23](https://github.com/roguen/cantina/issues/23) for launching, restarting, and
+  monitoring the YARG process, which the kickoff brief did not scope.
+- Captured three runs against YARG 0.15 stable, two of 300 seconds. Accepted 54,000+
+  datagrams with zero rejections.
+- Findings: version-3, 47-byte datagram broadcast to `255.255.255.255:36107` at ~90.7 Hz;
+  no per-player star power at this version; `Menu → Gameplay → Score` observed, proving
+  the auto-advance trigger; cue 30 at menu and 31 at score, confirming the UDP ordinal
+  table against the different DMX values; `currentSong.json` populates with a stable
+  content hash and path, leading the scene by 37–400 ms on start and clearing 86 ms after
+  `Score`; a song restart produces a 256 ms empty window.
+- Revised D-010 before merge rather than superseding it after. Its premise that an
+  upstream hook was needed for song identity was disproved; playback position is now the
+  only structural gap.
+- Rewrote `docs/yarg-interface.md` from provisional to capture-backed.
+- Unresolved and holding [#2](https://github.com/roguen/cantina/issues/2) open: byte 7,
+  named `PauseState` upstream, read `true` for all 234 seconds of gameplay and `false` at
+  menu and score. A deliberate pause and unpause during gameplay is still required.

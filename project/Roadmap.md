@@ -26,7 +26,9 @@ target-environment evidence.
 ## M1 · Spike results
 
 - [ ] Capture and specify YARG 0.15's UDP stream —
-  [#2](https://github.com/roguen/cantina/issues/2)
+  [#2](https://github.com/roguen/cantina/issues/2). Wire contract, broadcast destination,
+  rate, and the `Menu → Gameplay → Score` transition are captured and specified; the
+  byte 7 pause semantics remain unresolved and hold this item open
 - [ ] Prove a reliable stock-YARG input path —
   [#3](https://github.com/roguen/cantina/issues/3)
 - [ ] Prove or reject deterministic song selection —
@@ -38,9 +40,9 @@ target-environment evidence.
   [#17](https://github.com/roguen/cantina/issues/17)
 - [x] Deterministic application-policy theater harness and stable CI regression gate —
   [#19](https://github.com/roguen/cantina/issues/19)
-- [ ] Confirm the provisional wire contract in
+- [x] Confirm the wire contract in
   [`docs/yarg-interface.md`](../docs/yarg-interface.md) against captured packets, and
-  commit spike proofs under `spikes/`
+  commit the spike under `spikes/`
 - [ ] Record a stock-YARG go/no-go decision
 
 ## M2 · Library
@@ -81,11 +83,13 @@ target-environment evidence.
   [#7](https://github.com/roguen/cantina/issues/7)
 - [ ] Define proven, missing, unknown, stale, and present-but-unpopulated live-state
   fields — [#12](https://github.com/roguen/cantina/issues/12)
-- [ ] Show only datagram-backed live state: scene, pause, beat, and star power. Song
-  identity is reported only for songs Barkeep cued, and no playback-position indicator
-  ships without an upstream source (D-010)
-- [ ] Specify the upstream observation interface for song identity and playback
-  position, which the datagram does not carry (D-010)
+- [ ] Show only evidence-backed live state: scene and beat from the datagram, song
+  identity and metadata from `currentSong.json`. No playback-position indicator ships
+  without an upstream source, and byte 7 is unused until its meaning is settled (D-010)
+- [ ] Decimate the ~90 Hz datagram stream and debounce the transient empty window that a
+  song restart produces in `currentSong` (D-010)
+- [ ] Specify the upstream observation interface for **playback position**, the only
+  field no stock YARG surface exposes (D-010)
 - [ ] Safe score-screen auto-advance on the `CurrentScene` byte, with a cancel window
 - [ ] Recover acquisition and play intent without duplicate install, setlist insertion,
   refresh, or late cue — [#17](https://github.com/roguen/cantina/issues/17)
