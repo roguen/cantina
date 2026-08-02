@@ -11,8 +11,16 @@ namespace Cantina.Spikes.YargObserve;
 /// </summary>
 internal sealed class CaptureStats
 {
+    /// <summary>Bytes 0 through 46; the version-3 datagram ends there.</summary>
+    private const int TrackedOffsets = 47;
+
+    private readonly int[] _offsetChanges = new int[TrackedOffsets];
+    private readonly HashSet<byte>[] _offsetValues =
+        [.. Enumerable.Range(0, TrackedOffsets).Select(_ => new HashSet<byte>())];
+
     private YargScene? _scene;
-    private bool? _paused;
+    private byte? _byte7;
+    private byte[]? _previous;
 
     public long Accepted { get; private set; }
 
@@ -73,20 +81,111 @@ internal sealed class CaptureStats
         return !isFirst || datagram.Scene != YargScene.Unknown;
     }
 
-    /// <summary>Reports any pause-state change after the first observation establishes a baseline.</summary>
-    public bool TryTakePauseChange(YargDatagram datagram)
+    /// <summary>
+    /// Reports any change in byte 7 after the first observation establishes a baseline.
+    /// Deliberately unnamed: the field's meaning is what the capture is trying to settle.
+    /// </summary>
+    public bool TryTakeByte7Change(YargDatagram datagram, out byte previous)
     {
         ArgumentNullException.ThrowIfNull(datagram);
 
-        if (_paused == datagram.Paused)
+        previous = _byte7 ?? 0;
+
+        if (_byte7 == datagram.Byte7)
         {
             return false;
         }
 
-        var isFirst = _paused is null;
-        _paused = datagram.Paused;
+        var isFirst = _byte7 is null;
+        _byte7 = datagram.Byte7;
 
         return !isFirst;
+    }
+
+    /// <summary>
+    /// Counts how often each byte offset changes and which values it takes. A field that
+    /// never moves across a whole session is a different kind of fact from one that moves
+    /// constantly, and separating the two is how an unknown byte gets identified.
+    /// </summary>
+    public void ObserveBytes(ReadOnlySpan<byte> datagram)
+    {
+        var length = Math.Min(datagram.Length, TrackedOffsets);
+
+        for (var offset = 0; offset < length; offset++)
+        {
+            var value = datagram[offset];
+
+            if (_offsetValues[offset].Count < 16)
+            {
+                _offsetValues[offset].Add(value);
+            }
+
+            if (_previous is not null && _previous.Length > offset && _previous[offset] != value)
+            {
+                _offsetChanges[offset]++;
+            }
+        }
+
+        _previous = datagram[..length].ToArray();
+    }
+
+    /// <summary>
+    /// Separates bytes that moved from bytes that never did. Both matter: a frozen byte is
+    /// where an unidentified state flag hides, and reporting "nothing moved" explicitly is
+    /// what keeps an empty section from reading as a broken tool.
+    /// </summary>
+    public IEnumerable<string> SummarizeByteActivity()
+    {
+        yield return "  BYTE ACTIVITY";
+
+        if (Accepted == 0)
+        {
+            yield return "    no datagrams accepted";
+            yield break;
+        }
+
+        yield return Line($"    byte  7: {_offsetChanges[7]} changes, values [{Render(7)}]  <<< the field under test");
+
+        var changed = Enumerable
+            .Range(0, TrackedOffsets)
+            .Where(offset => _offsetChanges[offset] > 0)
+            .OrderByDescending(offset => _offsetChanges[offset])
+            .ToList();
+
+        if (changed.Count == 0)
+        {
+            yield return "    no byte changed at all during this run";
+        }
+        else
+        {
+            yield return "    changed:";
+            foreach (var offset in changed)
+            {
+                yield return Line($"      byte {offset,2}: {_offsetChanges[offset],7} changes, values [{Render(offset)}]");
+            }
+        }
+
+        var frozen = Enumerable
+            .Range(0, TrackedOffsets)
+            .Where(offset => _offsetChanges[offset] == 0)
+            .Select(offset => $"{offset}=0x{_offsetValues[offset].FirstOrDefault():X2}")
+            .ToList();
+
+        yield return Line($"    frozen for the whole run ({frozen.Count} offsets):");
+
+        for (var i = 0; i < frozen.Count; i += 10)
+        {
+            yield return "      " + string.Join("  ", frozen.Skip(i).Take(10));
+        }
+    }
+
+    private string Render(int offset)
+    {
+        var values = _offsetValues[offset];
+
+        return values.Count >= 16
+            ? "16+ distinct"
+            : string.Join(" ", values.Order().Select(value => $"0x{value:X2}"));
     }
 
     public IEnumerable<string> Summarize(TimeSpan elapsed, bool yargRunning)
