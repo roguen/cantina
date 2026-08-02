@@ -36,3 +36,7 @@ coverage/
 # Packet captures may contain local network details. Commit only reviewed fixtures.
 *.pcap
 *.pcapng
+
+# Spike transcripts record local addresses and song titles. Commit only reviewed evidence.
+/spikes/captures/
+*.capture.txt
