@@ -15,8 +15,9 @@ target-environment evidence.
   closed issue [#1](https://github.com/roguen/cantina/issues/1)
 - [ ] Self-contained artifact proven on Windows 10 Pro 22H2 —
   [#9](https://github.com/roguen/cantina/issues/9)
-- [x] Public release — [#10](https://github.com/roguen/cantina/issues/10), recorded as
-  D-011 on 2026-08-01
+- [ ] Public-release gate — the repository was published on 2026-08-01 (D-011) before
+  this gate's audit items were worked, so they are now retrospective —
+  [#10](https://github.com/roguen/cantina/issues/10)
 - [ ] Living pages migrated from the temporary `project/` fallback to the wiki, now
   unblocked by publication — [#13](https://github.com/roguen/cantina/issues/13)
 - [ ] Protected `main` enforced by GitHub rather than a bypassable client-side hook, now
