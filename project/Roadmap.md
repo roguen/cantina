@@ -35,7 +35,10 @@ target-environment evidence.
 - [ ] Prove or reject deterministic song selection —
   [#4](https://github.com/roguen/cantina/issues/4)
 - [ ] Prove coexistence with the theater lighting consumer —
-  [#11](https://github.com/roguen/cantina/issues/11)
+  [#11](https://github.com/roguen/cantina/issues/11). Socket semantics are captured on the
+  theater PC: coexistence needs `SO_REUSEADDR` on both listeners, and YALCY does not set it
+  (D-013). Still open: running the actual lighting application, and firewall-enabled
+  behavior
 - [ ] Choose and prove the Geomitron Bridge acquisition boundary, completed-arrival
   detection, YARG refresh, and exact-song handoff —
   [#17](https://github.com/roguen/cantina/issues/17)
@@ -98,7 +101,14 @@ target-environment evidence.
 
 ## Beyond
 
-Submit the interface specified in M4 and M5 to YARG upstream, and carry it through
-review. D-010 moved the *specification* work into M4 and M5 because capability 4 cannot
-be met without it; what remains here is the contribution itself, which depends on
-upstream timelines Cantina does not control.
+Two upstream contributions, in increasing order of difficulty.
+
+**YALCY: set `SO_REUSEADDR` on the UDP intake.** One socket option. Without it, no second
+consumer can share the host with YALCY in either startup order (D-013). YALCY is
+LGPL-3.0-or-later like Cantina, so the change is directly contributable and does not depend
+on anything Cantina ships first.
+
+**YARG: broadcast playback position.** The interface specified in M4 and M5. D-010 moved the
+*specification* work into those milestones because capability 4 cannot be met without it;
+what remains here is the contribution itself, which depends on upstream timelines Cantina
+does not control. Position is the only field no stock YARG surface exposes.

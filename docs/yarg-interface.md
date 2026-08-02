@@ -220,13 +220,42 @@ with a bare `new UdpClient(36107)` and sets no address-reuse option, so two proc
 host contending for that port is a real failure mode, distinct from the Holocron
 audio-endpoint contention in issue [#8](https://github.com/roguen/cantina/issues/8).
 
-Cantina sets `SO_REUSEADDR` on its listener. **This is not yet proven sufficient**: no
-capture has run with YALCY or Photonics already bound. Issue
-[#11](https://github.com/roguen/cantina/issues/11) owns that two-listener test. Cantina is a
-passive consumer and never transmits on this port.
+Cantina sets `SO_REUSEADDR` on its listener. **That is necessary but not sufficient.**
+Captured on the theater PC on 2026-08-01 with live YARG traffic, two processes, both
+startup orders:
+
+| First listener | Second listener | Result |
+|---|---|---|
+| no `SO_REUSEADDR` | `SO_REUSEADDR` | second bind fails, `AccessDenied` |
+| `SO_REUSEADDR` | no `SO_REUSEADDR` | second bind fails, `AddressAlreadyInUse` |
+| `SO_REUSEADDR` | `SO_REUSEADDR` | **both bind, both receive every datagram** (90.7/s and 90.5/s) |
+
+**Coexistence requires `SO_REUSEADDR` on _both_ listeners.** Startup order does not help:
+whichever process binds second fails. The two error codes differ because .NET on Windows
+requests exclusive use when the option is absent, so the conflict is detected from either
+direction.
+
+**YALCY does not set it.** It binds with a bare `new UdpClient(36107)`. So Barkeep and YALCY
+cannot both run on the theater PC today, in either order, and no change confined to Cantina
+can fix it. Photonics binds through Node's `dgram`, whose reuse behavior is unverified.
+
+Two things follow. First, the failure is **loud, not silent**: the bind throws, so Barkeep
+detects the conflict immediately and must report it as a specific, actionable condition —
+another application holds the YARG data port — rather than presenting as an empty or frozen
+live state. Second, this is a **small, tractable upstream contribution**: one socket option
+in YALCY would make coexistence work. That is a far smaller ask than a YARG hook, and YALCY
+is LGPL like Cantina.
+
+Cantina is a passive consumer and never transmits on this port.
 
 Because the traffic is broadcast rather than unicast, consumers on *different* hosts do not
-contend with each other. The contention is same-host only.
+contend at all. The contention is same-host only, and moving a lighting controller to
+another machine on the LAN sidesteps it entirely.
+
+**Still unproven:** these results come from a second instance of Cantina's own listener
+reproducing YALCY's bind, not from running YALCY or Photonics themselves; neither is
+installed on the theater PC. Firewall-enabled behavior is also untested. Issue
+[#11](https://github.com/roguen/cantina/issues/11) stays open for those.
 
 ## Evidence handling
 
