@@ -33,6 +33,15 @@ var timeoutSeconds = 3;
 var holdMilliseconds = 60;
 var settleMs = 750;
 var dryRun = false;
+string? selectQuery = null;
+string? expectSubstring = null;
+var yargDirectory = Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+    "AppData",
+    "LocalLow",
+    "YARC",
+    "YARG",
+    "release");
 
 for (var i = 0; i < args.Length; i++)
 {
@@ -65,6 +74,15 @@ for (var i = 0; i < args.Length; i++)
             break;
         case "--no-settle":
             settleMs = 0;
+            break;
+        case "--select" when hasValue:
+            selectQuery = args[++i];
+            break;
+        case "--expect" when hasValue:
+            expectSubstring = args[++i];
+            break;
+        case "--yarg-dir" when hasValue:
+            yargDirectory = args[++i];
             break;
         case "--dry-run":
             dryRun = true;
@@ -185,6 +203,95 @@ if (dryRun)
 {
     Console.WriteLine("dry run: no input sent.");
     return 0;
+}
+
+// Selection mode (issue #4). Types a query into the song list, confirms, and reports which
+// song YARG actually loaded. currentSong.json is the only surface that answers "which".
+if (selectQuery is not null)
+{
+    var scene = reader.Current?.Scene;
+
+    if (scene != YargScene.Menu)
+    {
+        Console.WriteLine($"REFUSING: scene is {scene}, expected Menu. Selection is only meaningful");
+        Console.WriteLine("from the song list. Back out to it and re-run.");
+        return 2;
+    }
+
+    // Any leftover filter text would silently change what the query matches.
+    Console.WriteLine("clearing any existing search text (40 backspaces)...");
+
+    for (var b = 0; b < 40; b++)
+    {
+        _ = NativeMethods.SendKeyPress(0x0E, extended: false, holdMilliseconds: 12);
+    }
+
+    await Task.Delay(400, lifetime.Token).ConfigureAwait(false);
+
+    Console.WriteLine($"typing query: \"{selectQuery}\"");
+
+    foreach (var character in selectQuery)
+    {
+        if (!ScanCodes.TryResolveChar(character, out var charScan))
+        {
+            Console.WriteLine($"  cannot type '{character}' - not in the scan-code map. Aborting rather than");
+            Console.WriteLine("  typing a different query than the one requested.");
+            return 2;
+        }
+
+        _ = NativeMethods.SendKeyPress(charScan, extended: false, holdMilliseconds: 25);
+        await Task.Delay(35, lifetime.Token).ConfigureAwait(false);
+    }
+
+    // Give YARG's filter a moment before confirming.
+    await Task.Delay(900, lifetime.Token).ConfigureAwait(false);
+
+    Console.WriteLine("sending enter...");
+    _ = NativeMethods.SendKeyPress(0x1C, extended: false, holdMilliseconds: holdMilliseconds);
+
+    var loadDeadline = Stopwatch.StartNew();
+    CurrentSong? loaded = null;
+
+    while (loadDeadline.Elapsed < TimeSpan.FromSeconds(15))
+    {
+        loaded = CurrentSong.TryRead(yargDirectory);
+
+        if (loaded is not null)
+        {
+            break;
+        }
+
+        await Task.Delay(50, lifetime.Token).ConfigureAwait(false);
+    }
+
+    Console.WriteLine();
+
+    if (loaded is null)
+    {
+        Console.WriteLine("NO SONG LOADED within 15s.");
+        Console.WriteLine($"scene is now {reader.Current?.Scene.ToString() ?? "unknown"}.");
+        Console.WriteLine("Enter may open a sub-menu rather than starting, or the query matched nothing.");
+        return 1;
+    }
+
+    Console.WriteLine($"LOADED: {loaded.ShortLocation}");
+    Console.WriteLine($"  hash: {loaded.ContentHash}");
+    Console.WriteLine($"  after {loadDeadline.Elapsed.TotalMilliseconds:0} ms");
+
+    if (expectSubstring is null)
+    {
+        Console.WriteLine();
+        Console.WriteLine("No --expect given, so this run records what loaded without judging it.");
+        return 0;
+    }
+
+    var matched = loaded.Location.Contains(expectSubstring, StringComparison.OrdinalIgnoreCase);
+    Console.WriteLine();
+    Console.WriteLine(matched
+        ? $"MATCH: the loaded song contains \"{expectSubstring}\"."
+        : $"MISMATCH: expected a path containing \"{expectSubstring}\".");
+
+    return matched ? 0 : 1;
 }
 
 var landed = false;
