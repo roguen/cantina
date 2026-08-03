@@ -130,14 +130,61 @@ YARG separately emits DMX over the network using sACN. Cantina neither consumes 
 it. It is documented here only so the cue-value distinction above is traceable, and because
 it shares the theater with consumers Cantina must not disturb.
 
-### 4. Control: nothing
+### 4. Control: no API, but synthetic input works
 
 Stock YARG exposes no remote control API, no IPC, no command socket, and no documented way
-to select a song from outside the process. This is the gap Cantina exists to fill, and it is
-why the control path stays behind one replaceable adapter. Issues
-[#3](https://github.com/roguen/cantina/issues/3) and
-[#4](https://github.com/roguen/cantina/issues/4) own proving an input path and deterministic
-selection.
+to select a song from outside the process. That gap is why the control path stays behind one
+replaceable adapter.
+
+**Synthetic keyboard input reaches it.** Captured on the theater PC on 2026-08-02:
+
+```
+baseline scene=Gameplay play=Playing
+send escape (scan 0x01, KEYEVENTF_SCANCODE, 60 ms hold)
+        scene=Gameplay play=Playing -> scene=Gameplay play=Paused
+```
+
+The key was injected by a **background process** while YARG held foreground. That is the
+only arrangement that works, and it is also the only one that is safe — see the focus rule
+below.
+
+What the capture establishes:
+
+| Fact | Detail |
+|---|---|
+| Mechanism | `SendInput` with **scan codes**, not virtual keys; Unity's Input System reads raw input |
+| Escape | pauses during gameplay |
+| Enter | no effect during gameplay, as expected; it is a menu key |
+| Injection acceptance | Windows accepted 2 of 2 events; no integrity-level barrier at matching elevation |
+| Virtual controller | **not required.** ViGEmBus is archived (last pushed November 2023) and is not needed |
+
+#### The focus rule is absolute
+
+`PauseOnFocusLoss` is `true` in YARG's settings. Therefore:
+
+- YARG must hold foreground for input to reach it.
+- **Barkeep must never take foreground.** Doing so pauses the game — the remote would break
+  the thing it is driving.
+
+These are compatible: `SendInput` posts to the system input queue, which delivers to whatever
+holds focus. A background Barkeep can drive a foreground YARG. It must never call
+`SetForegroundWindow`.
+
+#### Exactly one instance
+
+Control is undefined with more than one YARG running: there is no answer to which window
+receives the key. The adapter must refuse rather than guess.
+
+#### Latency is not yet measured
+
+The capture reports `0 ms`, but that is measured *after* the 60 ms key-hold completes, so it
+only shows the change was visible on the first poll. True tap-to-effect latency is at most
+the hold plus one datagram interval (~11 ms at 90 Hz), and has not been measured properly.
+M5 owns the real end-to-end figure.
+
+Issue [#4](https://github.com/roguen/cantina/issues/4) still owns deterministic song
+selection, which is a separate question: knowing that keys land says nothing about driving a
+menu to an unambiguous result.
 
 ## Timing and ordering
 
