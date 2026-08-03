@@ -348,3 +348,45 @@ avoids the conflict entirely, and that is the honest interim workaround. Issue
 second instance of Cantina's own listener reproducing YALCY's bind rather than from YALCY
 or Photonics themselves, neither of which is installed, and firewall-enabled behavior is
 untested.
+
+## D-014 · Drive stock YARG with SendInput, and never take foreground
+
+- Date: 2026-08-02
+- Status: Accepted
+
+Context: The kickoff brief expected a virtual Xbox pad via ViGEmBus to be the leading
+control candidate, with synthetic keyboard input as the fallback. Two findings reversed
+that order before any code was written. ViGEmBus is **archived**, last pushed November
+2023, so it fails issue [#3](https://github.com/roguen/cantina/issues/3)'s own requirement
+of a maintainable installation and redistribution story. And YARG's `PauseOnFocusLoss`
+setting is `true`, which constrains every candidate: anything that takes foreground pauses
+the game it is trying to drive.
+
+A capture on the theater PC on 2026-08-02 then proved the cheaper option works. `SendInput`
+carrying scan codes, sent from a **background** process while YARG held foreground, moved
+the game from `Playing` to `Paused`. Windows accepted both events, and the transition was
+visible in the datagram on the first poll.
+
+Decision: Drive stock YARG with `SendInput` using scan codes, behind the replaceable
+`IYargController` boundary. Barkeep never calls `SetForegroundWindow` and never takes
+foreground under any circumstance. The adapter refuses to act when more than one YARG
+instance is running, because which window receives a key is then undefined.
+
+Rejected: A virtual controller through ViGEmBus, which is unmaintained, would put a
+kernel-mode driver on a Windows 10 ESU machine that also runs Holocron, and is now
+demonstrably unnecessary. Virtual keys instead of scan codes, because Unity's Input System
+reads raw input where the scan code identifies the key. Bringing YARG to the foreground
+before sending, which would pause the game and make the remote defeat itself. Guessing a
+target window when several instances are running.
+
+Consequences: The M4 control adapter has a proven mechanism and needs no driver install, no
+elevation, and no third-party dependency. Barkeep must run in the interactive desktop
+session, which constrains deployment packaging and rules out a Windows service; this
+overlaps issues [#9](https://github.com/roguen/cantina/issues/9) and
+[#23](https://github.com/roguen/cantina/issues/23). End-to-end latency is **not** yet
+measured: the capture's `0 ms` is taken after a 60 ms key hold and only shows the change was
+visible on the first poll, so M5 still owns the real figure. Issue #3 stays open for the
+remaining environment cases — elevation mismatch, lock and logoff, held and repeated input,
+and the visible bounded failure the client contract requires. Issue
+[#4](https://github.com/roguen/cantina/issues/4) is untouched: keys landing says nothing
+about driving a menu to an unambiguous song.

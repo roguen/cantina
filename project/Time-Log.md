@@ -218,3 +218,31 @@ start was not captured.
 - Limitation recorded honestly: superseded commits remain retrievable by hash from GitHub
   until it garbage-collects them, and merged pull requests still reference them. Removing
   them completely would require contacting GitHub Support, which is out of scope.
+
+## 2026-08-02 · Control input session 009
+
+- Recorded: 2026-08-02
+- Duration: not captured
+- Confirmed ViGEmBus is archived, last pushed November 2023, so a virtual controller fails
+  issue #3's requirement of a maintainable installation and redistribution story. Tested
+  `SendInput` first on that basis, reversing the kickoff brief's expected ranking.
+- Found `PauseOnFocusLoss` set to true in YARG's settings, which forbids any control path
+  that takes foreground.
+- Built the input spike with the datagram as its oracle, so a key that lands is proven by a
+  state transition rather than judged by eye.
+- A first run returned no state change for Escape. That result was later withdrawn: two
+  YARG instances were broadcasting to the same port from different source ports, and the
+  oracle was interleaving two games into a state belonging to neither.
+- The settle guard added before that run is the only reason the false result was never
+  recorded as a finding. Two reporting defects were fixed alongside: the summary asserted
+  that injections had been accepted even when every key was skipped and nothing was sent,
+  and a failed settle reported nothing about what it had seen moving.
+- After closing the extra instance, Escape moved the game from `Playing` to `Paused`,
+  injected from a background process while YARG held foreground. Enter had no effect during
+  gameplay, which is expected for a menu key.
+- Recorded D-014. `SendInput` with scan codes is the control mechanism; no kernel driver, no
+  elevation, no third-party dependency.
+- End-to-end latency remains unmeasured. The reported `0 ms` is taken after a 60 ms key hold
+  and only shows the change was visible on the first poll; M5 owns the real figure.
+- Issue [#3](https://github.com/roguen/cantina/issues/3) stays open for elevation mismatch,
+  lock and logoff, held and repeated input, and visible bounded failure.

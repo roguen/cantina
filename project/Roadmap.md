@@ -31,7 +31,10 @@ target-environment evidence.
   and specified. Listener coexistence stays with
   [#11](https://github.com/roguen/cantina/issues/11)
 - [ ] Prove a reliable stock-YARG input path —
-  [#3](https://github.com/roguen/cantina/issues/3)
+  [#3](https://github.com/roguen/cantina/issues/3). `SendInput` with scan codes is proven to
+  reach stock YARG from a background process (D-014), so no virtual controller and no kernel
+  driver are needed. Still open: elevation mismatch, lock and logoff, held and repeated
+  input, and visible bounded failure
 - [ ] Prove or reject deterministic song selection —
   [#4](https://github.com/roguen/cantina/issues/4)
 - [ ] Prove coexistence with the theater lighting consumer —
