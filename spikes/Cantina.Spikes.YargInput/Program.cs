@@ -31,6 +31,7 @@ var port = 36107;
 var waitSeconds = 8;
 var timeoutSeconds = 3;
 var holdMilliseconds = 60;
+var settleMs = 750;
 var dryRun = false;
 
 for (var i = 0; i < args.Length; i++)
@@ -57,6 +58,13 @@ for (var i = 0; i < args.Length; i++)
         case "--hold" when hasValue && int.TryParse(args[i + 1], CultureInfo.InvariantCulture, out var h):
             holdMilliseconds = h;
             i++;
+            break;
+        case "--settle" when hasValue && int.TryParse(args[i + 1], CultureInfo.InvariantCulture, out var s2):
+            settleMs = s2;
+            i++;
+            break;
+        case "--no-settle":
+            settleMs = 0;
             break;
         case "--dry-run":
             dryRun = true;
@@ -97,13 +105,33 @@ Console.CancelKeyPress += (_, e) =>
     lifetime.Cancel();
 };
 
-var yarg = Process.GetProcessesByName("YARG").FirstOrDefault();
+var yargProcesses = Process.GetProcessesByName("YARG");
 
-if (yarg is null)
+if (yargProcesses.Length == 0)
 {
     Console.WriteLine("YARG is not running. Start it, load a song, and try again.");
     return 1;
 }
+
+// More than one instance makes every part of this spike ambiguous: which window receives
+// the key, and which game's state the oracle is reading. Both instances broadcast to the
+// same port, so their datagrams interleave into a state that belongs to neither.
+if (yargProcesses.Length > 1)
+{
+    Console.WriteLine($"REFUSING TO RUN: {yargProcesses.Length} YARG instances are running.");
+
+    foreach (var p in yargProcesses.OrderBy(p => p.Id))
+    {
+        Console.WriteLine($"  pid {p.Id}, started {p.StartTime:yyyy-MM-dd HH:mm}");
+    }
+
+    Console.WriteLine();
+    Console.WriteLine("They all broadcast to the same UDP port, so the oracle sees their states");
+    Console.WriteLine("interleaved and no baseline is meaningful. Close all but one and re-run.");
+    return 2;
+}
+
+var yarg = yargProcesses[0];
 
 Console.WriteLine($"YARG pid {yarg.Id}, window handle 0x{yarg.MainWindowHandle:X}");
 Console.WriteLine($"keys to try, in order: {string.Join(", ", candidates.Select(c => $"{c.Name} (0x{c.Scan:X2})"))}");
@@ -160,6 +188,8 @@ if (dryRun)
 }
 
 var landed = false;
+var sentCount = 0;
+var skippedCount = 0;
 
 foreach (var candidate in candidates)
 {
@@ -169,13 +199,28 @@ foreach (var candidate in candidates)
     // Settle before every key, not just the first. Focusing YARG resumes it because
     // PauseOnFocusLoss is true, and an earlier key in this same run may also have moved the
     // game. Without a fresh settled baseline, one key's effect could be credited to the next.
+    var observed = new List<string>();
     var settled = await reader
-        .WaitForStableAsync(TimeSpan.FromMilliseconds(750), TimeSpan.FromSeconds(6), lifetime.Token)
+        .WaitForStableAsync(TimeSpan.FromMilliseconds(settleMs), TimeSpan.FromSeconds(6), observed, lifetime.Token)
         .ConfigureAwait(false);
 
     if (settled is null)
     {
-        Console.WriteLine("  state never held still for 750 ms; skipping, a baseline would not be trustworthy");
+        skippedCount++;
+        Console.WriteLine($"  SKIPPED: state never held still for {settleMs} ms, so no key was sent.");
+        Console.WriteLine("  What it saw changing:");
+
+        foreach (var line in observed)
+        {
+            Console.WriteLine($"    {line}");
+        }
+
+        if (observed.Count <= 1)
+        {
+            Console.WriteLine("    (nothing recorded - the datagram may have stopped arriving)");
+        }
+
+        Console.WriteLine($"  If this is normal churn, raise the tolerance with --settle <ms> or use --no-settle.");
         continue;
     }
 
@@ -193,6 +238,7 @@ foreach (var candidate in candidates)
     Console.WriteLine($"  baseline {baseline}");
 
     var sent = NativeMethods.SendKeyPress(candidate.Scan, candidate.Extended, holdMilliseconds);
+    sentCount++;
 
     if (sent < 2)
     {
@@ -225,7 +271,24 @@ if (landed)
     return 0;
 }
 
-Console.WriteLine($"RESULT: no key produced a state change ({keySpec}).");
+if (sentCount == 0)
+{
+    Console.WriteLine($"RESULT: INCONCLUSIVE. No key was actually sent; all {skippedCount} were skipped.");
+    Console.WriteLine("Nothing was injected, so this run says nothing whatsoever about whether YARG");
+    Console.WriteLine("accepts synthetic input. Read the state churn listed above, then retry with a");
+    Console.WriteLine("larger --settle value, or --no-settle to send regardless.");
+    return 2;
+}
+
+Console.WriteLine($"RESULT: {sentCount} key(s) sent, none changed state.");
+
+if (skippedCount > 0)
+{
+    Console.WriteLine($"PARTIAL: {skippedCount} key(s) were skipped and never sent, so this is weaker");
+    Console.WriteLine("evidence than a clean run. Re-run so every candidate is actually delivered.");
+    return 1;
+}
+
 Console.WriteLine("Windows accepted every injection, YARG held focus throughout, and the same keys");
 Console.WriteLine("are confirmed to work when pressed physically. That points at YARG ignoring");
 Console.WriteLine("injected input rather than at a wrong key choice.");

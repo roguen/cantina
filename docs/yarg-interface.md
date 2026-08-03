@@ -213,6 +213,36 @@ whole of gameplay. The upstream name is accurate.
 `PlayState` is also a **better song-active signal than the scene byte**, because
 `CurrentScene = Gameplay` cannot distinguish a running song from a paused one.
 
+## More than one YARG can broadcast at once
+
+Captured accidentally on 2026-08-01 and worth stating plainly, because it produces data that
+looks like a game malfunctioning rather than a measurement error.
+
+Two YARG instances were running. Both broadcast to `255.255.255.255:36107` from **different
+source ports**. A consumer that keys state only by port sees their datagrams interleaved,
+and the decoded result belongs to neither game:
+
+```
+scene=Gameplay play=Paused  bpm=93  cue=Default  section=5     <- instance A
+scene=Menu     play=NoSong  bpm=0   cue=Menu     section=0     <- instance B
+```
+
+alternating every 10–20 ms, at 174.8/s — exactly twice the single-instance 90.7/s. The
+datagram carries no instance identity, so **the source endpoint is the only discriminator**.
+
+Consequences for Barkeep:
+
+1. **Key live state by source endpoint**, not by port. Two games must never merge into one
+   state.
+2. **Detect the condition and report it.** A doubled packet rate, or more than one source,
+   means the state is not trustworthy. Reporting *why* live state is unavailable beats
+   showing a plausible reading assembled from two games.
+3. **Control is ambiguous too.** With two instances, "which window receives the key" has no
+   good answer, so the control path must refuse rather than guess.
+
+Both spikes now detect this: the observer warns when it sees multiple senders, and the input
+spike refuses to run at all.
+
 ## Coexistence
 
 Barkeep runs on the same host as YARG. A lighting consumer may run there too. YALCY binds

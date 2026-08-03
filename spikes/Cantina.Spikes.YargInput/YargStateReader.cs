@@ -95,11 +95,19 @@ internal sealed class YargStateReader : IDisposable
     public async Task<YargState?> WaitForStableAsync(
         TimeSpan stableFor,
         TimeSpan timeout,
+        List<string> observed,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(observed);
+
         var overall = System.Diagnostics.Stopwatch.StartNew();
         var candidate = _current;
         var held = System.Diagnostics.Stopwatch.StartNew();
+
+        if (candidate is not null)
+        {
+            observed.Add($"{overall.Elapsed.TotalMilliseconds:0} ms  {candidate.Value}");
+        }
 
         while (overall.Elapsed < timeout)
         {
@@ -116,6 +124,14 @@ internal sealed class YargStateReader : IDisposable
             {
                 candidate = current;
                 held.Restart();
+
+                // Record what moved. A settle failure with no record of the churn is
+                // undiagnosable, which is exactly the hole this closes.
+                if (observed.Count < 40)
+                {
+                    observed.Add($"{overall.Elapsed.TotalMilliseconds:0} ms  {current.Value}");
+                }
+
                 continue;
             }
 
