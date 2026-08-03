@@ -170,6 +170,32 @@ These are compatible: `SendInput` posts to the system input queue, which deliver
 holds focus. A background Barkeep can drive a foreground YARG. It must never call
 `SetForegroundWindow`.
 
+#### The scene byte cannot locate you within the menus
+
+`CurrentScene` reports **`Menu` for every menu screen**: the start menu, the song list,
+settings, and the instrument setup screen are indistinguishable. Observed on 2026-08-02
+when a selection attempt ran from the start menu and passed a `scene == Menu` precondition
+that verified nothing.
+
+This is the central obstacle to menu driving, and it is worse than the ambiguity in the
+library metadata. **Barkeep cannot know which screen YARG is showing.** Any key sequence is
+therefore open-loop: keys go out, and nothing comes back to confirm the game arrived where
+the sequence assumed. There is no feedback, so there is no control in the engineering sense
+— only hope.
+
+Three observed behaviours compound it:
+
+- **Entering quickplay lands on an arbitrary song.** There is no known starting cursor
+  position to count from.
+- **`WrapAroundNavigation` is `true`**, so a cursor cannot be normalised by driving it into
+  a boundary; it simply wraps.
+- **Confirming a song opens an instrument setup screen** requiring each instrument to be
+  configured or sat out before play begins. Selection is multi-step, and every step is
+  equally unobservable.
+
+`currentSong.json` only populates once a song is loaded, so it confirms the outcome after
+the fact and cannot guide navigation.
+
 #### Exactly one instance
 
 Control is undefined with more than one YARG running: there is no answer to which window
