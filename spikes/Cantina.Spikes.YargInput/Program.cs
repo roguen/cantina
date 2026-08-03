@@ -35,6 +35,7 @@ var settleMs = 750;
 var dryRun = false;
 string? selectQuery = null;
 string? expectSubstring = null;
+var onSongList = false;
 var yargDirectory = Path.Combine(
     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
     "AppData",
@@ -80,6 +81,9 @@ for (var i = 0; i < args.Length; i++)
             break;
         case "--expect" when hasValue:
             expectSubstring = args[++i];
+            break;
+        case "--on-song-list":
+            onSongList = true;
             break;
         case "--yarg-dir" when hasValue:
             yargDirectory = args[++i];
@@ -215,6 +219,23 @@ if (selectQuery is not null)
     {
         Console.WriteLine($"REFUSING: scene is {scene}, expected Menu. Selection is only meaningful");
         Console.WriteLine("from the song list. Back out to it and re-run.");
+        return 2;
+    }
+
+    // The scene byte is far too coarse to be a real precondition. YARG reports Menu for the
+    // start menu, the song list, settings, and the instrument setup screen alike, so this
+    // check cannot tell whether the song list is actually open. An earlier run passed it
+    // while sitting on the start menu and produced a meaningless result.
+    //
+    // Rather than imply a verification that does not exist, require the operator to assert
+    // it explicitly.
+    if (!onSongList)
+    {
+        Console.WriteLine("REFUSING: cannot verify which menu screen is open.");
+        Console.WriteLine();
+        Console.WriteLine("The datagram reports scene=Menu for the start menu, the song list, settings,");
+        Console.WriteLine("and instrument setup alike, so this spike cannot confirm the song list is up.");
+        Console.WriteLine("Open the song list yourself and pass --on-song-list to assert it.");
         return 2;
     }
 
