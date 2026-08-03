@@ -163,4 +163,59 @@ internal static class ScanCodes
     }
 
     public static string Known => "escape, enter, space, backspace, up, down, left, right";
+
+    // US layout, scan code set 1. Search in YARG's song list is driven by typing directly
+    // into the list, so a selection spike needs printable characters as well as named keys.
+    private static readonly Dictionary<char, ushort> Printable = new()
+    {
+        ['a'] = 0x1E,
+        ['b'] = 0x30,
+        ['c'] = 0x2E,
+        ['d'] = 0x20,
+        ['e'] = 0x12,
+        ['f'] = 0x21,
+        ['g'] = 0x22,
+        ['h'] = 0x23,
+        ['i'] = 0x17,
+        ['j'] = 0x24,
+        ['k'] = 0x25,
+        ['l'] = 0x26,
+        ['m'] = 0x32,
+        ['n'] = 0x31,
+        ['o'] = 0x18,
+        ['p'] = 0x19,
+        ['q'] = 0x10,
+        ['r'] = 0x13,
+        ['s'] = 0x1F,
+        ['t'] = 0x14,
+        ['u'] = 0x16,
+        ['v'] = 0x2F,
+        ['w'] = 0x11,
+        ['x'] = 0x2D,
+        ['y'] = 0x15,
+        ['z'] = 0x2C,
+        ['1'] = 0x02,
+        ['2'] = 0x03,
+        ['3'] = 0x04,
+        ['4'] = 0x05,
+        ['5'] = 0x06,
+        ['6'] = 0x07,
+        ['7'] = 0x08,
+        ['8'] = 0x09,
+        ['9'] = 0x0A,
+        ['0'] = 0x0B,
+        [' '] = 0x39,
+        ['-'] = 0x0C,
+        ['\''] = 0x28,
+        [','] = 0x33,
+        ['.'] = 0x34,
+    };
+
+    /// <summary>
+    /// Resolves a printable character. Only characters this map covers can be typed; anything
+    /// else is reported rather than silently dropped, because a query that types differently
+    /// from what was requested would invalidate the whole selection result.
+    /// </summary>
+    public static bool TryResolveChar(char value, out ushort scanCode) =>
+        Printable.TryGetValue(char.ToLowerInvariant(value), out scanCode);
 }
