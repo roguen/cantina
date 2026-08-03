@@ -390,3 +390,39 @@ remaining environment cases — elevation mismatch, lock and logoff, held and re
 and the visible bounded failure the client contract requires. Issue
 [#4](https://github.com/roguen/cantina/issues/4) is untouched: keys landing says nothing
 about driving a menu to an unambiguous song.
+
+## D-015 · Players drive instrument setup and the score screen; Cantina drives only song choice
+
+- Date: 2026-08-03
+- Status: Accepted
+
+Context: Menu driving is open-loop. `CurrentScene` reports `Menu` for the start menu, the
+song list, settings, and instrument setup alike, so Barkeep cannot tell which screen is
+showing and cannot confirm that a key sequence arrived where it assumed. Confirming a song
+opens an instrument setup screen where every player configures an instrument or sits out,
+and a finished song leaves the score screen needing dismissal. Both are multi-step, both are
+invisible to Barkeep, and both are also inherently per-player: only the people holding
+controllers know who is playing what.
+
+Decision: Cantina's control scope is **choosing the song and confirming it from the song
+list**. Instrument setup and leaving the score screen belong to the players, using the
+controllers already in their hands. Barkeep does not attempt to drive either.
+
+The remaining control path is verified by outcome rather than by path. Barkeep issues a
+selection, then reads `currentSong.json` to learn exactly which song loaded, and compares it
+to what was requested. It never claims success from having sent keystrokes. A mismatch, or
+no song at all, is reported to the iPad as a failure naming the song that actually loaded.
+
+Rejected: Driving the instrument setup screen, which cannot be observed, varies with the
+number and kind of connected instruments, and encodes a decision only the players can make.
+Driving the score screen back to the song list for the same reason. Treating a sent
+keystroke as evidence of success, which is what open-loop control would reduce to.
+
+Consequences: The blind multi-step sequences leave Cantina's scope entirely, and what
+remains is one step whose result is directly observable. This is a real narrowing of #4:
+the question becomes whether a query can be typed into the song list to reach one song, not
+whether an arbitrary menu graph can be navigated. It does not resolve the metadata
+ambiguity — nine groups in this library cannot be distinguished by any query — nor the fact
+that Barkeep cannot confirm the song list is open before typing, so the honest failure
+report remains load-bearing. The kickoff brief's capability 2, "cue a chosen song," is
+therefore delivered as *request and verify*, not as guaranteed actuation.

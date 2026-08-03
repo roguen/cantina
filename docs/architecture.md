@@ -46,6 +46,15 @@ consumer. Photonics may corroborate behavior but its GPL implementation is not c
 The control interface must not expose SendInput, virtual-controller, or menu-driving
 details above the adapter. A future upstream hook replaces that adapter only.
 
+Control scope is deliberately narrow (D-015). Cantina chooses and confirms a song from the
+song list. **Instrument setup and dismissing the score screen belong to the players**, who
+are holding controllers and are the only ones who know who is playing what. Barkeep does not
+drive screens it cannot observe.
+
+Because menu driving is open-loop, the adapter is verified by **outcome, not by path**: it
+issues a selection, reads `currentSong.json` to learn which song actually loaded, and
+compares that to what was requested. A sent keystroke is never evidence of success.
+
 [`yarg-interface.md`](yarg-interface.md) holds the provisional wire contract and, more
 importantly, the list of things the datagram does **not** carry. Two of those absences
 are structural: there is no song identity and no playback position. Barkeep therefore
