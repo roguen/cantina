@@ -36,6 +36,8 @@ var dryRun = false;
 string? selectQuery = null;
 string? expectSubstring = null;
 var onSongList = false;
+var useVirtualKeys = false;
+var typeOnly = false;
 var yargDirectory = Path.Combine(
     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
     "AppData",
@@ -84,6 +86,12 @@ for (var i = 0; i < args.Length; i++)
             break;
         case "--on-song-list":
             onSongList = true;
+            break;
+        case "--vk":
+            useVirtualKeys = true;
+            break;
+        case "--type-only":
+            typeOnly = true;
             break;
         case "--yarg-dir" when hasValue:
             yargDirectory = args[++i];
@@ -239,12 +247,23 @@ if (selectQuery is not null)
         return 2;
     }
 
-    // Any leftover filter text would silently change what the query matches.
+    Console.WriteLine(useVirtualKeys
+        ? "injection shape: virtual key + scan code (what a real keyboard produces)"
+        : "injection shape: scan code only (raw input); text may not reach a text field this way");
+
+    // Any leftover filter text silently changes what the query matches. A capture on
+    // 2026-08-03 showed exactly that: stale text survived, the typed query never arrived,
+    // and Enter confirmed a song nobody asked for.
     Console.WriteLine("clearing any existing search text (40 backspaces)...");
 
     for (var b = 0; b < 40; b++)
     {
-        _ = NativeMethods.SendKeyPress(0x0E, extended: false, holdMilliseconds: 12);
+        _ = NativeMethods.SendKeyPress(
+            0x0E,
+            extended: false,
+            holdMilliseconds: 12,
+            virtualKey: useVirtualKeys ? ScanCodes.VirtualKeyBackspace : (ushort)0);
+        await Task.Delay(15, lifetime.Token).ConfigureAwait(false);
     }
 
     await Task.Delay(400, lifetime.Token).ConfigureAwait(false);
@@ -260,15 +279,37 @@ if (selectQuery is not null)
             return 2;
         }
 
-        _ = NativeMethods.SendKeyPress(charScan, extended: false, holdMilliseconds: 25);
+        ushort charVk = 0;
+
+        if (useVirtualKeys && !ScanCodes.TryResolveCharVirtualKey(character, out charVk))
+        {
+            Console.WriteLine($"  cannot map '{character}' to a virtual key. Aborting.");
+            return 2;
+        }
+
+        _ = NativeMethods.SendKeyPress(charScan, extended: false, holdMilliseconds: 25, virtualKey: charVk);
         await Task.Delay(35, lifetime.Token).ConfigureAwait(false);
     }
 
     // Give YARG's filter a moment before confirming.
     await Task.Delay(900, lifetime.Token).ConfigureAwait(false);
 
+    if (typeOnly)
+    {
+        Console.WriteLine();
+        Console.WriteLine("--type-only: Enter was NOT sent.");
+        Console.WriteLine("Look at YARG's search field now. Does it read exactly the query above?");
+        Console.WriteLine("That single observation decides whether text injection works at all,");
+        Console.WriteLine("and it cannot be read from the datagram.");
+        return 0;
+    }
+
     Console.WriteLine("sending enter...");
-    _ = NativeMethods.SendKeyPress(0x1C, extended: false, holdMilliseconds: holdMilliseconds);
+    _ = NativeMethods.SendKeyPress(
+        0x1C,
+        extended: false,
+        holdMilliseconds: holdMilliseconds,
+        virtualKey: useVirtualKeys ? ScanCodes.VirtualKeyEnter : (ushort)0);
 
     var loadDeadline = Stopwatch.StartNew();
     CurrentSong? loaded = null;

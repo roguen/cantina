@@ -82,16 +82,39 @@ internal static partial class NativeMethods
     /// which is 2 on success. A value below 2 means the injection itself was refused,
     /// which is a different failure from YARG ignoring a delivered key.
     /// </summary>
-    public static unsafe uint SendKeyPress(ushort scanCode, bool extended, int holdMilliseconds)
+    public static unsafe uint SendKeyPress(
+        ushort scanCode,
+        bool extended,
+        int holdMilliseconds,
+        ushort virtualKey = 0)
     {
-        var flags = KeyEventScanCode | (extended ? KeyEventExtendedKey : 0);
+        // Two injection shapes, because they are not equivalent to every consumer.
+        //
+        // Scan-code-only is what raw input reads, and it demonstrably drives YARG's menu
+        // actions: Escape pauses, Enter confirms. But a text field is fed by the character
+        // that Windows derives during message translation, and a capture on 2026-08-03
+        // showed 17 typed characters never reaching YARG's search box while Enter still
+        // worked. Supplying the virtual key as well is the shape a real keyboard produces.
+        var useVirtualKey = virtualKey != 0;
+
+        var flags = extended ? KeyEventExtendedKey : 0;
+
+        if (!useVirtualKey)
+        {
+            flags |= KeyEventScanCode;
+        }
 
         var down = new Input
         {
             Type = InputKeyboard,
             Union = new InputUnion
             {
-                Keyboard = new KeyboardInput { ScanCode = scanCode, Flags = flags },
+                Keyboard = new KeyboardInput
+                {
+                    VirtualKey = virtualKey,
+                    ScanCode = scanCode,
+                    Flags = flags,
+                },
             },
         };
 
@@ -100,7 +123,12 @@ internal static partial class NativeMethods
             Type = InputKeyboard,
             Union = new InputUnion
             {
-                Keyboard = new KeyboardInput { ScanCode = scanCode, Flags = flags | KeyEventKeyUp },
+                Keyboard = new KeyboardInput
+                {
+                    VirtualKey = virtualKey,
+                    ScanCode = scanCode,
+                    Flags = flags | KeyEventKeyUp,
+                },
             },
         };
 
@@ -218,4 +246,40 @@ internal static class ScanCodes
     /// </summary>
     public static bool TryResolveChar(char value, out ushort scanCode) =>
         Printable.TryGetValue(char.ToLowerInvariant(value), out scanCode);
+
+    /// <summary>
+    /// Virtual-key code for a printable character, US layout. Letters and digits map to
+    /// their ASCII uppercase value; the rest are the documented OEM constants.
+    /// </summary>
+    public static bool TryResolveCharVirtualKey(char value, out ushort virtualKey)
+    {
+        var lower = char.ToLowerInvariant(value);
+
+        if (lower is >= 'a' and <= 'z')
+        {
+            virtualKey = (ushort)char.ToUpperInvariant(lower);
+            return true;
+        }
+
+        if (lower is >= '0' and <= '9')
+        {
+            virtualKey = lower;
+            return true;
+        }
+
+        virtualKey = lower switch
+        {
+            ' ' => 0x20,
+            '-' => 0xBD,
+            '\'' => 0xDE,
+            ',' => 0xBC,
+            '.' => 0xBE,
+            _ => 0,
+        };
+
+        return virtualKey != 0;
+    }
+
+    public const ushort VirtualKeyBackspace = 0x08;
+    public const ushort VirtualKeyEnter = 0x0D;
 }
