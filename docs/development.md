@@ -67,10 +67,11 @@ server operating-system jobs, publishes the Windows artifact, and exposes one st
 
 ## Target-PC acceptance boundary
 
-Work now happens on the Windows 10 Pro 22H2 host itself, and the full regression runs
-there. That is necessary but not sufficient: YARG, YARC Launcher, and Geomitron Bridge
-are not yet installed, and hosted CI still uses hosted machines. Before M1 or deployment
-work is accepted, record evidence from the actual theater PC for:
+Work now happens on the Windows 10 Pro 22H2 host itself, the full regression runs there,
+and YARG, YARC Launcher, and Geomitron Bridge are all installed on it. That is necessary
+but not sufficient: hosted CI still uses hosted machines, and an installed game is not a
+recorded observation. Before M1 or deployment work is accepted, record evidence from the
+actual theater PC for:
 
 - launching the self-contained `win-x64` Barkeep artifact;
 - listening to YARG while the normal lighting application is running;
