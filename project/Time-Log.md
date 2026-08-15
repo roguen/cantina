@@ -284,3 +284,20 @@ start was not captured.
 - The two open hands-on spikes were not run: whether YARG's setlist auto-advances, and
   whether typed text reaches the song-list search field under `--vk --type-only`. Both need
   an operator at the machine, and the second is only observable on screen.
+- Merged pull request [#38](https://github.com/roguen/cantina/pull/38) and verified the
+  post-merge `main` run green across all six jobs. Closed issue
+  [#14](https://github.com/roguen/cantina/issues/14), recording the enforced protection
+  settings as verified against the GitHub API.
+- Opened issue [#39](https://github.com/roguen/cantina/issues/39) for the score-screen scope
+  question. It had been raised inside #37, which the merge auto-closed — a defect in how
+  that pull request was worded, since a record-correction change should not have closed an
+  issue still holding an open question.
+- Retitled and rewrote issues #10 and #13, both of which still asserted the repository was
+  private. #10's audit items are retrospective rather than preventive now: anything the
+  history audit finds must be treated as already disclosed and rotated, not merely removed.
+- Recorded **D-016**: the living records stay in `project/` permanently and the wiki
+  migration is rejected. The deciding argument is that records in the repository are
+  reviewed through the same pull request and `Regression gate` as the code they describe,
+  which is exactly how this session's two most serious findings were caught. A wiki has no
+  pull requests and no required checks, so the append-only rule would rest on discipline
+  alone. Issue #13 closed as decided against; Roadmap M0 loses that gate.

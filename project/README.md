@@ -1,10 +1,13 @@
-# Temporary project records
+# Project records
 
-This directory is a migration-ready fallback for Cantina's living project material. It was
-adopted while the repository was private and had no wiki. Publication (D-011) removed that
-limitation, but no wiki has been initialised yet, so these pages still live here. Issue
-[#13](https://github.com/roguen/cantina/issues/13) tracks moving them without rewriting
-their history.
+This directory holds Cantina's living project material. It began as a temporary fallback
+while the repository was private and had no wiki; D-016 made it the permanent home and
+rejected the wiki migration.
+
+The reason is review. These pages change in the same pull request as the code they
+describe, against the same `Regression gate`. A wiki has no pull requests and no required
+checks, so the append-only rule for the Decision Log and Time Log would rest on discipline
+alone.
 
 These pages are not normative specifications. Product and technical contracts belong
 in [`../docs/`](../docs/).

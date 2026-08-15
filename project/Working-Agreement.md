@@ -21,9 +21,10 @@
 ## Where information lives
 
 - Normative contracts live in `docs/` and change with the implementing code.
-- Living decisions, roadmap state, environment notes, and time accounting belong in
-  the GitHub wiki. They temporarily live in `project/` under issue
-  [#13](https://github.com/roguen/cantina/issues/13).
+- Living decisions, roadmap state, environment notes, and time accounting live in
+  `project/`, permanently (D-016). They change through the same branch, pull request, and
+  `Regression gate` as the code they describe. The wiki was rejected because it has none of
+  those, which would leave the append-only rule below resting on discipline alone.
 - Open work and unresolved arguments live in one GitHub issue each, with an explicit
   resolution to close against.
 

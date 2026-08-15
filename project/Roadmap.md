@@ -18,8 +18,9 @@ target-environment evidence.
 - [ ] Public-release gate — the repository was published on 2026-08-01 (D-011) before
   this gate's audit items were worked, so they are now retrospective —
   [#10](https://github.com/roguen/cantina/issues/10)
-- [ ] Living pages migrated from the temporary `project/` fallback to the wiki, now
-  unblocked by publication — [#13](https://github.com/roguen/cantina/issues/13)
+- [x] Home for the living records settled — [#13](https://github.com/roguen/cantina/issues/13)
+  closed as decided against. D-016 keeps them in `project/` permanently and rejects the wiki,
+  which has no pull requests and no `Regression gate`
 - [x] Protected `main` enforced by GitHub rather than a bypassable client-side hook —
   [#14](https://github.com/roguen/cantina/issues/14). Enabled on 2026-08-01 (Time Log
   session 005) and verified against the GitHub API: `Regression gate` required, strict

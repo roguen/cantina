@@ -36,9 +36,9 @@ of those as complete until the corresponding spike is captured on the theater PC
    `main` directly. Merge only after the stable `Regression gate` check succeeds, then
    verify the post-merge `main` run.
 2. Specifications in `docs/` change with the code. Living decisions, roadmap state,
-   environment notes, and time accounting belong in the wiki. They temporarily live in
-   `project/` until issue #13 migrates them. Publication (D-011) removed the hosting
-   limitation that put them there; the wiki has simply not been initialised yet.
+   environment notes, and time accounting live in `project/` permanently (D-016) and change
+   through the same branch and pull request as the code they describe. Do not propose
+   moving them to a wiki; that was considered and rejected.
 3. Decision Log and Time Log entries are append-only. A reversal supersedes an older
    decision; it never rewrites it.
 4. Open a GitHub issue when a bug, enhancement, or unresolved argument is identified.
