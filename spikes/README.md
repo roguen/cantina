@@ -9,10 +9,12 @@ when they cannot.
 
 ## `Cantina.Spikes.YargObserve` — issue [#2](https://github.com/roguen/cantina/issues/2)
 
-Confirms YARG's UDP data stream against the provisional contract in
-[`../docs/yarg-interface.md`](../docs/yarg-interface.md), which was derived by reading
-YALCY's LGPL parser rather than by capturing packets. Where this spike disagrees with that
-document, the capture wins and the document is corrected.
+Confirms YARG's UDP data stream against the contract in
+[`../docs/yarg-interface.md`](../docs/yarg-interface.md). That document was originally
+derived by reading YALCY's LGPL parser rather than by capturing packets; this spike's
+captures replaced that reading, and the document now records itself as confirmed by
+capture. Where a future run disagrees with it, the capture wins and the document is
+corrected.
 
 It answers five things in one run:
 
@@ -52,11 +54,19 @@ This exists because a byte that never moves is otherwise ambiguous: it cannot be
 from an operator who forgot to perform the action. Marks on both sides of an action turn a
 non-event into evidence.
 
-### Procedure: settle byte 7 (open part of #2)
+### Procedure: settle byte 7 (settled by D-012; kept as the mark-diff worked example)
 
-Byte 7 is named `PauseState` upstream, but captures contradict the name — it read non-zero
-for all of gameplay and zero at menu and score, the opposite of a pause flag for a song
-nobody paused. This run settles it:
+**This question is closed.** Byte 7 is `PlayState`, a three-state enum read as a byte —
+`0` no song, `1` playing, `2` paused — and it transitions cleanly on every pause and
+unpause. The apparent contradiction with YALCY's `PauseState` name was **Cantina's own
+defect**: an early parser coerced the offset to `byte != 0`, collapsing Playing and Paused
+into one `true`. The upstream name was accurate all along. D-012 records this, and issue
+[#2](https://github.com/roguen/cantina/issues/2) closed with no remaining unknowns.
+
+The procedure is kept because it is the clearest worked example of using marks to turn a
+non-event into evidence, and because its lesson generalises to every remaining spike: a
+lossy conversion in Cantina's own parser can masquerade as a finding about YARG. Run it
+against a new field, not against byte 7.
 
 1. Start the spike, then start a song and let it play normally.
 2. Type `before pause` and press Enter.

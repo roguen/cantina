@@ -16,9 +16,11 @@ Install the repository's local push guard once per clone:
 git config core.hooksPath .githooks
 ```
 
-GitHub cannot server-enforce branch protection for this private repository on its
-current plan; issue [#14](https://github.com/roguen/cantina/issues/14) tracks that
-remaining control.
+GitHub server-enforces branch protection on `main`: the `Regression gate` check is
+required, the branch must be up to date, `enforce_admins` is on, and force pushes and
+deletions are refused. The hook above is defense in depth, not the control. An earlier
+revision of this file said protection was unavailable on a private repository; the
+repository is public (D-011) and protection has been enforced since 2026-08-01.
 
 Use clear technical names in code. The project vocabulary is defined in
 [`docs/glossary.md`](docs/glossary.md).

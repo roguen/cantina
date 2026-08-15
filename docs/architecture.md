@@ -55,13 +55,17 @@ Because menu driving is open-loop, the adapter is verified by **outcome, not by 
 issues a selection, reads `currentSong.json` to learn which song actually loaded, and
 compares that to what was requested. A sent keystroke is never evidence of success.
 
-[`yarg-interface.md`](yarg-interface.md) holds the provisional wire contract and, more
-importantly, the list of things the datagram does **not** carry. Two of those absences
-are structural: there is no song identity and no playback position. Barkeep therefore
-knows the current song only when it cued that song itself, reports it as unknown
-otherwise, and never derives a playback-progress indicator from BPM and beat pulses.
-Score-screen detection uses the scene byte, not the lighting cue. D-010 records this and
-moves the upstream observation interface into M4 and M5.
+[`yarg-interface.md`](yarg-interface.md) holds the capture-backed wire contract and, more
+importantly, the list of things the datagram does **not** carry. Two of those absences are
+structural *to the datagram*: it states neither song identity nor playback position. Only
+one of the two is genuinely unavailable. Song identity is exposed on a second surface the
+captures found beside YARG's settings, so Barkeep watches `currentSong.json`, caches
+identity from the moment it populates, and carries it through the score screen because the
+file clears about 86 ms after the scene changes. Playback position is the only field no
+stock YARG surface exposes, and Barkeep never derives a progress indicator from BPM and
+beat pulses. Score-screen detection uses the scene byte, not the lighting cue. D-010
+records this and moves the upstream observation interface — scoped to position, not
+identity — into M4 and M5.
 
 ### Song acquisition
 

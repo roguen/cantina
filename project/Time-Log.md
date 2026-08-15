@@ -246,3 +246,41 @@ start was not captured.
   and only shows the change was visible on the first poll; M5 owns the real figure.
 - Issue [#3](https://github.com/roguen/cantina/issues/3) stays open for elevation mismatch,
   lock and logoff, held and repeated input, and visible bounded failure.
+
+## 2026-08-14 · Record correction session 010
+
+- Recorded: 2026-08-14
+- Duration: not captured
+- Merged pull request [#36](https://github.com/roguen/cantina/pull/36), recording D-015,
+  and verified the post-merge `main` run green across all six jobs.
+- Audited every living record and normative document against observable host state and
+  committed evidence, then verified each candidate finding independently before acting.
+  Opened issue [#37](https://github.com/roguen/cantina/issues/37).
+- **Supersedes session 004**, which recorded that "YARG, YARC Launcher, and Geomitron
+  Bridge are not installed on this host, so no M1 spike could be run." All three were
+  already installed when that line was written. Session 005 corrected the YARG and YARC
+  Launcher half; the Geomitron Bridge third was never corrected anywhere until now.
+  `C:\Program Files\Bridge\Bridge.exe` reports `ProductName` `Bridge`, `CompanyName` `Geo`,
+  version `3.4.5.0`.
+- The installed Geomitron Bridge is **3.4.5**, not the brief's 3.4.0. Recorded in
+  `Environment.md`; issue [#17](https://github.com/roguen/cantina/issues/17) owns pinning
+  the tested behavior. Cantina has not exercised it, so the version is observed, not
+  tested.
+- Corrected `docs/architecture.md`, which stated that Barkeep "knows the current song only
+  when it cued that song itself, reports it as unknown otherwise" — the exact position
+  D-010 rejected once the capture found `currentSong.json`. The same file already said the
+  opposite six lines earlier. A normative contract contradicting both itself and a merged
+  decision is the most serious of this session's findings.
+- Corrected four descriptions of `docs/yarg-interface.md` as provisional. It has recorded
+  itself as confirmed by capture since D-010.
+- Verified branch protection is live on `main` against the GitHub API and checked the M0
+  Roadmap box; issue [#14](https://github.com/roguen/cantina/issues/14) is resolvable.
+- Confirmed the wiki is still uninitialised — `git ls-remote` on `cantina.wiki.git` returns
+  "Repository not found" — so issue [#13](https://github.com/roguen/cantina/issues/13)
+  stays open and `project/` remains the correct fallback. The stale part was the *reason*
+  given for it, which cited a private-repository limitation that D-011 removed.
+- Left Roadmap M5's score-screen auto-advance bullet unchanged. It is ambiguous against
+  D-015 rather than provably false, and settling it is a scope decision. Recorded in #37.
+- The two open hands-on spikes were not run: whether YARG's setlist auto-advances, and
+  whether typed text reaches the song-list search field under `--vk --type-only`. Both need
+  an operator at the machine, and the second is only observable on screen.

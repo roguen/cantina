@@ -20,8 +20,11 @@ target-environment evidence.
   [#10](https://github.com/roguen/cantina/issues/10)
 - [ ] Living pages migrated from the temporary `project/` fallback to the wiki, now
   unblocked by publication — [#13](https://github.com/roguen/cantina/issues/13)
-- [ ] Protected `main` enforced by GitHub rather than a bypassable client-side hook, now
-  unblocked by publication — [#14](https://github.com/roguen/cantina/issues/14)
+- [x] Protected `main` enforced by GitHub rather than a bypassable client-side hook —
+  [#14](https://github.com/roguen/cantina/issues/14). Enabled on 2026-08-01 (Time Log
+  session 005) and verified against the GitHub API: `Regression gate` required, strict
+  up-to-date branches, `enforce_admins` on, force pushes and deletions refused,
+  conversation resolution required
 
 ## M1 · Spike results
 
