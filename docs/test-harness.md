@@ -89,10 +89,10 @@ Windows. The stable `Regression gate` job fails unless both server variants, the
 client, repository-policy check, and self-contained Windows artifact all succeed.
 
 Server-side enforcement of that check became available when the repository was published
-(D-011); issue [#14](https://github.com/roguen/cantina/issues/14) owns turning it on.
-Until it is on, the gate is enforced only by a bypassable client-side hook, so every
-change follows the mandatory branch, local regression, pull request, green gate, merge,
-and post-merge verification sequence in [`development.md`](development.md).
+(D-011) and was turned on the same day, so `Regression gate` is required by GitHub rather
+than by a bypassable client-side hook. Every change still follows the mandatory branch,
+local regression, pull request, green gate, merge, and post-merge verification sequence in
+[`development.md`](development.md).
 
 ## Evidence boundary
 

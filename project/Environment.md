@@ -54,9 +54,14 @@ updated this page, and the Geomitron Bridge third was not corrected anywhere unt
 | YARC Launcher | 1.3.0, `C:\Program Files\YARC Launcher\` |
 | Geomitron Bridge | 3.4.5, `C:\Program Files\Bridge`, reporting `ProductName` `Bridge` and `CompanyName` `Geo` |
 
-This host runs the build, the tests, the deterministic harness, **and** the M1 spikes.
-Every capture under `spikes/captures/` was taken here, and this host is the source of the
-evidence behind issues #2 (D-010, D-012), #3 (D-014), #4 (D-015), and #11 (D-013).
+This host runs the build, the tests, the deterministic harness, **and** the M1 spikes. It
+is the source of the evidence behind issues #2 (D-010, D-012), #3 (D-014), #4 (D-015), and
+#11 (D-013).
+
+The capture files themselves are deliberately **not committed** — `/spikes/captures/` is
+gitignored because packet captures may carry local network details. What the repository
+carries is the spike sources under `spikes/`, and the conclusions drawn from the captures
+in the Decision Log. Re-running a spike here reproduces them.
 
 Evidence existing is not the same as an issue closing. Only #2 is closed; the Roadmap still
 carries the cases no capture has covered. Nothing produced here yet bears on issue

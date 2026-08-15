@@ -23,11 +23,10 @@ pull request, and wait for `Regression gate` to succeed. Merge through GitHub, s
 back to `main`, fast-forward from `origin/main`, and verify the post-merge `main` run.
 
 Branch protection and rulesets previously returned HTTP 403 because Cantina was private
-on a plan without that entitlement. Publication (D-011) removed that barrier, so
-server-side protection can now be enabled. Until it is, the hook is useful defense in
-this clone but is not server enforcement and can be bypassed. Issue
-[#14](https://github.com/roguen/cantina/issues/14) remains open until protection is
-actually turned on.
+on a plan without that entitlement. Publication (D-011) removed that barrier and
+protection was enabled on 2026-08-01: `Regression gate` required, strict up-to-date
+branches, `enforce_admins` on, force pushes and deletions refused. The hook is defense in
+depth in this clone, not the control.
 
 ## Validate the server
 
