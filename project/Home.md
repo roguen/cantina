@@ -6,9 +6,13 @@ state.
 
 ## Current state
 
-M0 foundations are in progress. No UDP, input-injection, deterministic-selection, or
-Windows 10 deployment claim is closed until its linked issue contains target-PC
-evidence.
+M0 foundations are established and M1 spike work is under way on the theater PC. The UDP
+wire contract is closed by capture ([#2](https://github.com/roguen/cantina/issues/2)); the
+input path has a proven mechanism but an open issue
+([#3](https://github.com/roguen/cantina/issues/3)). Deterministic selection
+([#4](https://github.com/roguen/cantina/issues/4)) and Windows 10 deployment
+([#9](https://github.com/roguen/cantina/issues/9)) are not closed, and no claim closes
+until its linked issue contains target-PC evidence.
 
 ## Records
 

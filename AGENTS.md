@@ -5,11 +5,16 @@ Cantina is an iPad web remote for stock YARG. Read `README.md`,
 
 ## Current state
 
-M0 foundations are established and the repository is public. No YARG integration is
-proven. `docs/yarg-interface.md` is **provisional**: it is read from YALCY's parser and
-YARG's documentation, not from captured packets. Do not describe the UDP stream, input
-injection, song selection, or target deployment as complete until the corresponding
-spike is captured on the theater PC.
+M0 foundations are established and the repository is public. The M1 spikes have run on the
+theater PC, so `docs/yarg-interface.md` is **confirmed by capture**, not provisional: the
+layout parses over 80,000 real datagrams with zero rejections (D-010).
+
+Proven so far: the wire contract and the `Menu → Gameplay → Score` transition (D-010,
+D-012); `SendInput` with scan codes reaching stock YARG from a background process (D-014);
+and the narrowed control scope of choosing a song and verifying by outcome (D-015). Still
+unproven: deterministic song selection, listener coexistence with the lighting consumer,
+Geomitron Bridge acquisition, and the Windows 10 deployment artifact. Do not describe any
+of those as complete until the corresponding spike is captured on the theater PC.
 
 ## Target facts
 
@@ -19,8 +24,10 @@ spike is captured on the theater PC.
 - Holocron shares the PC, projector, receiver, and audio endpoint, but is out of scope.
 - Work now happens on the Windows theater PC itself. The original bootstrap ran on a
   non-target host; anything it claimed about the target is portability evidence only.
-- YARG, YARC Launcher, and Geomitron Bridge are **not yet installed** on this host, so
-  no target-PC spike can be run until they are.
+- YARG, YARC Launcher, and Geomitron Bridge are **all installed** on this host, and
+  target-PC spikes run here. An earlier revision of this line claimed the opposite; it was
+  a misread directory listing. Geomitron Bridge reports **3.4.5**, not the brief's 3.4.0 —
+  see `project/Environment.md` and issue #17.
 
 ## Standing rules
 
@@ -29,8 +36,9 @@ spike is captured on the theater PC.
    `main` directly. Merge only after the stable `Regression gate` check succeeds, then
    verify the post-merge `main` run.
 2. Specifications in `docs/` change with the code. Living decisions, roadmap state,
-   environment notes, and time accounting belong in the wiki. They temporarily live
-   in `project/` until the private-repository hosting limitation in issue #13 closes.
+   environment notes, and time accounting belong in the wiki. They temporarily live in
+   `project/` until issue #13 migrates them. Publication (D-011) removed the hosting
+   limitation that put them there; the wiki has simply not been initialised yet.
 3. Decision Log and Time Log entries are append-only. A reversal supersedes an older
    decision; it never rewrites it.
 4. Open a GitHub issue when a bug, enhancement, or unresolved argument is identified.

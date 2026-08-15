@@ -9,10 +9,12 @@ when they cannot.
 
 ## `Cantina.Spikes.YargObserve` — issue [#2](https://github.com/roguen/cantina/issues/2)
 
-Confirms YARG's UDP data stream against the provisional contract in
-[`../docs/yarg-interface.md`](../docs/yarg-interface.md), which was derived by reading
-YALCY's LGPL parser rather than by capturing packets. Where this spike disagrees with that
-document, the capture wins and the document is corrected.
+Confirms YARG's UDP data stream against the contract in
+[`../docs/yarg-interface.md`](../docs/yarg-interface.md). That document was originally
+derived by reading YALCY's LGPL parser rather than by capturing packets; this spike's
+captures replaced that reading, and the document now records itself as confirmed by
+capture. Where a future run disagrees with it, the capture wins and the document is
+corrected.
 
 It answers five things in one run:
 

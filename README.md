@@ -15,10 +15,13 @@ Geomitron Bridge until issue
 
 ## Status
 
-**M0 · Foundations. Nothing controls YARG yet.** The repository currently proves that
-the Barkeep host and client foundation build and test. The YARG data-stream, control,
-and deterministic-selection questions are deliberately unresolved until M1 spikes run
-on the theater PC.
+**M1 · Spike results. Nothing controls YARG yet.** The Barkeep host and client foundation
+build and test, and the M1 spikes have run on the theater PC. The data-stream question is
+answered: the wire contract is confirmed by capture (D-010, D-012). The control question
+has a proven mechanism — `SendInput` with scan codes, from a background process, never
+taking foreground (D-014) — with elevation, lock and logoff, and bounded failure still
+open. Deterministic song selection remains genuinely unresolved (D-015,
+[#4](https://github.com/roguen/cantina/issues/4)).
 
 ## Shape
 
@@ -77,8 +80,9 @@ dotnet run --project tools/Cantina.TestHarness --configuration Release --no-buil
 See [`docs/development.md`](docs/development.md) for the local workflow and target-PC
 acceptance boundary, and [`docs/architecture.md`](docs/architecture.md) for the
 normative component contract. [`docs/yarg-interface.md`](docs/yarg-interface.md) records
-what stock YARG does and does not expose — including the absence of song identity and
-playback position — and is provisional until captured on the theater PC.
+what stock YARG does and does not expose — including the absence of playback position from
+every stock surface, and of song identity from the datagram specifically — and is confirmed
+by capture on the theater PC.
 [`docs/geomitron-bridge-integration.md`](docs/geomitron-bridge-integration.md) defines
 the acquisition handoff and its current automation limit, and
 [`docs/test-harness.md`](docs/test-harness.md) defines the deterministic theater
