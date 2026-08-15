@@ -91,9 +91,10 @@ simulator and its evidence boundary.
 ## Project records
 
 - Versioned specifications live in [`docs/`](docs/).
-- Living material still lives in [`project/`](project/), a fallback adopted while the
-  repository was private and had no wiki. Publication (D-011) removed that limitation;
-  issue [#13](https://github.com/roguen/cantina/issues/13) owns the migration.
+- Living material lives in [`project/`](project/) permanently (D-016), reviewed through the
+  same pull request and `Regression gate` as the code it describes. It began as a fallback
+  while the repository was private and had no wiki; the wiki migration was rejected rather
+  than merely deferred.
 - Open work and unresolved arguments live in
   [GitHub Issues](https://github.com/roguen/cantina/issues).
 

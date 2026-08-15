@@ -426,3 +426,37 @@ ambiguity — nine groups in this library cannot be distinguished by any query �
 that Barkeep cannot confirm the song list is open before typing, so the honest failure
 report remains load-bearing. The kickoff brief's capability 2, "cue a chosen song," is
 therefore delivered as *request and verify*, not as guaranteed actuation.
+
+## D-016 · Keep the living records in the repository; reject the wiki migration
+
+- Date: 2026-08-14
+- Status: Accepted; supersedes the wiki intent in the Working Agreement and in D-006's
+  consequences
+
+Context: `project/` was adopted as an explicitly temporary fallback because GitHub does not
+provide a wiki for a private repository on this plan. D-011 made the repository public and
+removed that limitation, and issue [#13](https://github.com/roguen/cantina/issues/13) has
+tracked migrating the pages out ever since. The wiki was never initialised, so nothing had
+moved yet and the choice was still open.
+
+Decision: The living records stay in the repository permanently. `project/` is their
+intended home rather than a fallback, and there is no migration.
+
+Rejected: Moving Home, Working Agreement, Roadmap, Decision Log, Environment, and Time Log
+to the GitHub wiki. **A wiki has no pull requests, no required checks, and no `Regression
+gate`.** Records in `project/` are reviewed through the same pull request as the code they
+describe, and that is not incidental: it is how the audit behind
+[#37](https://github.com/roguen/cantina/issues/37) found `docs/architecture.md` asserting a
+position D-010 had explicitly rejected, and `spikes/README.md` still teaching the parsing
+mistake D-012 exists to warn against. Both were caught because a reviewer reads records and
+code in one diff. On a wiki, the append-only rule for the Decision Log and Time Log would
+rest on discipline alone, with no mechanism behind it.
+
+Consequences: `project/README.md` stops describing itself as temporary. The Working
+Agreement's "Where information lives" section and `AGENTS.md` rule 2 name the repository as
+the home rather than a waypoint. Roadmap M0 loses the migration item, which removes one of
+its three remaining gates. Issue #13 is closed as decided against rather than as done. The
+wiki setting stays enabled but unused; `cantina.wiki.git` was never initialised, so there is
+nothing to migrate or delete. The cost accepted is that editing a record requires a branch
+and a pull request rather than a web form — which is the property being bought, not a side
+effect.
