@@ -38,6 +38,7 @@ string? expectSubstring = null;
 var onSongList = false;
 var useVirtualKeys = false;
 var typeOnly = false;
+var focusYarg = false;
 var yargDirectory = Path.Combine(
     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
     "AppData",
@@ -89,6 +90,9 @@ for (var i = 0; i < args.Length; i++)
             break;
         case "--vk":
             useVirtualKeys = true;
+            break;
+        case "--focus-yarg":
+            focusYarg = true;
             break;
         case "--type-only":
             typeOnly = true;
@@ -187,13 +191,35 @@ if (reader.Current is null)
 
 Console.WriteLine($"baseline {reader.Current.Value}");
 Console.WriteLine();
-Console.WriteLine($"FOCUS YARG NOW. Sending {candidates.Count} key(s) in {waitSeconds} seconds.");
-Console.WriteLine("Do not touch the keyboard after focusing; any real key press would confound the result.");
 
-for (var remaining = waitSeconds; remaining > 0; remaining--)
+if (focusYarg)
 {
-    Console.WriteLine($"  {remaining}...");
-    await Task.Delay(1000, lifetime.Token).ConfigureAwait(false);
+    // Unattended mode. The spike normally waits for a human to focus YARG, which makes it
+    // unrunnable when nobody is at the machine. Focusing here is not the same as stealing
+    // foreground mid-measurement: it happens before anything is sent, and it puts the game
+    // in the state a player would have put it in.
+    Console.WriteLine("--focus-yarg: bringing YARG to the foreground...");
+
+    if (!NativeMethods.TryFocus(yarg.MainWindowHandle))
+    {
+        Console.WriteLine("FAILED to focus YARG. Windows refused, or another window holds a");
+        Console.WriteLine("foreground lock. Nothing was sent, because the result would be ambiguous.");
+        return 1;
+    }
+
+    Console.WriteLine("YARG is foreground. Settling before send...");
+    await Task.Delay(1500, lifetime.Token).ConfigureAwait(false);
+}
+else
+{
+    Console.WriteLine($"FOCUS YARG NOW. Sending {candidates.Count} key(s) in {waitSeconds} seconds.");
+    Console.WriteLine("Do not touch the keyboard after focusing; any real key press would confound the result.");
+
+    for (var remaining = waitSeconds; remaining > 0; remaining--)
+    {
+        Console.WriteLine($"  {remaining}...");
+        await Task.Delay(1000, lifetime.Token).ConfigureAwait(false);
+    }
 }
 
 // Prove YARG actually had focus. Without this, a null result is ambiguous: it cannot be
@@ -256,9 +282,14 @@ if (selectQuery is not null)
     // and Enter confirmed a song nobody asked for.
     Console.WriteLine("clearing any existing search text (40 backspaces)...");
 
+    // Windows can refuse an injection outright, and that is a completely different failure
+    // from YARG receiving the keys and ignoring them. Earlier runs discarded this return
+    // value, which left "nothing appeared in the search box" unable to tell the two apart.
+    uint backspaceAccepted = 0;
+
     for (var b = 0; b < 40; b++)
     {
-        _ = NativeMethods.SendKeyPress(
+        backspaceAccepted += NativeMethods.SendKeyPress(
             0x0E,
             extended: false,
             holdMilliseconds: 12,
@@ -266,9 +297,13 @@ if (selectQuery is not null)
         await Task.Delay(15, lifetime.Token).ConfigureAwait(false);
     }
 
+    Console.WriteLine($"  Windows accepted {backspaceAccepted} of 80 backspace events");
+
     await Task.Delay(400, lifetime.Token).ConfigureAwait(false);
 
     Console.WriteLine($"typing query: \"{selectQuery}\"");
+
+    uint typedAccepted = 0;
 
     foreach (var character in selectQuery)
     {
@@ -287,8 +322,19 @@ if (selectQuery is not null)
             return 2;
         }
 
-        _ = NativeMethods.SendKeyPress(charScan, extended: false, holdMilliseconds: 25, virtualKey: charVk);
+        typedAccepted += NativeMethods.SendKeyPress(charScan, extended: false, holdMilliseconds: 25, virtualKey: charVk);
         await Task.Delay(35, lifetime.Token).ConfigureAwait(false);
+    }
+
+    var typedExpected = (uint)selectQuery.Length * 2;
+    Console.WriteLine($"  Windows accepted {typedAccepted} of {typedExpected} character events");
+
+    if (typedAccepted < typedExpected)
+    {
+        Console.WriteLine();
+        Console.WriteLine("Windows REFUSED some injections. Whatever the search field shows, this run says");
+        Console.WriteLine("nothing about whether YARG accepts typed text: the keys never left this process.");
+        return 1;
     }
 
     // Give YARG's filter a moment before confirming.
@@ -458,9 +504,18 @@ if (skippedCount > 0)
     return 1;
 }
 
-Console.WriteLine("Windows accepted every injection, YARG held focus throughout, and the same keys");
-Console.WriteLine("are confirmed to work when pressed physically. That points at YARG ignoring");
-Console.WriteLine("injected input rather than at a wrong key choice.");
+Console.WriteLine("Windows accepted every injection and YARG held focus throughout.");
+Console.WriteLine();
+Console.WriteLine("This is NOT evidence that YARG ignored the keys. The oracle is the datagram, and");
+Console.WriteLine("the datagram cannot see a move that stays inside one scene: `CurrentScene` reports");
+Console.WriteLine("Menu for the start menu, the song list, settings, and instrument setup alike");
+Console.WriteLine("(D-015). A key that navigates from one menu screen to another lands perfectly and");
+Console.WriteLine("still reports no state change here. That exact case was observed on 2026-08-27:");
+Console.WriteLine("Enter moved the start menu into the song list while this summary claimed the key");
+Console.WriteLine("had been ignored.");
+Console.WriteLine();
+Console.WriteLine("Read the screen before concluding anything: spikes/observe-screen.ps1. Only a key");
+Console.WriteLine("whose expected effect crosses a scene boundary can be judged from the datagram.");
 return 1;
 
 static void PrintUsage() =>
