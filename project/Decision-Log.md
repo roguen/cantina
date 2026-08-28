@@ -518,3 +518,25 @@ rather than hard-coded, and the honest failure report D-015 made load-bearing no
 covers "the query never arrived", detected by reading back what actually loaded. Issue #4
 stays open for a keyboard-only focus route, which would remove the coordinate dependency
 entirely and is worth asking upstream about.
+
+**YARG's search is fuzzy, so a query does not reliably reach one song.** `unforgiven`
+returned 1 of 652, but `detonation` returned **9 of 652**, and the extra hits — *Bad
+Reputation*, *Generation Rock*, *Sweet Emotion*, *No Nations* — do not contain the string
+at all. The matching is evidently subsequence-based rather than literal. The intended song
+was the top result and selecting it worked, but "type a query and press Enter" resolves to
+*whatever YARG ranked first*, which Cantina neither controls nor can predict.
+
+This is a second, independent source of ambiguity on top of #33's finding that nine groups
+in this library cannot be distinguished by any metadata query. #33 says some songs are
+indistinguishable; this says the search itself widens a query that would otherwise be
+unique. Outcome verification against `currentSong.json` is what keeps this honest, and it
+is now load-bearing rather than a nicety: Barkeep must read back which song actually
+loaded and report a mismatch, because a plausible-looking query can silently select a
+different song.
+
+**YARG has a working setlist, reachable from the song list.** Holding the confirm key on a
+selected song changes the primary action to `ADD TO SETLIST` with `(HOLD) START THE SET`,
+and the footer changes from `PLAY A SHOW` to `START THE SET`. Whether the set
+*auto-advances* between songs is still unmeasured — that needs a song played to the score
+screen — and it remains the question that decides how much of M4 and M5 Cantina actually
+owns.
