@@ -47,10 +47,13 @@ reproducible.
 
 ## Safety rules that are not optional
 
-1. **Never take foreground during a measurement.** `PauseOnFocusLoss` is `true`. Taking
-   focus pauses the game; giving it back *resumes* the game — a state change with no key
-   behind it. Focusing *before* a measurement starts is fine and is what `--focus-yarg`
-   does.
+1. **Never take foreground during a measurement.** `PauseOnFocusLoss` is `true`: any app
+   taking focus mid-song pauses the game with no key behind it (measured, D-024). Focus
+   regain does **not** resume — recovery is the pause menu's RESUME entry, a blind menu.
+   Focusing *before* a measurement starts is fine and is what `--focus-yarg` does.
+   `MuteOnFocusLoss` is `false`, and the datagram keeps flowing at full rate while YARG is
+   backgrounded, paused, or hidden behind a fullscreen app — under GPU contention the rate
+   sags (74–81/s observed under Holocron) but never gaps.
 2. **Never send input during an observation window.** The datagram carries no input
    provenance, so a dismissed score screen and a self-advancing one are byte-identical. A
    watch harness should link no `SendInput`, `keybd_event`, `mouse_event`, or
@@ -118,6 +121,11 @@ just in time.
   it could have. Decline such prompts — never grant firewall access.
 - **Windows accepting an injection is not YARG receiving it.** Count `SendInput`'s return
   value. Every failed typing run so far had 100% acceptance; the variable was focus.
+- **Escape moves the pause-menu cursor.** The pause menu (`SETLIST PAUSED`: RESUME /
+  RESTART / SETTINGS / BACK TO LIBRARY) is a blind menu — cursor position is invisible on
+  the wire, Escape does not resume, and stray Escapes left the cursor on BACK TO LIBRARY
+  once, where a blind Enter would have destroyed the paused setlist. Never press Enter on
+  the pause menu without transcribing a screenshot first.
 
 ## Reaching a verdict
 

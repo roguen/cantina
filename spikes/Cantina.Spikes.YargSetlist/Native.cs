@@ -43,8 +43,9 @@ internal struct XInputState
 ///
 /// There is deliberately no SendInput, no keybd_event, no mouse_event and no
 /// SetForegroundWindow in this assembly. The last one matters as much as the others:
-/// PauseOnFocusLoss is true, so taking foreground would resume a paused game and
-/// manufacture a state change with no key behind it.
+/// PauseOnFocusLoss is true, so any focus change this process caused would move the
+/// game's pause state with no key behind it — taking foreground from YARG pauses it
+/// (measured, D-024; focus regain does not resume, but the hazard stands either way).
 /// </summary>
 [SupportedOSPlatform("windows")]
 internal static partial class Native

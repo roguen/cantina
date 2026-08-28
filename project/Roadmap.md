@@ -104,8 +104,12 @@ target-environment evidence.
   play-next without interrupting an active song —
   [#17](https://github.com/roguen/cantina/issues/17)
 - [ ] Report bounded success and honest failure on the iPad
-- [ ] Define Holocron and theater-contention behavior —
-  [#8](https://github.com/roguen/cantina/issues/8)
+- [x] Define Holocron and theater-contention behavior —
+  [#8](https://github.com/roguen/cantina/issues/8), closed by D-024 with the contention
+  measured on this host. `docs/failure-behavior.md` is the normative contract: five
+  observable readiness signals, cues fail closed with the failing signal named, pause
+  attribution by the foreground sample at the transition, and players own recovery
+  because the pause menu is a blind surface
 - [ ] Specify the smallest upstream YARG interface the measured control gaps require,
   behind the existing replaceable adapter (D-010)
 

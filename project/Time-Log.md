@@ -443,3 +443,18 @@ start was not captured.
   compacted snapshot with a database rejected at theater scale. The crash matrix that
   closes #7 is fixed in the entry and lands with the implementation. #23 inherits the
   deliberate-shutdown question with the correctness pressure removed.
+- **Measured theater contention and recorded D-024, closing issue #8.** Another window
+  taking foreground mid-song pauses the game with no key behind it; focus regain does
+  not resume — the pause survived four verified regains, and three spike comments plus
+  the observation skill had recorded the opposite mechanism as fact. All four corrected.
+  Holocron launched fullscreen with audio takes foreground (silently pausing YARG), and
+  both processes ran concurrently without either failing. The datagram never stopped:
+  fourteen hours at full rate backgrounded and paused, sagging to 74–81/s with zero gaps
+  under Holocron's GPU load.
+- **A blind Enter nearly cost the setlist.** Stray Escapes had parked the pause-menu
+  cursor on BACK TO LIBRARY; only the pre-confirm screenshot rule caught it. The pause
+  menu is now a named confound in the observation skill, and D-024 assigns recovery to
+  the players for exactly this reason.
+- Published `docs/failure-behavior.md`: five readiness signals, fail-closed cues with the
+  failing signal named to the iPad, and the coordination contract with Holocron reduced
+  honestly to observing who has the screen.
