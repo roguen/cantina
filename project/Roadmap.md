@@ -118,12 +118,14 @@ target-environment evidence.
 
 ## M5 · Queue and state
 
-- [ ] Decide setlist durability and restart recovery —
-  [#7](https://github.com/roguen/cantina/issues/7). **Semantics decided (D-023)**:
-  write-ahead at mutation time because D-019 proved shutdown hooks will not run;
-  `ambiguous` recovery that never re-executes; JSON-lines journal + compacted snapshot,
-  database rejected at theater scale. The issue stays open until the implementation
-  passes the fixed crash matrix on this host
+- [x] Decide setlist durability and restart recovery —
+  [#7](https://github.com/roguen/cantina/issues/7), closed. Semantics decided (D-023),
+  implemented as `SetlistJournal` in Barkeep with `/api/setlist`, and the crash matrix
+  **passed on this host with real process kills** via `tools/Cantina.SelfTest`: five
+  racing kills (one landing in the intent-to-outcome window, recovered as exactly one
+  ambiguous), crash-after-acknowledge fully durable, corrupt snapshot quarantined,
+  restart intact. The cue-command ambiguity confirmation flow lands with the M4 cue
+  pipeline under architecture.md's existing never-blindly-re-execute rule
 - [x] Define proven, missing, unknown, stale, and present-but-unpopulated live-state
   fields — [#12](https://github.com/roguen/cantina/issues/12), closed by D-022.
   `docs/live-state.md` is the normative contract: two trust-ordered sources, latched song

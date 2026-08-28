@@ -2,8 +2,10 @@
 
 using System.Text.Json.Serialization;
 using Cantina.Barkeep;
+using Cantina.Barkeep.Setlist;
 using Cantina.Barkeep.Yarg;
 using Cantina.YargSession;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,8 +20,13 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 builder.Services.Configure<YargSessionOptions>(
     builder.Configuration.GetSection(YargSessionOptions.SectionName));
+builder.Services.Configure<SetlistOptions>(
+    builder.Configuration.GetSection(SetlistOptions.SectionName));
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<YargSessionTracker>();
+builder.Services.AddSingleton(provider => SetlistJournal.Open(
+    provider.GetRequiredService<IOptions<SetlistOptions>>().Value.ResolveDataDirectory(),
+    provider.GetRequiredService<TimeProvider>()));
 builder.Services.AddHostedService<YargUdpListener>();
 builder.Services.AddHostedService<CurrentSongPoller>();
 
@@ -31,6 +38,28 @@ app.MapGet("/api/health", () => new HealthResponse("ok", "Barkeep"))
 app.MapGet("/api/live", (YargSessionTracker tracker, TimeProvider clock) =>
         tracker.Snapshot(clock.GetUtcNow()))
     .WithName("GetLiveState");
+
+app.MapGet("/api/setlist", (SetlistJournal journal) => new SetlistView(
+        journal.State,
+        journal.RecoveredAmbiguous,
+        journal.QuarantinedFiles))
+    .WithName("GetSetlist");
+
+// The mutation surface of D-023: the intent is journaled and flushed before this request
+// is answered, and a duplicate command id is answered from the journal without
+// re-applying. Replays return 200 with the recorded outcome rather than an error,
+// because convergence is the point of idempotency.
+app.MapPost("/api/setlist/commands", (SetlistIntent intent, SetlistJournal journal, TimeProvider clock) =>
+    {
+        if (string.IsNullOrWhiteSpace(intent.CommandId))
+        {
+            return Results.BadRequest(new CommandRejected("commandId is required"));
+        }
+
+        var applied = journal.Append(intent, clock, out var outcome);
+        return Results.Ok(new CommandReceipt(intent.CommandId, outcome, Replayed: !applied));
+    })
+    .WithName("PostSetlistCommand");
 
 app.Run();
 

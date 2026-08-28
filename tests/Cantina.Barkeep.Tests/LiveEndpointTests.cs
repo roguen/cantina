@@ -19,7 +19,10 @@ public sealed class LiveEndpointTests : IClassFixture<WebApplicationFactory<Prog
     public LiveEndpointTests(WebApplicationFactory<Program> factory)
     {
         _factory = factory.WithWebHostBuilder(builder =>
-            builder.UseSetting("Yarg:Enabled", "false"));
+            builder
+                .UseSetting("Yarg:Enabled", "false")
+                .UseSetting("Setlist:DataDirectory",
+                    Path.Combine(Path.GetTempPath(), "cantina-tests", Path.GetRandomFileName())));
     }
 
     [Fact]
