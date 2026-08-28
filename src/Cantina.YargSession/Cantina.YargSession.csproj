@@ -12,6 +12,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Cantina.YargSession</AssemblyName>
     <RootNamespace>Cantina.YargSession</RootNamespace>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
 </Project>
