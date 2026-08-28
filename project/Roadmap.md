@@ -113,8 +113,11 @@ target-environment evidence.
 
 - [ ] Decide setlist durability and restart recovery —
   [#7](https://github.com/roguen/cantina/issues/7)
-- [ ] Define proven, missing, unknown, stale, and present-but-unpopulated live-state
-  fields — [#12](https://github.com/roguen/cantina/issues/12)
+- [x] Define proven, missing, unknown, stale, and present-but-unpopulated live-state
+  fields — [#12](https://github.com/roguen/cantina/issues/12), closed by D-022.
+  `docs/live-state.md` is the normative contract: two trust-ordered sources, latched song
+  identity, three-tier freshness with debounce, multi-sender `ambiguous`, and the
+  advance-observation rule left neutral on #39
 - [ ] Show only evidence-backed live state: scene, play state, and beat from the datagram,
   song identity and metadata from `currentSong.json`. No playback-position indicator ships
   without an upstream source (D-010, D-012)

@@ -774,3 +774,50 @@ Consequences: Issue #10 closes. The one instance of real library metadata in his
 one song's title, artist, and charters in `spikes/library-ambiguity/README.md` — is
 recorded as deliberate, reviewed evidence and stays. The audit's full verified findings
 live in the issue #10 closeout comment.
+
+## D-022 · Promise live state from two surfaces, latch identity, and report freshness honestly
+
+- Date: 2026-08-28
+- Status: Accepted; closes issue [#12](https://github.com/roguen/cantina/issues/12) by
+  publishing [`docs/live-state.md`](../docs/live-state.md) as the normative contract
+
+Context: Issue #12 asked which live-state fields Cantina may promise the iPad, what
+happens to the fields the wire does not carry, and how freshness and unknowns are
+represented. Every input it was waiting on now exists: the capture-backed wire contract
+(D-010, D-012), the second surface `currentSong.json` and its ~86 ms clear (D-010), the
+selection-verification loop (D-017), the auto-advance measurement (D-018), and the
+LAN-broadcast fact with its multi-sender hazard (D-013, D-020).
+
+Decision, in five commitments — the document carries the details:
+
+1. **Two sources, trust ordered, disagreements surfaced as `ambiguous`** rather than
+   resolved silently. The datagram carries scene and play state; `currentSong.json`
+   carries identity; Barkeep's own state carries the setlist.
+2. **Song identity is latched**, captured when `currentSong.json` populates and held
+   through the score screen, because the file clears ~86 ms after the scene changes. The
+   raw file being empty does not un-know the song.
+3. **Freshness is a three-tier promise** — `live` under 500 ms, `stale` to 5 s, `dead`
+   beyond — with a 1 s debounce before demoting, because a healthy run showed a 538 ms
+   gap (D-018). The client never renders `stale` or `dead` as current, and `dead` names
+   its cause when Barkeep knows it (port conflict is a named fault per D-013).
+4. **Absent fields stay absent honestly.** Playback position is deferred to the upstream
+   hook and never dead-reckoned from BPM (D-010's rejection stands). Score values,
+   menu-screen identity, and YARG's internal queue are not promised at all.
+5. **An advance is an observation, not an inference**: `score → gameplay` plus a
+   different hash within 15 s. Same hash is a restart; `score → menu` over 5 s is
+   players-at-the-screen, a first-class third outcome (D-018). Who initiates an advance
+   is [#39](https://github.com/roguen/cantina/issues/39)'s decision and is deliberately
+   not constrained here.
+
+Rejected: Deriving progress from BPM and beat pulses (re-rejected; D-010). Promising
+fields observable only on screen. Treating the wire as the single source when the game
+states identity on disk. Resolving multi-sender interleaving by picking a sender, which
+manufactured a withdrawn finding once (Time Log session 009) — `ambiguous` with both
+endpoints named is the only honest report.
+
+Consequences: Issue #12 closes. The M4/M5 upstream work inherits a precise scope:
+position only, because identity is already served. The client contract in
+`architecture.md` now points at the live-state document instead of restating it. Issue
+[#8](https://github.com/roguen/cantina/issues/8)'s honest-failure copy has the state
+vocabulary it needs (`ambiguous`, `stale`, `dead`, named faults) without inventing its
+own.
