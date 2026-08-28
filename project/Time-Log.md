@@ -423,3 +423,14 @@ start was not captured.
   `LICENSE`, `CODE_OF_CONDUCT.md` and `SUPPORT.md` written plainly for a one-maintainer
   project, CI push trigger filtered to `main` so PR branches build once, and the public
   artifact stops shipping `Cantina.Barkeep.pdb` and `appsettings.Development.json`.
+- Merged pull request [#45](https://github.com/roguen/cantina/pull/45) and caught a
+  self-inflicted verification error doing it: the first "post-merge green" I read was the
+  *previous* merge's run, and the artifact size I compared was the pre-strip one. The
+  actual run for `7b44358` was then waited on properly — green on all six jobs — and the
+  new artifact was downloaded and verified by contents: 337 files, no `.pdb`, no
+  `appsettings.Development.json`, `appsettings.json` intact.
+- **Recorded D-022 and closed issue #12** by publishing `docs/live-state.md`: two
+  trust-ordered sources with disagreements surfaced as `ambiguous`, latched song identity
+  around the ~86 ms clear, three-tier freshness with a 1 s debounce sized by the observed
+  538 ms healthy-run gap, multi-sender defence named after the interleaving that produced
+  a withdrawn finding, and an advance-observation rule that stays neutral on #39.

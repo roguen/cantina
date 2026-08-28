@@ -137,6 +137,10 @@ issue #7. If Barkeep crashes after an external YARG request and cannot observe w
 it took effect, the outcome is `ambiguous`; Barkeep never blindly repeats a refresh or
 cue. An expired play intent is surfaced for confirmation rather than executed late.
 
+The full live-state promise to the client — normalized fields, latched song identity,
+freshness tiers, multi-sender defence, and the advance-observation rule — is normative in
+[`live-state.md`](live-state.md).
+
 Decoded YARG state carries a reception timestamp and becomes `stale` after a defined
 timeout. Unknown data is represented as unknown, never inferred from an old packet.
 
