@@ -707,3 +707,70 @@ Issue #11 stays open for the item that genuinely needs software this host does n
 running against **YALCY or Photonics themselves**. D-013's conclusion is unchanged — YALCY
 binds without `SO_REUSEADDR`, so it cannot share the port in either order, and nothing
 confined to Cantina can change that.
+
+## D-021 · The public-release audit found no disclosure that requires action, and the platform now enforces what discipline alone was holding
+
+- Date: 2026-08-28
+- Status: Accepted; closes issue [#10](https://github.com/roguen/cantina/issues/10)
+
+Context: The repository went public on 2026-08-01 (D-011) before its release-gate audit
+ran, which inverted the audit's character: anything found is already disclosed, so the
+job is remediation, not prevention. The audit swept five surfaces — full-history secrets,
+full-history content, the GitHub-side surface, workflow permissions, and the public
+face — with every finding independently re-verified before being accepted.
+
+**What is clean, stated with its coverage.** No credential, token, key, certificate, or
+connection string in any of the 227 unique blobs across all 66 commits on all refs,
+including the 29 pre-rewrite commits still reachable through pull-request refs. No email
+address in any blob; commit identities are all `users.noreply.github.com`. No absolute
+path leaking a username. Every high-entropy string resolves to an npm integrity hash. No
+song content, packet capture, or datagram dump anywhere in history. No GPL text or
+GPL-derived code; the Photonics clean-room boundary holds. Zero Actions secrets, deploy
+keys, webhooks, environments, or releases. The single workflow is least-privilege
+(`contents: read`), SHA-pins every action, interpolates nothing untrusted, and uses no
+self-hosted runner.
+
+**The finding that matters: the 2026-08-02 history rewrite did not remove its content
+from public reach.** GitHub still advertises `refs/pull/15/head` through
+`refs/pull/28/head`, which point at the 29 pre-rewrite commits. They are enumerable with
+`git ls-remote` — no known SHA required, which is strictly weaker than the "retrievable
+by hash until garbage collection" caveat the Working Agreement recorded. The exposed
+material was verified line-by-line: it is only the macOS bootstrap host table (macOS
+26.5.2 on arm64, .NET SDK 10.0.301, Node 24.13.0) — no credential, name, or address.
+
+Decision: **Accept the residual exposure and correct the record**, rather than ask
+GitHub Support to delete the refs. The content does not warrant a support ticket; the
+wrongness of the recorded procedure did warrant fixing, and the Working Agreement now
+states that a rewrite alone is presentation, not removal. The owner can take the Support
+route later; nothing decays.
+
+**Enforcement gaps closed during the audit** — each was discipline with no mechanism
+behind it, and each is now platform-enforced:
+
+| Setting | Was | Now |
+|---|---|---|
+| Secret scanning + push protection | disabled | **enabled** |
+| Private vulnerability reporting | disabled, while `SECURITY.md` pointed at it | **enabled** — the documented channel now exists |
+| Dependabot alerts + security updates | disabled, with lockfile-pinned dependencies aging silently | **enabled** |
+| Actions policy | any action allowed, pinning unenforced | **GitHub-owned only, SHA pinning required** |
+| Repository description | called Barkeep a "bridge", violating D-009 | reworded |
+
+Repository-side fixes in this change: SPDX headers on the last two source files, so all
+30 carry `LGPL-3.0-or-later`; `COPYING.GPL` added because the LGPL incorporates the GPL
+text by reference and shipped without it; `CODE_OF_CONDUCT.md` and `SUPPORT.md` written
+plainly for a one-maintainer hobby project; CI's push trigger filtered to `main` so each
+pull-request branch builds once, not twice; and the public artifact stops shipping
+`Cantina.Barkeep.pdb` and `appsettings.Development.json`, which were never part of the
+deployment.
+
+Rejected: Rewriting history again to chase the LAN address (`192.168.68.144`) out of the
+records. It is RFC1918, non-routable, and grants nothing; a rewrite is exactly the
+operation this audit just proved does not remove content anyway. The address stays, and
+future records simply prefer "the host's LAN address" where the literal value adds
+nothing. Also rejected: adopting a boilerplate code of conduct with enforcement
+machinery a one-maintainer project cannot honestly operate.
+
+Consequences: Issue #10 closes. The one instance of real library metadata in history —
+one song's title, artist, and charters in `spikes/library-ambiguity/README.md` — is
+recorded as deliberate, reviewed evidence and stays. The audit's full verified findings
+live in the issue #10 closeout comment.
