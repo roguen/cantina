@@ -411,9 +411,11 @@ foreach (var candidate in candidates)
     Console.WriteLine();
     Console.WriteLine($"--- {candidate.Name} ---");
 
-    // Settle before every key, not just the first. Focusing YARG resumes it because
-    // PauseOnFocusLoss is true, and an earlier key in this same run may also have moved the
-    // game. Without a fresh settled baseline, one key's effect could be credited to the next.
+    // Settle before every key, not just the first. An earlier key in this same run may
+    // have moved the game, and without a fresh settled baseline one key's effect could be
+    // credited to the next. (An earlier revision claimed focusing YARG resumes a paused
+    // game; measured on 2026-08-28, it does not — focus regain leaves the pause in place
+    // and only the pause menu's RESUME entry resumes. D-024 records it.)
     var observed = new List<string>();
     var settled = await reader
         .WaitForStableAsync(TimeSpan.FromMilliseconds(settleMs), TimeSpan.FromSeconds(6), observed, lifetime.Token)

@@ -346,8 +346,9 @@ while (!lifetime.IsCancellationRequested)
 
     if (foregroundPid != (uint)yarg.Id)
     {
-        // PauseOnFocusLoss is true, so this pauses the game, and returning focus resumes it
-        // with no key behind the resume. Either direction destroys the measurement.
+        // PauseOnFocusLoss is true, so losing foreground pauses the game with no key behind
+        // the transition (measured: D-024). That alone destroys the measurement; whether
+        // focus regain also changes state does not matter here.
         Log("SENTINEL", $"foreground_pid={foregroundPid} expected={yarg.Id}");
         fault = "FOREGROUND-LOST";
         break;

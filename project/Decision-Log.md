@@ -875,3 +875,58 @@ snapshot recovery; reboot with a queued setlist. Each must show no duplicate exe
 and an honest `ambiguous` where the outcome was unobservable. Issue #23 inherits the
 deliberate-shutdown question with the pressure removed — shutdown becomes a nicety, not a
 correctness dependency.
+
+## D-024 · Focus loss pauses the game and focus regain does not resume it; cues fail closed on named readiness signals
+
+- Date: 2026-08-28
+- Status: Accepted; closes issue [#8](https://github.com/roguen/cantina/issues/8) by
+  publishing [`docs/failure-behavior.md`](../docs/failure-behavior.md), and corrects a
+  mechanism three spike comments had recorded backwards
+
+Context: Issue #8 asked what Barkeep can observe about theater contention — Holocron and
+YARG share the PC, display, receiver, and HDMI audio endpoint — and how commands fail
+honestly when YARG is hidden or unreachable. The contention was reproduced on the theater
+PC with the wire as oracle: foreground stolen by another application mid-run, and
+Holocron itself launched fullscreen with audio while YARG ran.
+
+Measured:
+
+- **Losing foreground mid-song pauses the game with no key behind it** — `PlayState
+  1 → 2` on the wire the moment another window took focus.
+- **Regaining foreground does not resume.** The pause survived four verified focus
+  regains across two runs; byte 7 sat at `0x02` throughout. The only resume is the pause
+  menu's `RESUME` entry. Three spike comments and the observation skill asserted the
+  opposite ("focusing YARG resumes it") — an inference recorded as fact, never measured
+  until now. All four texts are corrected in this change.
+- **The pause menu is a blind hazard, concretely.** Stray Escapes had left its cursor on
+  `BACK TO LIBRARY`; a blind Enter "to resume" would have destroyed the paused setlist.
+  Only a screenshot caught it. The menu titles itself `SETLIST PAUSED`, and the paused
+  setlist context survived fourteen hours untouched.
+- **The datagram never stops.** Full rate while backgrounded, paused, and hidden —
+  fourteen hours continuously. Under fullscreen Holocron the rate sagged to 74–81/s with
+  zero gaps and zero rejections, recovering to ~90.6/s the instant Holocron died.
+- **Holocron takes foreground on launch**, so launching it mid-song silently pauses
+  YARG. Both processes ran concurrently without either failing; audible mixing is not
+  observable by Barkeep and is not promised.
+
+Decision: Readiness is five observable signals — process alive, stream live, single
+sender, YARG foreground, and not-paused — and **a cue is attempted only when all five
+hold**. Anything less fails closed before any input is sent, with the failing signal
+named to the iPad in the vocabulary of D-022. Pause attribution uses the foreground
+sample at the transition instant: the same `1 → 2` bytes are "a player paused" with YARG
+foreground and "another application took the screen" without it. Recovery from
+contention belongs to the players, because the pause menu is exactly the blind surface
+D-015 excluded; Barkeep reports, and does not press.
+
+Rejected: Driving the pause menu to auto-resume, which the cursor incident demonstrates
+is Russian roulette against the setlist. Treating focus regain as recovery, which is now
+measured false. Any Holocron coordination beyond observing who has the screen — no IPC,
+no lockfile, no protocol; Cantina does not control Holocron and does not pretend to.
+Inferring audio health from process liveness.
+
+Consequences: Issue #8 closes. The observation skill and both input-adjacent spikes now
+carry the corrected mechanism. Issue [#23](https://github.com/roguen/cantina/issues/23)
+gains a measured input: a Barkeep-launched YARG would come up foreground, but any later
+launch of anything else silently pauses gameplay, which strengthens the case for Barkeep
+*watching* foreground rather than managing it. The M2 cue pipeline implements the
+five-signal gate as its precondition check.
