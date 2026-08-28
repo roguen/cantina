@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 import './App.css'
 import { connectionCopy, type ConnectionState } from './connectionState'
 

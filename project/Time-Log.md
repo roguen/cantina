@@ -400,3 +400,26 @@ start was not captured.
   stop is application state, not the socket, which puts the rest of that problem in #7.
 - #11 stays open for the one item that needs software this host does not have: running
   against YALCY or Photonics themselves. D-013's conclusion is unchanged.
+- Merged pull request [#44](https://github.com/roguen/cantina/pull/44). The owner set a
+  standing instruction for the session: work autonomously with as little input as
+  possible, which extends to running the branch, pull request, and merge loop directly.
+- **Ran the retrospective public-release audit and recorded D-021**, closing issue #10.
+  Five surfaces, every finding independently re-verified, two findings refuted in
+  verification. History is clean of credentials, emails, song content, packet captures,
+  and GPL text across all 227 blobs in all 66 commits, including the 29 pre-rewrite
+  commits.
+- **The 2026-08-02 history rewrite never removed its content from public reach.** GitHub
+  still advertises `refs/pull/15/head`–`refs/pull/28/head`, so the pre-rewrite chain is
+  enumerable without knowing a SHA. Verified line-by-line: the exposed content is only
+  the macOS bootstrap host table. Accepted rather than escalated to GitHub Support, and
+  the Working Agreement's rewrite section now records that a rewrite alone is
+  presentation, not removal.
+- Enabled the platform enforcement the repository's rules assumed: secret scanning, push
+  protection, private vulnerability reporting (which `SECURITY.md` had been pointing at
+  while it was disabled), Dependabot alerts and security updates, and an Actions policy
+  of GitHub-owned only with required SHA pinning. Fixed the repository description that
+  still called Barkeep a "bridge" against D-009.
+- Repo fixes: SPDX headers on the last two source files, `COPYING.GPL` beside the LGPL
+  `LICENSE`, `CODE_OF_CONDUCT.md` and `SUPPORT.md` written plainly for a one-maintainer
+  project, CI push trigger filtered to `main` so PR branches build once, and the public
+  artifact stops shipping `Cantina.Barkeep.pdb` and `appsettings.Development.json`.

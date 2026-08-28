@@ -1,7 +1,11 @@
 name: CI
 
+# push is filtered to main so a pull-request branch runs CI once, through the
+# pull_request event, instead of twice for every save-point push (audit D-021).
+# Post-merge main verification still runs through the push event.
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
@@ -93,6 +97,13 @@ jobs:
         run: dotnet restore src/Cantina.Barkeep/Cantina.Barkeep.csproj --runtime win-x64 --locked-mode
       - name: Publish self-contained Barkeep
         run: dotnet publish src/Cantina.Barkeep/Cantina.Barkeep.csproj --configuration Release --runtime win-x64 --self-contained true --no-restore --output artifacts/barkeep-win-x64
+      - name: Strip non-deployment files from the artifact
+        # The artifact is public. Debug symbols and the Development settings file are
+        # not part of the deployment and were shipping in it (audit D-021).
+        shell: pwsh
+        run: |
+          Remove-Item artifacts/barkeep-win-x64/*.pdb -ErrorAction Stop
+          Remove-Item artifacts/barkeep-win-x64/appsettings.Development.json -ErrorAction Stop
       - name: Upload Barkeep
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

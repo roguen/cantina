@@ -15,6 +15,15 @@
 - A deliberate history rewrite is the only operation protection cannot accommodate, because
   it replaces history rather than adding to it. It requires removing protection, force
   pushing with `--no-verify`, and restoring protection immediately afterwards.
+- **A rewrite does not remove content from public reach, and must not be relied on to.**
+  The 2026-08-28 audit (D-021) verified that GitHub still advertises the pre-rewrite
+  commits of the 2026-08-02 rewrite through `refs/pull/15/head` … `refs/pull/28/head`:
+  anyone can enumerate and fetch them with plain `git ls-remote` and `git fetch` — no
+  known SHA required, which is a weaker position than the "retrievable by hash until
+  garbage collection" caveat previously recorded here. Completing a rewrite requires
+  asking GitHub Support to delete the superseded pull-request refs and run garbage
+  collection. Plan any future rewrite around that, and treat a rewrite alone as
+  presentation, not removal.
 - After merging through GitHub, verify the complete post-merge `main` run. A failure is
   fixed forward through a new issue, branch, and pull request.
 

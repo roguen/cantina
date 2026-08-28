@@ -21,9 +21,15 @@ target-environment evidence.
   is an accepted risk inherited from the brief rather than a fixable task; and **clean
   shutdown is unproven**, because a headless Barkeep has no console for Ctrl+C and no window
   for `taskkill`, so only a forced kill worked
-- [ ] Public-release gate — the repository was published on 2026-08-01 (D-011) before
-  this gate's audit items were worked, so they are now retrospective —
-  [#10](https://github.com/roguen/cantina/issues/10)
+- [x] Public-release gate — the repository was published on 2026-08-01 (D-011) before
+  this gate's audit items were worked, so they ran retrospectively and completed on
+  2026-08-28 (D-021) — [#10](https://github.com/roguen/cantina/issues/10). History is
+  clean of secrets, song content, and GPL contamination across all refs including
+  pre-rewrite ones; the platform now enforces secret scanning, push protection, private
+  vulnerability reporting, Dependabot, and an Actions allowlist with required SHA
+  pinning. The known residual: the 2026-08-02 rewrite's pre-rewrite commits remain
+  reachable through advertised pull-request refs, accepted because the content is only
+  the macOS bootstrap host table
 - [x] Home for the living records settled — [#13](https://github.com/roguen/cantina/issues/13)
   closed as decided against. D-016 keeps them in `project/` permanently and rejects the wiki,
   which has no pull requests and no `Regression gate`

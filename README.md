@@ -101,4 +101,6 @@ simulator and its evidence boundary.
 ## License
 
 Cantina is licensed under the GNU Lesser General Public License v3.0 or later. See
-[`LICENSE`](LICENSE).
+[`LICENSE`](LICENSE). The LGPL-3.0 is a set of additional permissions on top of the
+GNU General Public License v3.0, whose text it incorporates by reference; that text
+ships alongside it as [`COPYING.GPL`](COPYING.GPL), as the FSF recommends.
