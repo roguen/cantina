@@ -100,6 +100,26 @@ A pass proves deterministic Cantina application policy and fake-adapter composit
 the executing OS, including atomic ownership among callers sharing one in-memory
 journal. It does not prove durable replay after a crash or restart, Geomitron Bridge
 completion detection, SNG parsing, YARG UDP, interactive input, iPad behavior, Windows
-desktop-session access, or theater hardware. Issue
-[#7](https://github.com/roguen/cantina/issues/7) still owns the durable production
-journal and recovery policy.
+desktop-session access, or theater hardware. Durable replay is proven by the acceptance
+layer below: the production journal of D-023 exists in Barkeep, and its crash matrix
+passes on the theater PC with real process kills.
+
+## The target-PC acceptance layer
+
+The deterministic harness above proves logic; it deliberately cannot prove target claims
+(D-008). Those belong to `tools/Cantina.SelfTest`, run on the theater PC:
+
+```bash
+dotnet run --project tools/Cantina.SelfTest --configuration Release -- run all
+```
+
+| Suite | Proves | On failure |
+|---|---|---|
+| `journal` | D-023's crash matrix with **real process kills**: a child races journal appends and is killed mid-flight, crashes hard after acknowledging, has its snapshot corrupted, and restarts. The invariant is the acknowledgement contract — acknowledged means durable, un-outcomed means ambiguous, corruption is quarantined, recovery replays identically. | `FAIL`, exit 1 |
+| `live` | `Cantina.YargSession` against the real broadcast for three seconds: parser, freshness, single sender, zero rejections. | `FAIL`, exit 1 |
+| `readiness` | The D-024 signals, read-only. | reported per signal |
+
+A suite whose preconditions do not hold — YARG not running, port held by a consumer
+without `SO_REUSEADDR` — reports `INCONCLUSIVE` with the named cause and exit 2, never a
+guess. The tool sends no input and links no input APIs, so running it never perturbs the
+theater.

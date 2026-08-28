@@ -479,3 +479,21 @@ start was not captured.
   192.168.68.x than every prior capture. D-021's rule against recording the literal
   address proved itself within a day; the multi-sender defence correctly treats this as
   one sender, since the set is per-run.
+- **Implemented the D-023 journal and closed issue #7.** `SetlistJournal` in Barkeep:
+  write-ahead JSON-lines with flush-to-disk before acknowledgement, compacted snapshot
+  with atomic replace, torn-tail and corrupt-snapshot quarantine, ambiguous recovery that
+  is itself journaled so a second crash replays identically, and idempotency by
+  client-supplied command id surviving compaction. Surfaced as `GET /api/setlist` and
+  `POST /api/setlist/commands`, with replays answered from the journal as 200s.
+- **Built `tools/Cantina.SelfTest`, the target-PC acceptance harness the owner asked
+  for.** Suites: `journal` (the D-023 crash matrix with real process kills — a child
+  races appends and is killed mid-flight), `live` (Cantina.YargSession against the real
+  broadcast), `readiness` (the D-024 signals, read-only). House verdicts: PASS, FAIL, or
+  INCONCLUSIVE with a named cause; the tool links no input APIs.
+- **The crash matrix passed on this host.** Five racing kills at staggered offsets —
+  one landed in the window between intent flush and outcome flush and recovered as
+  exactly one ambiguous — plus crash-after-acknowledge (5 acknowledged, 5 recovered),
+  corrupt-snapshot quarantine, and restart. The live suite passed with 273 datagrams and
+  zero rejections; YARG had exited on its own again (third occurrence) and the first run
+  said INCONCLUSIVE YARG-GONE rather than failing, which is the harness working.
+- 47 tests total now, plus the 14 harness scenarios; format and locked restore clean.

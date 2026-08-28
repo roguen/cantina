@@ -15,7 +15,10 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
     {
         // The YARG listener and poller are real I/O; tests stay deterministic (D-008).
         _client = factory.WithWebHostBuilder(builder =>
-            builder.UseSetting("Yarg:Enabled", "false")).CreateClient();
+            builder
+                .UseSetting("Yarg:Enabled", "false")
+                .UseSetting("Setlist:DataDirectory",
+                    Path.Combine(Path.GetTempPath(), "cantina-tests", Path.GetRandomFileName()))).CreateClient();
     }
 
     [Fact]

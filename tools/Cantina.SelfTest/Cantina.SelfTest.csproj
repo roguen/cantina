@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The target-PC acceptance harness. The deterministic harness (D-008) proves logic with
+    semantic fakes in CI; this tool proves the claims only this machine can prove - the
+    D-023 crash matrix with real process kills, and the live-YARG observation suites -
+    and prints a verdict transcript so nobody has to step through it by hand.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Cantina.SelfTest</AssemblyName>
+    <RootNamespace>Cantina.SelfTest</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Cantina.Barkeep/Cantina.Barkeep.csproj" />
+    <ProjectReference Include="../../src/Cantina.YargSession/Cantina.YargSession.csproj" />
+  </ItemGroup>
+
+</Project>
