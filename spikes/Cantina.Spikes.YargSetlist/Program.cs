@@ -5,8 +5,8 @@ using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using Cantina.Spikes.YargObserve;
 using Cantina.Spikes.YargSetlist;
+using Cantina.YargSession;
 
 // Does a YARG setlist advance to the next song on its own?
 //

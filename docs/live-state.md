@@ -28,7 +28,9 @@ choosing silently.
 
 `song` is **latched**: it is captured when `currentSong.json` populates and carried through
 the score screen, because the file clears ~86 ms after the scene changes (D-010). The raw
-file being empty does not null the latched value until the next `menu` dwell.
+file being empty does not null the latched value until the next `menu` dwell — five
+continuous seconds of `menu`, the same threshold the advance-observation rule below uses
+for a human screen.
 
 ## Fields the wire does not carry, and their disposition
 

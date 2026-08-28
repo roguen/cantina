@@ -405,13 +405,19 @@
         }
       },
       "cantina.barkeep": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "Cantina.YargSession": "[1.0.0, )"
+        }
       },
       "cantina.testharness": {
         "type": "Project",
         "dependencies": {
           "Cantina.Barkeep": "[0.1.0, )"
         }
+      },
+      "cantina.yargsession": {
+        "type": "Project"
       }
     }
   }

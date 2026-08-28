@@ -10,14 +10,11 @@
     <RootNamespace>Cantina.Spikes.YargSetlist</RootNamespace>
   </PropertyGroup>
 
-  <!--
-    The wire parser is shared with the observe spike rather than copied. A second copy would
-    be free to drift from the contract in docs/yarg-interface.md, and a drifted parser is
-    exactly how this project previously turned its own defect into a finding about YARG
-    (D-012).
-  -->
+  <!-- The wire parser is the shared Cantina.YargSession project, so the harness, the
+       spikes, and the server parse with one implementation that cannot drift from the
+       contract in docs/yarg-interface.md (D-012 records why drift is dangerous). -->
   <ItemGroup>
-    <Compile Include="../Cantina.Spikes.YargObserve/YargDatagram.cs" Link="YargDatagram.cs" />
+    <ProjectReference Include="../../src/Cantina.YargSession/Cantina.YargSession.csproj" />
   </ItemGroup>
 
 </Project>

@@ -2,9 +2,11 @@
   <Folder Name="/spikes/">
     <Project Path="spikes/Cantina.Spikes.YargInput/Cantina.Spikes.YargInput.csproj" />
     <Project Path="spikes/Cantina.Spikes.YargObserve/Cantina.Spikes.YargObserve.csproj" />
+    <Project Path="spikes/Cantina.Spikes.YargSetlist/Cantina.Spikes.YargSetlist.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Cantina.Barkeep/Cantina.Barkeep.csproj" />
+    <Project Path="src/Cantina.YargSession/Cantina.YargSession.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Cantina.Barkeep.Tests/Cantina.Barkeep.Tests.csproj" />

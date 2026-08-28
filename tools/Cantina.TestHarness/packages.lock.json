@@ -3,6 +3,12 @@
   "dependencies": {
     "net10.0": {
       "cantina.barkeep": {
+        "type": "Project",
+        "dependencies": {
+          "Cantina.YargSession": "[1.0.0, )"
+        }
+      },
+      "cantina.yargsession": {
         "type": "Project"
       }
     }

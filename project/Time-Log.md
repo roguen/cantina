@@ -458,3 +458,24 @@ start was not captured.
 - Published `docs/failure-behavior.md`: five readiness signals, fail-closed cues with the
   failing signal named to the iPad, and the coordination contract with Holocron reduced
   honestly to observing who has the screen.
+- **Started M2 implementation: the YARG session listener is a real Barkeep component.**
+  `src/Cantina.YargSession` is the dependency-light parser project architecture.md called
+  for — the capture-proven `YargDatagram` promoted out of the observe spike, with both
+  spikes now referencing the shared copy so no second parser can drift (D-012's trap).
+  Added `CurrentSongDocument` (nested `HashBytes`, empty-is-a-value), `LatchedSong`, and
+  `YargSessionTracker` implementing D-022: latched identity with the 5 s menu-dwell clear,
+  Live/Stale/Dead freshness with the 1 s demotion debounce, multi-sender and port-conflict
+  named faults. Barkeep hosts a `SO_REUSEADDR` UDP listener (bind failure = named fault,
+  not retried, per D-013), a 25 ms `currentSong.json` poller, and `GET /api/live`.
+- Seventeen new deterministic tests; 38 total plus the 14 harness scenarios, format and
+  locked restore clean. Integration tests disable the real I/O services so the pipeline
+  under test receives only fed bytes (D-008).
+- Smoke-tested on this host against reality, in both directions: with YARG absent the
+  endpoint reported `Dead`/`NoDatagrams` honestly — YARG had exited on its own again,
+  which turned the smoke test into an accidental validation of the named-fault path — and
+  with YARG relaunched it reported `Live`/`None` with 4,122 datagrams accepted, zero
+  rejected, tracking boot (`Unknown`) into `Menu`.
+- The theater PC's LAN address changed overnight — the sender is now a different
+  192.168.68.x than every prior capture. D-021's rule against recording the literal
+  address proved itself within a day; the multi-sender defence correctly treats this as
+  one sender, since the set is per-run.

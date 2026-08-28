@@ -103,7 +103,10 @@ target-environment evidence.
 - [ ] Refresh stock YARG, prove the exact imported song is visible, and fulfill
   play-next without interrupting an active song —
   [#17](https://github.com/roguen/cantina/issues/17)
-- [ ] Report bounded success and honest failure on the iPad
+- [ ] Report bounded success and honest failure on the iPad. The observation half is
+  implemented: `src/Cantina.YargSession` (parser, latching, freshness, named faults) with
+  `GET /api/live` serving the D-022 contract, validated on this host against live traffic
+  and against YARG being absent
 - [x] Define Holocron and theater-contention behavior —
   [#8](https://github.com/roguen/cantina/issues/8), closed by D-024 with the contention
   measured on this host. `docs/failure-behavior.md` is the normative contract: five
