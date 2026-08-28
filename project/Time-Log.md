@@ -517,3 +517,7 @@ start was not captured.
   gameplay observed with the exact requested hash, song paused in cleanup.
 - 58 tests plus the 14 harness scenarios; the `cue` suite is deliberately not part of
   `run all` because it sends input and starts a real song.
+- Added the `/ws/live` WebSocket push feed: the same live-state projection, decimated
+  from the 90.7 Hz wire to change-driven frames (scene, play state, song, freshness,
+  fault) plus a 5 s heartbeat, per docs/live-state.md's decimation rule. Covered end to
+  end by a deterministic test feeding the tracker and reading frames. 59 tests total.
