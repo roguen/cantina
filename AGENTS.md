@@ -11,10 +11,14 @@ layout parses over 80,000 real datagrams with zero rejections (D-010).
 
 Proven so far: the wire contract and the `Menu → Gameplay → Score` transition (D-010,
 D-012); `SendInput` with scan codes reaching stock YARG from a background process (D-014);
-and the narrowed control scope of choosing a song and verifying by outcome (D-015). Still
-unproven: deterministic song selection, listener coexistence with the lighting consumer,
-Geomitron Bridge acquisition, and the Windows 10 deployment artifact. Do not describe any
-of those as complete until the corresponding spike is captured on the theater PC.
+the narrowed control scope of choosing a song and verifying by outcome (D-015); song
+selection by typed query, which needs a **pointer click** because the search field has no
+keyboard focus route (D-017); and that **YARG's setlist does not auto-advance** — it waits
+on the score screen, which `CONTINUE` clears in one key (D-018).
+
+Still unproven: listener coexistence with the lighting consumer, Geomitron Bridge
+acquisition, and the Windows 10 deployment artifact. Do not describe any of those as
+complete until the corresponding spike is captured on the theater PC.
 
 ## Target facts
 
@@ -28,6 +32,20 @@ of those as complete until the corresponding spike is captured on the theater PC
   target-PC spikes run here. An earlier revision of this line claimed the opposite; it was
   a misread directory listing. Geomitron Bridge reports **3.4.5**, not the brief's 3.4.0 —
   see `project/Environment.md` and issue #17.
+
+## Where the operating knowledge lives
+
+- **`.claude/skills/yarg-observation/`** — how to run an unattended spike against the running
+  game: what each oracle can and cannot see, the proven menu sequence, the confounds that
+  have actually fired here, and how to reach a verdict. Read it before driving YARG.
+- **`../cantina-agent/`** — the agent folder, a sibling directory outside this repository so
+  it never appears in a diff. `AGENTS.md` there holds operating rules; `current.md` holds
+  live session state and the next concrete action. A new session with an empty context
+  window starts by reading `current.md`.
+
+The split is deliberate. Durable, reviewable knowledge belongs in the repository, where
+D-016 keeps it under the same pull request as the code. Per-session state that would go
+stale within the hour belongs in the agent folder and nowhere else.
 
 ## Standing rules
 
