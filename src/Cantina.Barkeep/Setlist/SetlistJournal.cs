@@ -32,6 +32,7 @@ public sealed class SetlistJournal : IDisposable
     private readonly Dictionary<string, SetlistOutcome> _outcomes = new(StringComparer.Ordinal);
     private readonly Dictionary<string, SetlistIntent> _pending = new(StringComparer.Ordinal);
     private readonly List<string> _quarantined = [];
+    private readonly List<SetlistIntent> _recovered = [];
     private FileStream _journal;
     private SetlistState _state = SetlistState.Empty;
 
@@ -63,7 +64,7 @@ public sealed class SetlistJournal : IDisposable
         {
             lock (_gate)
             {
-                return [.. _pending.Values];
+                return [.. _recovered];
             }
         }
     }
@@ -141,6 +142,65 @@ public sealed class SetlistJournal : IDisposable
             _outcomes[intent.CommandId] = SetlistOutcome.Done;
             outcome = SetlistOutcome.Done;
             return true;
+        }
+    }
+
+    /// <summary>
+    /// Journals an intent that acts on the world, whose outcome arrives later by
+    /// observation (D-015: a sent keystroke is never evidence of success). Returns false
+    /// when the command id is already journaled — pending, resolved, or recovered — so a
+    /// replay never re-acts. The intent is on disk before this returns.
+    /// </summary>
+    public bool AppendPending(SetlistIntent intent, TimeProvider clock)
+    {
+        lock (_gate)
+        {
+            if (_outcomes.ContainsKey(intent.CommandId) || _pending.ContainsKey(intent.CommandId))
+            {
+                return false;
+            }
+
+            WriteLine(new JournalLine
+            {
+                Kind = LineKind.Intent,
+                CommandId = intent.CommandId,
+                Intent = intent,
+                At = clock.GetUtcNow(),
+            });
+
+            _pending[intent.CommandId] = intent;
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Records the observed outcome of a pending intent. Resolving an id that is not
+    /// pending is a no-op rather than an error, because a confirmation poller and a
+    /// superseding cue can race — the journal keeps the first resolution and converges.
+    /// </summary>
+    public void Resolve(string commandId, SetlistOutcome outcome, TimeProvider clock)
+    {
+        lock (_gate)
+        {
+            if (!_pending.Remove(commandId, out var intent))
+            {
+                return;
+            }
+
+            WriteLine(new JournalLine
+            {
+                Kind = LineKind.Outcome,
+                CommandId = commandId,
+                Outcome = outcome,
+                At = clock.GetUtcNow(),
+            });
+
+            if (outcome == SetlistOutcome.Done)
+            {
+                _state = _state.Apply(intent);
+            }
+
+            _outcomes[commandId] = outcome;
         }
     }
 
@@ -293,7 +353,12 @@ public sealed class SetlistJournal : IDisposable
             });
 
             _outcomes[pending.Key] = SetlistOutcome.Ambiguous;
+            _recovered.Add(pending.Value);
         }
+
+        // From here on, _pending holds only live two-phase intents; the recovered ones
+        // are resolved (ambiguous) and listed separately for the client to confirm.
+        _pending.Clear();
     }
 
     private void WriteLine(JournalLine line)

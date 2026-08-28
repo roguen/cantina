@@ -28,7 +28,15 @@ if (args.Length >= 1 && args[0] == "journal-child")
 
 if (args.Length < 2 || args[0] != "run")
 {
-    Console.WriteLine("usage: Cantina.SelfTest run <all|journal|live|readiness>");
+    Console.WriteLine("usage: Cantina.SelfTest run <all|journal|live|readiness|cue>");
+    Console.WriteLine();
+    Console.WriteLine("cue options (defaults are this theater library, measured in D-017/D-018):");
+    Console.WriteLine("  --query <text>   search text to type       (default: unforgiven)");
+    Console.WriteLine("  --hash <base64>  expected Hash.HashBytes   (default: The Unforgiven)");
+    Console.WriteLine("  --title <text>   display title             (default: The Unforgiven)");
+    Console.WriteLine();
+    Console.WriteLine("The cue suite SENDS INPUT and starts a real song, then pauses it. It is not");
+    Console.WriteLine("part of run all; run it deliberately.");
     return 2;
 }
 
@@ -53,6 +61,58 @@ if (which is "all" or "readiness")
     results.Add(ReadinessSuite.Run(transcript));
 }
 
+if (which is "confirmdiag")
+{
+    // Reproduces the cue confirm loop in isolation against whatever is running now.
+    var diagTracker = new Cantina.YargSession.YargSessionTracker();
+    using var diagSocket = new System.Net.Sockets.Socket(
+        System.Net.Sockets.AddressFamily.InterNetwork,
+        System.Net.Sockets.SocketType.Dgram,
+        System.Net.Sockets.ProtocolType.Udp);
+    diagSocket.SetSocketOption(
+        System.Net.Sockets.SocketOptionLevel.Socket,
+        System.Net.Sockets.SocketOptionName.ReuseAddress, true);
+    diagSocket.Bind(new System.Net.IPEndPoint(System.Net.IPAddress.Any, 36107));
+    using var diagCts = new CancellationTokenSource();
+    var diagBuffer = new byte[512];
+    var diagPump = Task.Run(async () =>
+    {
+        var endpoint = new System.Net.IPEndPoint(System.Net.IPAddress.Any, 0);
+        while (!diagCts.IsCancellationRequested)
+        {
+            var r = await diagSocket.ReceiveFromAsync(diagBuffer, System.Net.Sockets.SocketFlags.None, endpoint, diagCts.Token);
+            diagTracker.OnDatagram(diagBuffer.AsSpan(0, r.ReceivedBytes), r.RemoteEndPoint.ToString() ?? "?", DateTimeOffset.UtcNow);
+        }
+    });
+    var diagPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+        "AppData", "LocalLow", "YARC", "YARG", "release", "currentSong.json");
+    for (var i = 0; i < 30; i++)
+    {
+        var content = File.Exists(diagPath) ? await File.ReadAllTextAsync(diagPath, diagCts.Token) : null;
+        diagTracker.OnCurrentSong(content);
+        var snap = diagTracker.Snapshot(DateTimeOffset.UtcNow);
+        if (i % 10 == 0)
+        {
+            transcript.Log("DIAG",
+                $"read={(content is null ? "absent" : content.Length.ToString(System.Globalization.CultureInfo.InvariantCulture))} "
+                + $"scene={snap.Scene} song={(snap.Song is { } ds ? ds.Hash : "null")}");
+        }
+        await Task.Delay(100);
+    }
+    await diagCts.CancelAsync();
+    try { await diagPump; } catch (OperationCanceledException) { }
+    return 0;
+}
+
+if (which is "cue")
+{
+    var query = ArgValue(args, "--query") ?? "unforgiven";
+    var hash = ArgValue(args, "--hash") ?? "Is90eweGbwOBNrH8z1KcR+ncK1Y=";
+    var title = ArgValue(args, "--title") ?? "The Unforgiven";
+    results.Add(await CueSuite.RunAsync(transcript, query, hash, title).ConfigureAwait(false));
+}
+
 if (results.Count == 0)
 {
     Console.WriteLine($"unknown suite: {which}");
@@ -64,6 +124,12 @@ transcript.Summary(results);
 return results.Any(r => r.Verdict == Verdict.Fail) ? 1
     : results.Any(r => r.Verdict == Verdict.Inconclusive) ? 2
     : 0;
+
+static string? ArgValue(string[] args, string name)
+{
+    var index = Array.IndexOf(args, name);
+    return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
+}
 
 /// <summary>Child-process entry for the crash matrix; see <see cref="JournalCrashChild"/>.</summary>
 internal static class JournalCrashChild

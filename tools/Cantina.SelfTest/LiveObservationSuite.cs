@@ -66,11 +66,22 @@ internal static class LiveObservationSuite
             }
         }
 
+        // Diagnostic: exercise the same file-latch path the cue confirm uses.
+        var songPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            "AppData", "LocalLow", "YARC", "YARG", "release", "currentSong.json");
+
+        if (File.Exists(songPath))
+        {
+            tracker.OnCurrentSong(await File.ReadAllTextAsync(songPath).ConfigureAwait(false));
+        }
+
         var snapshot = tracker.Snapshot(DateTimeOffset.UtcNow);
         transcript.Log("LIVE",
             $"scene={snapshot.Scene} play={snapshot.PlayState} freshness={snapshot.Freshness} "
             + $"fault={snapshot.Fault} accepted={snapshot.DatagramsAccepted} "
-            + $"rejected={snapshot.DatagramsRejected} senders={snapshot.Senders.Count}");
+            + $"rejected={snapshot.DatagramsRejected} senders={snapshot.Senders.Count} "
+            + $"song={(snapshot.Song is { } latched ? $"\"{latched.Title}\"/{latched.Hash}" : "null")}");
 
         if (snapshot.DatagramsAccepted == 0)
         {

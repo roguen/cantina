@@ -99,7 +99,12 @@ target-environment evidence.
 
 ## M4 · Control
 
-- [ ] Cue a selected song through one replaceable control interface
+- [x] Cue a selected song through one replaceable control interface — implemented as
+  `YargCueService` behind `IYargActuator`: the D-024 five-signal gate refuses with the
+  failing signal named, the D-017 sequence actuates, the outcome is journaled two-phase
+  (D-023) and resolved only when gameplay is observed with the requested hash. Proven
+  unattended on this host by the SelfTest `cue` suite: staged, cued, players stood in,
+  verified by outcome in 15 s
 - [ ] Refresh stock YARG, prove the exact imported song is visible, and fulfill
   play-next without interrupting an active song —
   [#17](https://github.com/roguen/cantina/issues/17)

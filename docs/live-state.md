@@ -30,7 +30,10 @@ choosing silently.
 the score screen, because the file clears ~86 ms after the scene changes (D-010). The raw
 file being empty does not null the latched value until the next `menu` dwell — five
 continuous seconds of `menu`, the same threshold the advance-observation rule below uses
-for a human screen.
+for a human screen. The file also populates during the load screen, up to ~2 s before
+gameplay datagrams begin, so a latch can land inside a stale menu dwell and be cleared;
+clearing therefore resets the change-detection hash too, so the very next read re-latches
+(a defect the acceptance harness caught live on 2026-08-28).
 
 ## Fields the wire does not carry, and their disposition
 
