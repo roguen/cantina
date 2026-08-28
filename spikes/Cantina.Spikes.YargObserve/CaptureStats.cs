@@ -3,6 +3,8 @@
 using System.Globalization;
 using System.Net;
 
+using Cantina.YargSession;
+
 namespace Cantina.Spikes.YargObserve;
 
 /// <summary>

@@ -91,8 +91,9 @@ stale within the hour belongs in the agent folder and nowhere else.
   Durability across process and PC restarts remains unresolved until issue #7 closes.
 - YARG control sits behind one interface so input synthesis can be replaced by an
   upstream API without touching higher layers.
-- The YARG data-stream parser should become a dependency-light, separately testable
-  project once the M1 capture fixes the wire contract.
+- The YARG data-stream parser lives in `src/Cantina.YargSession`, the dependency-light
+  project the M1 capture made possible. The spikes and the server reference that one
+  copy; a second parser is how D-012's boolean trap happened, so never fork it.
 - Song acquisition stays behind replaceable catalog/acquirer boundaries. The initial
   Geomitron Bridge path is a verified filesystem handoff, not programmatic automation.
 - A Windows service is not assumed. Interactive desktop input may require a logged-in

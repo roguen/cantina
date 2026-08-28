@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Cantina.Spikes.YargObserve;
+using Cantina.YargSession;
 
 // Spike for issue #2: confirm YARG 0.15's UDP data stream against the provisional
 // contract in docs/yarg-interface.md, and find out whether currentSong.json carries the

@@ -9,4 +9,8 @@
     <RootNamespace>Cantina.Spikes.YargObserve</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../../src/Cantina.YargSession/Cantina.YargSession.csproj" />
+  </ItemGroup>
+
 </Project>

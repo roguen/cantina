@@ -13,7 +13,9 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
 
     public HealthEndpointTests(WebApplicationFactory<Program> factory)
     {
-        _client = factory.CreateClient();
+        // The YARG listener and poller are real I/O; tests stay deterministic (D-008).
+        _client = factory.WithWebHostBuilder(builder =>
+            builder.UseSetting("Yarg:Enabled", "false")).CreateClient();
     }
 
     [Fact]

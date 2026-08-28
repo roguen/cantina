@@ -2,13 +2,13 @@
 
 using System.Buffers.Binary;
 
-namespace Cantina.Spikes.YargObserve;
+namespace Cantina.YargSession;
 
 /// <summary>
 /// Scene reported at byte 6. This is the auto-advance signal: it states the score
 /// screen directly, rather than inferring it from the lighting cue.
 /// </summary>
-internal enum YargScene : byte
+public enum YargScene : byte
 {
     Unknown = 0,
     Menu = 1,
@@ -24,7 +24,7 @@ internal enum YargScene : byte
 /// boolean. Reading it as <c>byte != 0</c> collapses Playing and Paused into one value and
 /// makes the field look stuck for the whole of gameplay.
 /// </summary>
-internal enum YargPlayState : byte
+public enum YargPlayState : byte
 {
     /// <summary>No song loaded. Observed at menu and on the score screen.</summary>
     NoSong = 0,
@@ -37,7 +37,7 @@ internal enum YargPlayState : byte
 }
 
 /// <summary>Beatline pulse at byte 38.</summary>
-internal enum YargBeat : byte
+public enum YargBeat : byte
 {
     Off = 0,
     Measure = 1,
@@ -50,7 +50,7 @@ internal enum YargBeat : byte
 /// These are NOT the spaced DMX channel values (NoCue 0, Menu 10, Score 20, ...).
 /// Applying the DMX table to this byte yields plausible, wrong answers.
 /// </summary>
-internal enum YargCue : byte
+public enum YargCue : byte
 {
     Default = 0,
     Dischord = 1,
@@ -88,19 +88,19 @@ internal enum YargCue : byte
 }
 
 /// <summary>Per-player star power, present only when the datagram version is 4 or later.</summary>
-internal readonly record struct YargStarPower(byte Amount, bool IsActive);
+public readonly record struct YargStarPower(byte Amount, bool IsActive);
 
 /// <summary>
-/// Provisional reader for YARG's UDP data-stream datagram.
+/// Reader for YARG's UDP data-stream datagram.
 ///
-/// The layout is documented in <c>docs/yarg-interface.md</c> and was derived by reading
-/// YALCY's LGPL parser, not by capturing packets. Confirming it against YARG 0.15 stable
-/// is the entire point of this spike. Where a capture disagrees, the capture wins.
-///
-/// The type is deliberately free of I/O and of any Barkeep dependency so it can move into
-/// a dependency-light parser project once the wire contract is fixed.
+/// The layout is normative in <c>docs/yarg-interface.md</c> and is confirmed by capture
+/// (D-010): four runs on the theater PC accepted over 80,000 real datagrams with zero
+/// rejections. This type began life in the observe spike and moved here once the wire
+/// contract was fixed, exactly as its original comment planned. It stays free of I/O and
+/// of any Barkeep dependency so the spikes and the server share one parser that cannot
+/// drift from either.
 /// </summary>
-internal sealed record YargDatagram
+public sealed record YargDatagram
 {
     /// <summary>Header magic, ASCII "YARG", read as a little-endian uint32.</summary>
     public const uint HeaderMagic = 0x59415247;

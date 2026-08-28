@@ -2,6 +2,8 @@
 
 using System.Globalization;
 
+using Cantina.YargSession;
+
 namespace Cantina.Spikes.YargObserve;
 
 /// <summary>One operator mark: the whole datagram, frozen at the instant the operator pressed Enter.</summary>
