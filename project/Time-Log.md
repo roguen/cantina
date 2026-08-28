@@ -383,3 +383,20 @@ start was not captured.
   Only a forced kill worked. Nothing leaked — the process exited and port 5273 released —
   but a Barkeep that can only be killed bears on setlist durability (#7) and process
   supervision (#23).
+- Merged pull requests [#42](https://github.com/roguen/cantina/pull/42) and
+  [#43](https://github.com/roguen/cantina/pull/43); #43 needed a branch update first because
+  protection requires branches to be current. Post-merge `main` green on all six jobs.
+- **Advanced issue #11 and recorded D-020.** Two of its untested checklist items are now
+  measured. With the firewall enabled on all three profiles and **no allow rule for any
+  Cantina or YARG binary**, two `SO_REUSEADDR` listeners each accepted ~2650 datagrams with
+  zero rejections at ~90.8/s. YARG sends from `192.168.68.144:61374` to `255.255.255.255`,
+  so the traffic is a LAN broadcast rather than loopback.
+- Force-killing one listener left the other completely unaffected — 3962 datagrams across
+  the sequence, zero rejected — and a fresh listener rebound in 0.029 s while the survivor
+  still held the port. An ungraceful kill leaves no socket residue.
+- That makes the Windows Defender prompt seen during the D-018 run a **needless** risk as
+  well as a contamination risk: the answer is always to decline, because reception works
+  without a rule. It also narrows D-019's clean-shutdown gap — what is at risk on a forced
+  stop is application state, not the socket, which puts the rest of that problem in #7.
+- #11 stays open for the one item that needs software this host does not have: running
+  against YALCY or Photonics themselves. D-013's conclusion is unchanged.
