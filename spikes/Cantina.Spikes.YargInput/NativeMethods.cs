@@ -252,6 +252,12 @@ internal static class ScanCodes
             case "backspace":
                 scanCode = 0x0E;
                 return true;
+            // Tab is here to answer one question: whether the song list's search field can
+            // be focused from the keyboard. If it cannot, the only proven way in is a
+            // pointer click at a screen coordinate, which is a much worse control path.
+            case "tab":
+                scanCode = 0x0F;
+                return true;
             case "up":
                 scanCode = 0x48;
                 extended = true;
@@ -274,7 +280,7 @@ internal static class ScanCodes
         }
     }
 
-    public static string Known => "escape, enter, space, backspace, up, down, left, right";
+    public static string Known => "escape, enter, space, backspace, tab, up, down, left, right";
 
     // US layout, scan code set 1. Search in YARG's song list is driven by typing directly
     // into the list, so a selection spike needs printable characters as well as named keys.

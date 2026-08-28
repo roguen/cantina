@@ -40,7 +40,12 @@ target-environment evidence.
   driver are needed. Still open: elevation mismatch, lock and logoff, held and repeated
   input, and visible bounded failure
 - [ ] Prove or reject deterministic song selection —
-  [#4](https://github.com/roguen/cantina/issues/4)
+  [#4](https://github.com/roguen/cantina/issues/4). Selection by typed query is **proven on
+  the theater PC** (D-017): a query narrowed 652 songs to one and Enter selected it. The
+  cost is that the search field cannot be focused from the keyboard, so the path needs a
+  pointer click at a screen coordinate. Still open: a keyboard-only focus route, the
+  metadata ambiguity in #33 that no query can resolve, and discovering the click target
+  rather than hard-coding it
 - [ ] Prove coexistence with the theater lighting consumer —
   [#11](https://github.com/roguen/cantina/issues/11). Socket semantics are captured on the
   theater PC: coexistence needs `SO_REUSEADDR` on both listeners, and YALCY does not set it

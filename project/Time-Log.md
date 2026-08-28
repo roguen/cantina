@@ -301,3 +301,31 @@ start was not captured.
   which is exactly how this session's two most serious findings were caught. A wiki has no
   pull requests and no required checks, so the append-only rule would rest on discipline
   alone. Issue #13 closed as decided against; Roadmap M0 loses that gate.
+
+## 2026-08-27 · Unattended selection spike session 011
+
+- Recorded: 2026-08-27
+- Duration: not captured
+- Built the observation harness that makes a spike runnable with nobody at the machine:
+  `--focus-yarg` brings YARG forward and verifies it by reading `GetForegroundWindow`, and
+  `spikes/observe-screen.ps1` captures the screen, which is the only oracle for anything
+  the datagram cannot express. YARG was launched from this session; it had exited since the
+  previous one.
+- **Answered #4's narrowed question.** Selection by typed query works: `unforgiven` narrowed
+  652 songs to one, and Enter selected *The Unforgiven* by Metallica. Recorded as **D-017**.
+- **The 2026-08-03 diagnosis was wrong.** That run blamed the injection shape and built
+  `--vk` on the theory that named keys and text characters travel different paths. The real
+  cause is that YARG's search field cannot be focused from the keyboard. With a pointer
+  click first, the identical injection succeeds; without it, the identical injection fails
+  and earlier text survives 40 backspaces untouched. Tab does not focus it either.
+- Windows accepted **every** injection in **every** run, including the failures, which is
+  what made the earlier conclusion detectable as unsound rather than merely unlucky.
+- Two reporting defects fixed, both of which produced a confident wrong answer during this
+  session before being corrected. Select mode discarded `SendInput`'s return value, so a
+  silent search box could not be told apart from a refused injection. And the no-change
+  summary asserted YARG was ignoring input, when the datagram simply cannot see a move
+  inside one scene — Enter navigated the start menu into the song list while the summary
+  called it ignored.
+- Corrected the session date. `date` reported 2026-08-14 earlier in this working session and
+  2026-08-27 now; the records written under the earlier reading landed on 2026-08-15 and are
+  left as written, since they were accurate when recorded.

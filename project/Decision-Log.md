@@ -460,3 +460,61 @@ wiki setting stays enabled but unused; `cantina.wiki.git` was never initialised,
 nothing to migrate or delete. The cost accepted is that editing a record requires a branch
 and a pull request rather than a web form — which is the property being bought, not a side
 effect.
+
+## D-017 · Song selection needs a pointer click, because the search field cannot be focused from the keyboard
+
+- Date: 2026-08-27
+- Status: Accepted; corrects the diagnosis attempted on 2026-08-03
+
+Context: D-015 narrowed Cantina's control scope to choosing and confirming a song from the
+song list, leaving one question for [#4](https://github.com/roguen/cantina/issues/4):
+whether a query can actually be typed into that list. A run on 2026-08-03 saw 17 typed
+characters never reach the search box while Enter worked, and concluded that named keys and
+text characters travel different paths. The `--vk` injection shape was built on that theory.
+
+**That diagnosis was wrong.** Captured on the theater PC on 2026-08-27, unattended:
+
+| Attempt | Windows accepted | Text arrived |
+|---|---|---|
+| Type with scan codes only, no click | — | No |
+| Type with virtual key + scan code, no click | 20 of 20 events | No |
+| **Click the search box first, then type** | 20 of 20 events | **Yes, exactly** |
+| Click an inert area, then type | 20 of 20 events | No; earlier text survived untouched |
+| Press Tab, then type | — | No |
+
+Windows accepted **every** injection in every run, including the failures. The variable is
+not the injection shape and not whether Windows delivered the keys. It is whether the search
+field holds focus, and only a pointer click was found to give it focus. Typing does not
+focus it and Tab does not focus it.
+
+This also explains 2026-08-03's stranger symptom — stale text surviving 40 backspaces, then
+Enter confirming a song nobody asked for. The backspaces were never reaching the field
+either. Enter worked throughout because menu keys go to the screen's navigation handler
+regardless of which widget has focus.
+
+Decision: The proven selection sequence is **click the search field, type the query, press
+Enter to select the match, press Enter again to play**. Cantina's YARG adapter therefore
+needs synthetic *pointer* input as well as synthetic keyboard input.
+
+With the field focused, selection works well: `unforgiven` narrowed 652 songs to exactly
+one, and the first Enter selected *The Unforgiven* by Metallica with its metadata and
+`PLAY SONG` armed. `currentSong.json` correctly stayed empty until a song actually loaded,
+so outcome verification behaves as D-015 requires.
+
+Rejected: Concluding from a silent search box that YARG ignores injected text, which is what
+the earlier run did without checking whether the injection was accepted or whether the field
+was focused. Continuing to attribute the failure to the injection shape, which the control
+above disproves — the same shape succeeds and fails depending only on the click.
+
+Consequences: This is a real cost against D-014's finding that `SendInput` alone suffices.
+A click is aimed at a **screen coordinate**, so the control path now depends on window
+resolution and on YARG's UI layout, neither of which Cantina controls and neither of which
+the datagram can verify. The search box was at (1968, 161) on a 3840×2160 display; that
+number is evidence, not a constant. A YARG update that moves the search box silently breaks
+selection, and the failure is invisible except on screen.
+
+Two consequences follow for the adapter. The click target must be discovered or configured
+rather than hard-coded, and the honest failure report D-015 made load-bearing now also
+covers "the query never arrived", detected by reading back what actually loaded. Issue #4
+stays open for a keyboard-only focus route, which would remove the coordinate dependency
+entirely and is worth asking upstream about.
