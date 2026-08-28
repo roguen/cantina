@@ -656,3 +656,54 @@ has consequences for setlist durability
 ([#23](https://github.com/roguen/cantina/issues/23)). Barkeep needs a deliberate shutdown
 path — an authenticated endpoint, a service host, or a job object — chosen with those
 issues rather than assumed.
+
+## D-020 · Barkeep needs no firewall rule, and an ungraceful kill leaves no socket residue
+
+- Date: 2026-08-28
+- Status: Accepted; closes two of issue
+  [#11](https://github.com/roguen/cantina/issues/11)'s open checklist items. The
+  real-lighting-application item stays open.
+
+Context: D-013 proved that two listeners coexist on UDP 36107 only when **both** set
+`SO_REUSEADDR`, and that YALCY does not. Two checklist items on #11 were left untested:
+firewall-enabled behaviour, and process restart. Both are testable here without the lighting
+application, and both carry deployment consequences that were being assumed rather than
+known.
+
+Measured on the theater PC against live YARG traffic:
+
+| | |
+|---|---|
+| Firewall | **Enabled on all three profiles** — Domain, Private, Public |
+| Rules for Cantina or YARG binaries | **None.** No allow rule exists for any of them |
+| Two listeners, both `SO_REUSEADDR` | Both bound; accepted 2650 and 2649 datagrams, **0 rejected** each, at ~90.8/s |
+| Sender → destination | `192.168.68.144:61374 → 255.255.255.255` |
+| Force-kill one listener | Survivor unaffected: 3962 datagrams across the whole sequence, 0 rejected |
+| Rebind after a force-kill | Immediate — bound at 0.029 s, first datagram at 0.038 s, while the other listener still held the port |
+
+Decision: **Do not add a firewall rule for Barkeep, and do not ask the owner to approve
+one.** Reception of YARG's stream works with the firewall fully enabled and no rule present,
+because the traffic originates on the same host. A rule would be a permission request with
+nothing behind it.
+
+Rejected: Granting the Windows Defender prompt that appears when a listener first binds. It
+was declined during the D-018 run and that run still accepted 39,799 datagrams, which is the
+same result reproduced deliberately here. Also rejected: treating a forced kill of a listener
+as a state needing cleanup — the socket is released immediately and a fresh process rebinds
+while another listener holds the port.
+
+Consequences: The `PauseOnFocusLoss` contamination risk that prompt represents (D-018) is now
+also a *needless* one — the answer is always to decline. This narrows D-019's clean-shutdown
+gap slightly: a force-killed Barkeep leaves no listener residue, so what remains at risk on
+an ungraceful stop is application state, not the socket. Setlist durability
+([#7](https://github.com/roguen/cantina/issues/7)) therefore owns the rest of that problem.
+
+The sender being the **LAN address broadcasting to 255.255.255.255**, rather than loopback,
+is worth stating plainly: YARG's game state is visible to every host on the LAN, by design
+and not by Cantina's choice. D-013 already relies on this when it names moving a lighting
+controller to another host as the honest interim workaround.
+
+Issue #11 stays open for the item that genuinely needs software this host does not have:
+running against **YALCY or Photonics themselves**. D-013's conclusion is unchanged — YALCY
+binds without `SO_REUSEADDR`, so it cannot share the port in either order, and nothing
+confined to Cantina can change that.

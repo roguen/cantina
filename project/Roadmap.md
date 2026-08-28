@@ -52,7 +52,11 @@ target-environment evidence.
   pointer click at a screen coordinate. Still open: a keyboard-only focus route, the
   metadata ambiguity in #33 that no query can resolve, and discovering the click target
   rather than hard-coding it
-- [ ] Prove coexistence with the theater lighting consumer —
+- [ ] Prove coexistence with the theater lighting consumer. Firewall and restart behaviour
+  are now measured (D-020): reception works with the firewall enabled on all three profiles
+  and **no allow rule**, two `SO_REUSEADDR` listeners each take every datagram, and a
+  force-killed listener leaves no socket residue. What remains needs **YALCY or Photonics
+  themselves**, neither of which is installed —
   [#11](https://github.com/roguen/cantina/issues/11). Socket semantics are captured on the
   theater PC: coexistence needs `SO_REUSEADDR` on both listeners, and YALCY does not set it
   (D-013). Still open: running the actual lighting application, and firewall-enabled
