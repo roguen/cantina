@@ -356,3 +356,30 @@ start was not captured.
   on `CONTINUE` are what closed it. A repeat must verify arming first.
 - Confirmed D-015's account of instrument setup: per-player, one confirmation each, and it
   warned that a configured player had no input device assigned.
+
+## 2026-08-28 · Handoff structure and Windows artifact session 012
+
+- Recorded: 2026-08-28
+- Duration: not captured
+- Merged pull request [#41](https://github.com/roguen/cantina/pull/41) carrying D-017 and
+  D-018; post-merge `main` green on all six jobs.
+- Built the two things that were making every session start from scratch:
+  `.claude/skills/yarg-observation/` in the repository, and a `cantina-agent/` sibling folder
+  outside it holding operating rules and live state. The split is deliberate — durable
+  reviewable knowledge stays under the same pull request as the code (D-016), while
+  per-session state that goes stale within the hour stays out of the diff (`force-bond`).
+- **Ran issue #9's smoke test and recorded D-019.** The `barkeep-win-x64` artifact from
+  `main` at `11096cc` launches on this host with no runtime dependency, answers
+  `/api/health`, binds `127.0.0.1` and `::1` only, refuses `192.168.68.144`, and carries the
+  `main` SHA in its version string.
+- **The policy half disagrees with the technical half**, which is why #9 asked for them
+  separately. .NET 10's supported-OS table lists Windows 10 client as 21H2 (E), 21H2 (IoT),
+  1809 (E) and 1607 (E); **22H2 does not appear**, and the policy states that OS versions out
+  of support by the publisher are not tested or supported. The only ESU carve-out named is
+  Windows Server 2012/2012 R2. Changing the .NET version fixes nothing, because the
+  constraint is the OS, so this is an accepted risk inherited from the brief.
+- **Clean shutdown is not proven, and that is a finding.** The artifact advertises Ctrl+C,
+  but headless it has no console to receive one and no window for `taskkill` without `/F`.
+  Only a forced kill worked. Nothing leaked — the process exited and port 5273 released —
+  but a Barkeep that can only be killed bears on setlist durability (#7) and process
+  supervision (#23).
