@@ -14,7 +14,13 @@ target-environment evidence.
   [30717785137](https://github.com/roguen/cantina/actions/runs/30717785137), tracked by
   closed issue [#1](https://github.com/roguen/cantina/issues/1)
 - [ ] Self-contained artifact proven on Windows 10 Pro 22H2 —
-  [#9](https://github.com/roguen/cantina/issues/9)
+  [#9](https://github.com/roguen/cantina/issues/9). **Technically proven** on this host
+  (D-019): the CI artifact launches with no runtime dependency, `/api/health` answers, it
+  binds loopback only and refuses the LAN address, and its version carries the `main` SHA.
+  Two things keep this open — .NET 10 does **not** list Windows 10 22H2 as supported, which
+  is an accepted risk inherited from the brief rather than a fixable task; and **clean
+  shutdown is unproven**, because a headless Barkeep has no console for Ctrl+C and no window
+  for `taskkill`, so only a forced kill worked
 - [ ] Public-release gate — the repository was published on 2026-08-01 (D-011) before
   this gate's audit items were worked, so they are now retrospective —
   [#10](https://github.com/roguen/cantina/issues/10)

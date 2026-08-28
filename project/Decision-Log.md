@@ -598,3 +598,61 @@ And binding the UDP socket raised a **Windows Defender Firewall prompt for the h
 itself**, which sat on screen during the measurement. It never took foreground, and the
 100 ms foreground sentinel would have caught it if it had, but a dialog that *can* steal
 focus during a `PauseOnFocusLoss` measurement is a contamination risk, not a cosmetic one.
+
+## D-019 · The Windows 10 artifact works and is outside Microsoft's support policy; both are true
+
+- Date: 2026-08-28
+- Status: Accepted; closes the technical half of
+  [#9](https://github.com/roguen/cantina/issues/9) and records the policy half as an
+  accepted risk
+
+Context: Issue #9 required the pinned .NET 10 app to be published self-contained, launched
+on the theater PC without a runtime dependency, and checked — and, separately, required the
+Microsoft support-policy conclusion to be recorded apart from technical success. Keeping
+those two apart turns out to matter, because they disagree.
+
+**The technical result: it works.** The `barkeep-win-x64` artifact from the `main` run at
+`11096cc` was downloaded and launched on this host.
+
+| Check | Result |
+|---|---|
+| Self-contained | `runtimeconfig.json` declares `includedFrameworks`, not `framework`, pinning .NET **10.0.11**. `coreclr.dll`, `hostfxr.dll`, `hostpolicy.dll`, `clrjit.dll`, `System.Private.CoreLib.dll` all bundled — the host does not probe for a shared runtime |
+| Launches | Yes, on Windows 10 Pro build **19045** |
+| `/api/health` | `{"status":"ok","service":"Barkeep"}` |
+| Binding | `127.0.0.1:5273` and `::1:5273` only — **no** `0.0.0.0` |
+| Reachable from the LAN | **No.** `http://192.168.68.144:5273/api/health` refused |
+| Artifact version | `0.1.0+11096cc7f0c68770fe41ed087cc4743ebcad2b37`, matching `main` HEAD |
+| Port after exit | released |
+
+**The policy result: not supported.** .NET 10's supported-OS table lists Windows 10 client
+as `21H2 (E)`, `21H2 (IoT)`, `1809 (E)` and `1607 (E)` only. **Windows 10 22H2 does not
+appear.** The policy is explicit: *"OS versions that are out of support by the OS publisher
+are not tested or supported by .NET."* The one ESU carve-out named is Windows Server 2012
+and 2012 R2 — there is no equivalent for Windows 10 Consumer ESU.
+
+Decision: Ship on .NET 10 on Windows 10 Pro 22H2, and record that this is **outside
+Microsoft's support policy** rather than implying the green smoke test settles it.
+
+Rejected: Changing the .NET version. The constraint is the **operating system**, not the
+runtime — the same "out of support OS" sentence governs every .NET version, so moving to
+.NET 8 would buy nothing. Also rejected: reading the successful smoke test as satisfying
+#9's policy item. It does not; the artifact running proves the artifact runs.
+
+Consequences: #9's last checklist item, "if .NET 10 is unsuitable, record and implement the
+supported target change", has **no in-scope remedy**. The brief fixes Windows 10 Pro 22H2
+with no Windows 11 upgrade, so the only change that would restore supported status is one
+the brief forbids. This is therefore an accepted risk inherited from a target constraint,
+not an open engineering task. It should be revisited only if the owner reopens the OS
+question.
+
+**A gap found while testing: the artifact cannot be stopped cleanly out of band.** It
+advertises "Press Ctrl+C to shut down", but run headless beside YARG — which is how it must
+run — there is no console to deliver Ctrl+C to, and `taskkill` without `/F` refuses because
+the process has no window. Only a forced kill worked, which skips graceful shutdown
+entirely. Nothing leaked in this run: the process exited and port 5273 was released. But
+"verify clean shutdown" in #9 is **not** satisfied, and a service that can only be killed
+has consequences for setlist durability
+([#7](https://github.com/roguen/cantina/issues/7)) and for process supervision
+([#23](https://github.com/roguen/cantina/issues/23)). Barkeep needs a deliberate shutdown
+path — an authenticated endpoint, a service host, or a job object — chosen with those
+issues rather than assumed.
