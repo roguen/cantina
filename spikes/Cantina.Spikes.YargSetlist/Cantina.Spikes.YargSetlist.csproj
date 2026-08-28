@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>Cantina.Spikes.YargSetlist</AssemblyName>
+    <RootNamespace>Cantina.Spikes.YargSetlist</RootNamespace>
+  </PropertyGroup>
+
+  <!--
+    The wire parser is shared with the observe spike rather than copied. A second copy would
+    be free to drift from the contract in docs/yarg-interface.md, and a drifted parser is
+    exactly how this project previously turned its own defect into a finding about YARG
+    (D-012).
+  -->
+  <ItemGroup>
+    <Compile Include="../Cantina.Spikes.YargObserve/YargDatagram.cs" Link="YargDatagram.cs" />
+  </ItemGroup>
+
+</Project>
