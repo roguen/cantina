@@ -44,12 +44,35 @@ if (OperatingSystem.IsWindows())
 
 var app = builder.Build();
 
+app.UseWebSockets();
+
 app.MapGet("/api/health", () => new HealthResponse("ok", "Barkeep"))
     .WithName("GetHealth");
 
 app.MapGet("/api/live", (YargSessionTracker tracker, TimeProvider clock) =>
         tracker.Snapshot(clock.GetUtcNow()))
     .WithName("GetLiveState");
+
+// The push feed of the same projection, decimated and change-driven (docs/live-state.md).
+app.Map("/ws/live", async context =>
+    {
+        if (!context.WebSockets.IsWebSocketRequest)
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
+
+        using var socket = await context.WebSockets.AcceptWebSocketAsync();
+        var json = context.RequestServices
+            .GetRequiredService<Microsoft.Extensions.Options.IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>()
+            .Value.SerializerOptions;
+        await LiveStateSocket.RunAsync(
+            socket,
+            context.RequestServices.GetRequiredService<YargSessionTracker>(),
+            context.RequestServices.GetRequiredService<TimeProvider>(),
+            json,
+            context.RequestAborted);
+    });
 
 app.MapGet("/api/setlist", (SetlistJournal journal) => new SetlistView(
         journal.State,

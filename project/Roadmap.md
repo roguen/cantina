@@ -109,6 +109,10 @@ target-environment evidence.
   play-next without interrupting an active song —
   [#17](https://github.com/roguen/cantina/issues/17)
 - [ ] Report bounded success and honest failure on the iPad. The observation half is
+  served two ways now — `GET /api/live` and the decimated, change-driven `/ws/live`
+  push feed per docs/live-state.md — and the command half exists (`/api/cue`,
+  `/api/setlist`) with named refusals and honest pending states. What remains is the
+  iPad rendering them (M3). Previously recorded:
   implemented: `src/Cantina.YargSession` (parser, latching, freshness, named faults) with
   `GET /api/live` serving the D-022 contract, validated on this host against live traffic
   and against YARG being absent
