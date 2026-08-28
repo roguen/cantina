@@ -244,3 +244,40 @@ public sealed class YargSessionTrackerTests
         Assert.Null(snapshot.ReceivedAt);
     }
 }
+
+public sealed class LatchReassertionTests
+{
+    private static readonly DateTimeOffset T0 = new(2026, 8, 28, 16, 0, 0, TimeSpan.Zero);
+
+    private const string Song =
+        """{"Name":"The Unforgiven","Artist":"Metallica","Hash":{"HashBytes":"Is90ewe"}}""";
+
+    [Fact]
+    public void TheSameSongRelatchesAfterAMenuDwellClear()
+    {
+        // The self-test caught this on the theater PC: the file populates during the
+        // load screen, before the wire says Gameplay, so the latch lands inside a stale
+        // menu dwell, is cleared, and the leftover dedup hash then blocked the same song
+        // from ever latching again.
+        var tracker = new YargSessionTracker();
+
+        tracker.OnDatagram(DatagramBuilder.Build(YargScene.Menu), "s", T0);
+        var staleDwell = T0 + YargSessionTracker.MenuDwellToClearLatch + TimeSpan.FromSeconds(10);
+        tracker.OnDatagram(DatagramBuilder.Build(YargScene.Menu), "s", staleDwell);
+
+        tracker.OnCurrentSong(Song);
+        Assert.NotNull(tracker.Snapshot(staleDwell).Song);
+
+        // The next menu datagram clears the latch (the dwell is long past).
+        tracker.OnDatagram(DatagramBuilder.Build(YargScene.Menu), "s", staleDwell.AddMilliseconds(100));
+        Assert.Null(tracker.Snapshot(staleDwell.AddMilliseconds(100)).Song);
+
+        // The file still holds the same song; the next poll must re-latch it.
+        tracker.OnCurrentSong(Song);
+        Assert.NotNull(tracker.Snapshot(staleDwell.AddMilliseconds(200)).Song);
+
+        // And once gameplay arrives the latch sticks.
+        tracker.OnDatagram(DatagramBuilder.Build(YargScene.Gameplay, YargPlayState.Playing), "s", staleDwell.AddMilliseconds(300));
+        Assert.NotNull(tracker.Snapshot(staleDwell.AddMilliseconds(300)).Song);
+    }
+}

@@ -497,3 +497,23 @@ start was not captured.
   zero rejections; YARG had exited on its own again (third occurrence) and the first run
   said INCONCLUSIVE YARG-GONE rather than failing, which is the harness working.
 - 47 tests total now, plus the 14 harness scenarios; format and locked restore clean.
+- **Built the cue pipeline and proved it unattended, closing the loop the product exists
+  for.** `YargCueService` behind `IYargActuator`: the D-024 five-signal gate in front of
+  the D-017 sequence, journaled two-phase per D-023 — pending until gameplay is observed
+  with the requested hash, superseded cues resolved ambiguous by name, mismatches failed
+  naming what actually loaded. A cue cannot confirm synchronously because instrument
+  setup belongs to the players (D-015) and `currentSong.json` populates only at gameplay,
+  so `pending-players` is a first-class state and a poller confirms.
+- **The SelfTest `cue` suite paid for the whole harness in one afternoon.** Three
+  unattended runs, each miss diagnosed by screenshot and probe rather than assumption:
+  run 1 landed in PRACTICE because the start-menu cursor is invisible sticky state (the
+  suite now stages from a screen-verified start menu); run 2 and 3 exposed a real tracker
+  bug — `currentSong.json` populates during the load screen, ~2 s before gameplay
+  datagrams, so the latch landed inside a stale menu dwell, was cleared, and the leftover
+  change-detection hash blocked every re-latch of the same song. That is the
+  replay-the-same-track case a theater hits nightly, invisible to every unit test, caught
+  only by the full loop against the real game. Fixed with a regression test; run 4:
+  **PASS in 15 seconds** — staged, cued "The Unforgiven" by search, players stood in,
+  gameplay observed with the exact requested hash, song paused in cleanup.
+- 58 tests plus the 14 harness scenarios; the `cue` suite is deliberately not part of
+  `run all` because it sends input and starts a real song.

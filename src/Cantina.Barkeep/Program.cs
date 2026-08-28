@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Cantina.Barkeep;
 using Cantina.Barkeep.Setlist;
 using Cantina.Barkeep.Yarg;
+using Cantina.Barkeep.Yarg.Control;
 using Cantina.YargSession;
 using Microsoft.Extensions.Options;
 
@@ -29,6 +30,17 @@ builder.Services.AddSingleton(provider => SetlistJournal.Open(
     provider.GetRequiredService<TimeProvider>()));
 builder.Services.AddHostedService<YargUdpListener>();
 builder.Services.AddHostedService<CurrentSongPoller>();
+builder.Services.Configure<YargCueOptions>(
+    builder.Configuration.GetSection(YargCueOptions.SectionName));
+
+// The cue pipeline needs synthetic input, which exists only on the target platform. On
+// anything else the endpoint reports the named condition rather than pretending.
+if (OperatingSystem.IsWindows())
+{
+    builder.Services.AddSingleton<IYargActuator, Win32YargActuator>();
+    builder.Services.AddSingleton<YargCueService>();
+    builder.Services.AddHostedService<CueConfirmationPoller>();
+}
 
 var app = builder.Build();
 
@@ -60,6 +72,36 @@ app.MapPost("/api/setlist/commands", (SetlistIntent intent, SetlistJournal journ
         return Results.Ok(new CommandReceipt(intent.CommandId, outcome, Replayed: !applied));
     })
     .WithName("PostSetlistCommand");
+
+// The cue surface: gate, actuate, verify by outcome (D-017, D-024). Pending resolution
+// arrives by observation, so POST answers with the current status and GET follows it.
+app.MapPost("/api/cue", (CueRequest request, IServiceProvider services) =>
+    {
+        if (string.IsNullOrWhiteSpace(request.CommandId) || request.Entry is null)
+        {
+            return Results.BadRequest(new CommandRejected("commandId and entry are required"));
+        }
+
+        var service = services.GetService<YargCueService>();
+
+        if (service is null)
+        {
+            return Results.Ok(new CueStatus(
+                request.CommandId, "refused", "cueing requires the Windows theater host",
+                request.Entry, Loaded: null));
+        }
+
+        var query = string.IsNullOrWhiteSpace(request.Query) ? request.Entry.Title : request.Query;
+        return Results.Ok(service.Cue(request with { Query = query }));
+    })
+    .WithName("PostCue");
+
+app.MapGet("/api/cue/current", (IServiceProvider services) =>
+    {
+        var service = services.GetService<YargCueService>();
+        return service?.Current is { } status ? Results.Ok(status) : Results.NoContent();
+    })
+    .WithName("GetCurrentCue");
 
 app.Run();
 

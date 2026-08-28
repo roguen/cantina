@@ -118,6 +118,7 @@ dotnet run --project tools/Cantina.SelfTest --configuration Release -- run all
 | `journal` | D-023's crash matrix with **real process kills**: a child races journal appends and is killed mid-flight, crashes hard after acknowledging, has its snapshot corrupted, and restarts. The invariant is the acknowledgement contract — acknowledged means durable, un-outcomed means ambiguous, corruption is quarantined, recovery replays identically. | `FAIL`, exit 1 |
 | `live` | `Cantina.YargSession` against the real broadcast for three seconds: parser, freshness, single sender, zero rejections. | `FAIL`, exit 1 |
 | `readiness` | The D-024 signals, read-only. | reported per signal |
+| `cue` | The full loop: gate, actuate, verify by outcome — the same service, actuator, tracker, and journal classes Barkeep runs, against the real game. **Sends input**, stages the library from the start menu, stands in for the players at instrument setup, and pauses the song it started. Not part of `run all`; run it deliberately. | `FAIL`, exit 1 |
 
 A suite whose preconditions do not hold — YARG not running, port held by a consumer
 without `SO_REUSEADDR` — reports `INCONCLUSIVE` with the named cause and exit 2, never a

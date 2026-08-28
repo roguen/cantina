@@ -81,6 +81,14 @@ public sealed class YargSessionTracker
                 {
                     _song = null;
                     _songSource = SongSource.Unknown;
+
+                    // The dedup hash resets WITH the latch. The self-test caught the
+                    // asymmetry: currentSong.json populates during the load screen, up to
+                    // ~2 s before gameplay datagrams begin, so a latch taken during a
+                    // stale menu dwell is cleared here - and without this reset the
+                    // unchanged file hash blocked every re-latch of the same song, which
+                    // is exactly the replay-the-same-track case a theater hits nightly.
+                    _lastSongContentHash = string.Empty;
                 }
             }
             else

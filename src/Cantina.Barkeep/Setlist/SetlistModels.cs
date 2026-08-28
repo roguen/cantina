@@ -35,6 +35,14 @@ public enum SetlistIntentKind
     Remove = 1,
     MoveCursor = 2,
     Clear = 3,
+
+    /// <summary>
+    /// Cue the entry in YARG. Unlike the pure mutations above, a cue acts on the world,
+    /// so its outcome is recorded only after observation — the two-phase path
+    /// (<c>AppendPending</c>/<c>Resolve</c>) rather than the immediate one. It changes no
+    /// setlist state.
+    /// </summary>
+    Cue = 4,
 }
 
 /// <summary>
