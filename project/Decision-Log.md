@@ -540,3 +540,61 @@ and the footer changes from `PLAY A SHOW` to `START THE SET`. Whether the set
 *auto-advances* between songs is still unmeasured — that needs a song played to the score
 screen — and it remains the question that decides how much of M4 and M5 Cantina actually
 owns.
+
+## D-018 · YARG's setlist does not auto-advance; the score screen waits for one keypress
+
+- Date: 2026-08-27
+- Status: Accepted; measured, and it answers the premise question behind M4 and M5
+
+Context: YARG has a setlist. The open question was whether it *advances by itself* when a
+song ends. If it did, Cantina would be a nicer browser for 652 songs. If it does not,
+Cantina supplies something the game genuinely lacks. A previous attempt at this question
+produced a 900-second capture that never left `Menu` and answered nothing.
+
+Measured on the theater PC, unattended, with `spikes/Cantina.Spikes.YargSetlist`:
+
+| | |
+|---|---|
+| Setlist | *Detonation* (Trivium), then *The Unforgiven* (Metallica) — two distinct songs |
+| Song 1 | played to completion, 258.7 s of uninterrupted `PlayState=Playing`, no pause excursions |
+| Score screen reached | `Gameplay → Score` at T+258.8 |
+| **Observed on Score** | **180 s with no transition of any kind** |
+| Coverage | 39,799 datagrams accepted, 0 rejected, 1 sender, max inter-arrival gap 538 ms |
+| Input during the window | none — no keyboard, no mouse, no XInput packet change, no foreground change |
+
+Decision: **YARG does not auto-advance a setlist.** It completes a song, shows the score
+screen, and waits there indefinitely for a human. Cantina's premise holds.
+
+The follow-up matters as much as the result. Pressing `CONTINUE` once moved
+`Score → Gameplay` in **366 ms** and loaded *The Unforgiven* — the second queued song —
+**without returning to instrument setup**. Advancing a setlist is therefore a *single*
+keypress whose outcome is directly verifiable in `currentSong.json`.
+
+Rejected: Reading the 180-second silence as "never". It is bounded by the window and is
+recorded as `DOES-NOT-ADVANCE-WITHIN-N`. Also rejected: treating the run as sound merely
+because nothing moved — see the confounds below, one of which nearly invalidated it.
+
+Consequences, and one of them reopens a decision:
+
+**D-015 rejected driving the score screen on the grounds that it is "multi-step" and
+invisible.** That premise is now partly false. Leaving the score screen is **one key**, and
+its result is observable in `currentSong.json` — the same verify-by-outcome loop D-015
+already blesses for song choice. The instrument-setup half of D-015 stands unchallenged: it
+is genuinely per-player, and this run confirmed it is multi-step, needing one confirmation
+per configured player. Issue [#39](https://github.com/roguen/cantina/issues/39) should be
+settled with this evidence in hand rather than on the original reasoning.
+
+**The confound that nearly ruined it.** A one-song setlist produces a score screen that
+never advances — byte-identical to this result. The harness never verified the set was
+armed with two songs, so the negative was initially unsound. It was rescued after the fact
+by two observations: the score screen offers `END SETLIST`, which only exists while a set is
+live, and pressing `CONTINUE` loaded the second queued song. Both are screen and file
+evidence, not datagram evidence. A future run must verify arming *before* the window opens.
+
+**Two defects in the run to fix before it is repeated.** The 538 ms maximum datagram gap
+exceeds the 250 ms coverage bar the test design set; nothing that takes seconds — such as
+loading a song — can hide in 538 ms, so the conclusion survives, but the bar was not met.
+And binding the UDP socket raised a **Windows Defender Firewall prompt for the harness
+itself**, which sat on screen during the measurement. It never took foreground, and the
+100 ms foreground sentinel would have caught it if it had, but a dialog that *can* steal
+focus during a `PauseOnFocusLoss` measurement is a contamination risk, not a cosmetic one.

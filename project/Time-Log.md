@@ -329,3 +329,30 @@ start was not captured.
 - Corrected the session date. `date` reported 2026-08-14 earlier in this working session and
   2026-08-27 now; the records written under the earlier reading landed on 2026-08-15 and are
   left as written, since they were accurate when recorded.
+- **Answered the setlist auto-advance question and recorded D-018.** YARG does not
+  auto-advance: 180 s on the score screen with no transition, 39,799 datagrams, one sender,
+  no input of any kind. `CONTINUE` then advanced it in 366 ms straight to gameplay with the
+  second queued song, skipping instrument setup.
+- Built `spikes/Cantina.Spikes.YargSetlist` for it. The design was attacked by adversarial
+  review *before* being built rather than after, which is the reverse of this project's two
+  previous wrong conclusions. That review earned its place three times over: it identified
+  that the on-screen counter read as a setlist size is a **star counter** (652 x 5 = 3260);
+  that `settings.json` carries `PlayAShowTimeout: 10.0`, so a short observation window would
+  have proved nothing; and that the datagram is a **global broadcast**, so any YARG on the
+  LAN reaches the listener and two senders decode as exactly the Score/Gameplay churn an
+  auto-advance produces.
+- The harness links no `SendInput`, `keybd_event`, `mouse_event`, or `SetForegroundWindow`,
+  so its non-interference is a property of the assembly rather than a claim in a log.
+- Three defects found, two of them in the run itself. The harness read `"Hash"` from
+  `currentSong.json`, whose shape is `{"Hash":{"HashBytes":...}}`, so it returned the inner
+  key's *name* — constant across songs, which would have silently suppressed the
+  identity-change line the measurement depends on. The maximum datagram gap was 538 ms
+  against a 250 ms bar. And binding the UDP socket raised a Windows Defender Firewall prompt
+  for the harness that sat on screen throughout; it never took foreground, but under
+  `PauseOnFocusLoss` a dialog that can steal focus is a contamination risk.
+- The run was initially **unsound and was rescued after the fact**. A one-song setlist
+  produces an identical never-advancing score screen, and arming was never verified before
+  the window opened. `END SETLIST` on the score screen and the second song actually loading
+  on `CONTINUE` are what closed it. A repeat must verify arming first.
+- Confirmed D-015's account of instrument setup: per-player, one confirmation each, and it
+  warned that a configured player had no input device assigned.
