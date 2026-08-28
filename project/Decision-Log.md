@@ -821,3 +821,57 @@ position only, because identity is already served. The client contract in
 [#8](https://github.com/roguen/cantina/issues/8)'s honest-failure copy has the state
 vocabulary it needs (`ambiguous`, `stale`, `dead`, named faults) without inventing its
 own.
+
+## D-023 · Durability is write-ahead at mutation time, because graceful shutdown does not exist
+
+- Date: 2026-08-28
+- Status: Accepted as the durability semantics for issue
+  [#7](https://github.com/roguen/cantina/issues/7); the issue stays open until the
+  implementation passes the crash matrix on this host
+
+Context: Barkeep owns the setlist, and #7 asks what survives iPad backgrounding, Barkeep
+restart, YARG restart, reboot, and logoff. Three measurements now constrain the answer.
+D-019: a headless Barkeep has no console for Ctrl+C and no window for `taskkill`, so
+today it can only be killed — **durability cannot live in a shutdown hook, because the
+hook will not run**. D-020: a killed listener leaves no socket residue and a fresh
+process rebinds in ~30 ms — recovery is not racing the port. D-018: YARG holds the score
+screen indefinitely — a restart mid-set has time, because the theater does not move
+underneath it.
+
+Decision:
+
+- **Write-ahead, acknowledge-after.** A mutating request appends `{id, intent}` to a
+  journal and flushes before Barkeep acts on YARG or replies to the iPad. The observed
+  outcome — `done | failed | ambiguous` — is appended when known. Durability is a
+  property of the acknowledgement, never of process exit.
+- **What survives what:** the setlist and cursor survive everything (journal); an
+  in-flight command survives as `ambiguous` if its outcome was never appended; the live
+  YARG projection survives nothing and is rebuilt from the stream in under a second.
+  Client state remains a discardable projection (architecture.md).
+- **Recovery never re-executes.** An intent without an outcome becomes `ambiguous` on
+  start, verified against `currentSong.json` and the datagram before anything is
+  re-attempted, and surfaced to the iPad for confirmation. This is the existing
+  architecture.md rule, now with its storage story attached.
+- **Idempotency by client-supplied command id.** A duplicate id is answered from the
+  journal, not re-run.
+- **Storage is a JSON-lines journal plus a compacted snapshot**, atomic-renamed, under
+  Barkeep's own data directory, with a `version` field. A snapshot that fails to parse
+  is set aside as `*.corrupt-<timestamp>`, the previous snapshot is used, and the iPad is
+  told state was recovered and from when. A user-visible reset deletes journal and
+  snapshot explicitly. Unknown versions refuse to guess and offer the reset.
+
+Rejected: SQLite or any embedded database — one writer, one host, at most a few hundred
+small records between compactions; a database earns its place only if the journal
+measurably cannot keep up, which at theater scale it cannot fail to. Rejected: writing
+anywhere near YARG's own files. Rejected: relying on `ProcessExit`/`SIGTERM` handlers as
+the durability mechanism, which D-019 shows would simply never fire on this host today —
+a deliberate shutdown path remains worth adding
+([#23](https://github.com/roguen/cantina/issues/23)), but correctness must not depend on
+it.
+
+Consequences: The crash matrix that closes #7 is fixed now, and lands with the
+implementation: kill −9 mid-append; kill between YARG action and outcome append; corrupt
+snapshot recovery; reboot with a queued setlist. Each must show no duplicate execution
+and an honest `ambiguous` where the outcome was unobservable. Issue #23 inherits the
+deliberate-shutdown question with the pressure removed — shutdown becomes a nicety, not a
+correctness dependency.

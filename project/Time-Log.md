@@ -434,3 +434,12 @@ start was not captured.
   around the ~86 ms clear, three-tier freshness with a 1 s debounce sized by the observed
   538 ms healthy-run gap, multi-sender defence named after the interleaving that produced
   a withdrawn finding, and an advance-observation rule that stays neutral on #39.
+- Merged pull request [#46](https://github.com/roguen/cantina/pull/46), post-merge run
+  verified against the merge SHA this time rather than whatever run was newest — the
+  procedural fix for the verification error caught earlier this session.
+- **Recorded D-023**, the durability semantics for #7: write-ahead at mutation time
+  because D-019 proved graceful shutdown does not exist on this host; recovery marks
+  un-outcomed intents `ambiguous` and never re-executes; JSON-lines journal plus
+  compacted snapshot with a database rejected at theater scale. The crash matrix that
+  closes #7 is fixed in the entry and lands with the implementation. #23 inherits the
+  deliberate-shutdown question with the correctness pressure removed.
