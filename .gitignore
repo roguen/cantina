@@ -40,3 +40,6 @@ coverage/
 # Spike transcripts record local addresses and song titles. Commit only reviewed evidence.
 /spikes/captures/
 *.capture.txt
+
+# Local-machine Claude Code permissions. The skills beside it are shared and ARE tracked.
+.claude/settings.local.json
