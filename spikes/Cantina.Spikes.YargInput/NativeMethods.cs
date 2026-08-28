@@ -77,6 +77,90 @@ internal static partial class NativeMethods
     [LibraryImport("user32.dll")]
     internal static partial uint GetWindowThreadProcessId(nint window, out uint processId);
 
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool SetForegroundWindow(nint window);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool ShowWindow(nint window, int command);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool IsIconic(nint window);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool AttachThreadInput(uint attachTo, uint attachFrom, [MarshalAs(UnmanagedType.Bool)] bool attach);
+
+    [LibraryImport("kernel32.dll")]
+    internal static partial uint GetCurrentThreadId();
+
+    private const int ShowRestore = 9;
+
+    /// <summary>
+    /// Brings a window to the foreground and reports whether it actually got there.
+    ///
+    /// This exists so a spike can run without an operator sitting at the machine. The input
+    /// spike deliberately never *steals* foreground during a measurement, because YARG's
+    /// PauseOnFocusLoss is true and a tool that took focus mid-song would pause the game and
+    /// then measure its own side effect. Focusing before the measurement begins is a
+    /// different act: it puts the game in the state a player would have put it in.
+    ///
+    /// Windows refuses SetForegroundWindow from a process that is not already foreground, so
+    /// this attaches to the current foreground thread's input queue first, which makes the
+    /// two threads share focus state and lifts the restriction. The attachment is always
+    /// undone.
+    ///
+    /// The return value is read from GetForegroundWindow rather than from
+    /// SetForegroundWindow, because Windows returns true from the latter in cases where the
+    /// window did not actually come forward. Only the observed result is trustworthy.
+    /// </summary>
+    public static bool TryFocus(nint window)
+    {
+        if (window == 0)
+        {
+            return false;
+        }
+
+        if (IsIconic(window))
+        {
+            _ = ShowWindow(window, ShowRestore);
+            Thread.Sleep(250);
+        }
+
+        var foreground = GetForegroundWindow();
+        var foregroundThread = GetWindowThreadProcessId(foreground, out _);
+        var thisThread = GetCurrentThreadId();
+        var attached = foregroundThread != 0 && foregroundThread != thisThread
+            && AttachThreadInput(thisThread, foregroundThread, true);
+
+        try
+        {
+            _ = SetForegroundWindow(window);
+        }
+        finally
+        {
+            if (attached)
+            {
+                _ = AttachThreadInput(thisThread, foregroundThread, false);
+            }
+        }
+
+        // Give the compositor a moment, then believe only what is observed.
+        for (var attempt = 0; attempt < 20; attempt++)
+        {
+            if (GetForegroundWindow() == window)
+            {
+                return true;
+            }
+
+            Thread.Sleep(100);
+        }
+
+        return false;
+    }
+
     /// <summary>
     /// Sends one key press and release. Returns the number of events Windows accepted,
     /// which is 2 on success. A value below 2 means the injection itself was refused,
@@ -168,6 +252,12 @@ internal static class ScanCodes
             case "backspace":
                 scanCode = 0x0E;
                 return true;
+            // Tab is here to answer one question: whether the song list's search field can
+            // be focused from the keyboard. If it cannot, the only proven way in is a
+            // pointer click at a screen coordinate, which is a much worse control path.
+            case "tab":
+                scanCode = 0x0F;
+                return true;
             case "up":
                 scanCode = 0x48;
                 extended = true;
@@ -190,7 +280,7 @@ internal static class ScanCodes
         }
     }
 
-    public static string Known => "escape, enter, space, backspace, up, down, left, right";
+    public static string Known => "escape, enter, space, backspace, tab, up, down, left, right";
 
     // US layout, scan code set 1. Search in YARG's song list is driven by typing directly
     // into the list, so a selection spike needs printable characters as well as named keys.

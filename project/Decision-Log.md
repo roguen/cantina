@@ -460,3 +460,141 @@ wiki setting stays enabled but unused; `cantina.wiki.git` was never initialised,
 nothing to migrate or delete. The cost accepted is that editing a record requires a branch
 and a pull request rather than a web form — which is the property being bought, not a side
 effect.
+
+## D-017 · Song selection needs a pointer click, because the search field cannot be focused from the keyboard
+
+- Date: 2026-08-27
+- Status: Accepted; corrects the diagnosis attempted on 2026-08-03
+
+Context: D-015 narrowed Cantina's control scope to choosing and confirming a song from the
+song list, leaving one question for [#4](https://github.com/roguen/cantina/issues/4):
+whether a query can actually be typed into that list. A run on 2026-08-03 saw 17 typed
+characters never reach the search box while Enter worked, and concluded that named keys and
+text characters travel different paths. The `--vk` injection shape was built on that theory.
+
+**That diagnosis was wrong.** Captured on the theater PC on 2026-08-27, unattended:
+
+| Attempt | Windows accepted | Text arrived |
+|---|---|---|
+| Type with scan codes only, no click | — | No |
+| Type with virtual key + scan code, no click | 20 of 20 events | No |
+| **Click the search box first, then type** | 20 of 20 events | **Yes, exactly** |
+| Click an inert area, then type | 20 of 20 events | No; earlier text survived untouched |
+| Press Tab, then type | — | No |
+
+Windows accepted **every** injection in every run, including the failures. The variable is
+not the injection shape and not whether Windows delivered the keys. It is whether the search
+field holds focus, and only a pointer click was found to give it focus. Typing does not
+focus it and Tab does not focus it.
+
+This also explains 2026-08-03's stranger symptom — stale text surviving 40 backspaces, then
+Enter confirming a song nobody asked for. The backspaces were never reaching the field
+either. Enter worked throughout because menu keys go to the screen's navigation handler
+regardless of which widget has focus.
+
+Decision: The proven selection sequence is **click the search field, type the query, press
+Enter to select the match, press Enter again to play**. Cantina's YARG adapter therefore
+needs synthetic *pointer* input as well as synthetic keyboard input.
+
+With the field focused, selection works well: `unforgiven` narrowed 652 songs to exactly
+one, and the first Enter selected *The Unforgiven* by Metallica with its metadata and
+`PLAY SONG` armed. `currentSong.json` correctly stayed empty until a song actually loaded,
+so outcome verification behaves as D-015 requires.
+
+Rejected: Concluding from a silent search box that YARG ignores injected text, which is what
+the earlier run did without checking whether the injection was accepted or whether the field
+was focused. Continuing to attribute the failure to the injection shape, which the control
+above disproves — the same shape succeeds and fails depending only on the click.
+
+Consequences: This is a real cost against D-014's finding that `SendInput` alone suffices.
+A click is aimed at a **screen coordinate**, so the control path now depends on window
+resolution and on YARG's UI layout, neither of which Cantina controls and neither of which
+the datagram can verify. The search box was at (1968, 161) on a 3840×2160 display; that
+number is evidence, not a constant. A YARG update that moves the search box silently breaks
+selection, and the failure is invisible except on screen.
+
+Two consequences follow for the adapter. The click target must be discovered or configured
+rather than hard-coded, and the honest failure report D-015 made load-bearing now also
+covers "the query never arrived", detected by reading back what actually loaded. Issue #4
+stays open for a keyboard-only focus route, which would remove the coordinate dependency
+entirely and is worth asking upstream about.
+
+**YARG's search is fuzzy, so a query does not reliably reach one song.** `unforgiven`
+returned 1 of 652, but `detonation` returned **9 of 652**, and the extra hits — *Bad
+Reputation*, *Generation Rock*, *Sweet Emotion*, *No Nations* — do not contain the string
+at all. The matching is evidently subsequence-based rather than literal. The intended song
+was the top result and selecting it worked, but "type a query and press Enter" resolves to
+*whatever YARG ranked first*, which Cantina neither controls nor can predict.
+
+This is a second, independent source of ambiguity on top of #33's finding that nine groups
+in this library cannot be distinguished by any metadata query. #33 says some songs are
+indistinguishable; this says the search itself widens a query that would otherwise be
+unique. Outcome verification against `currentSong.json` is what keeps this honest, and it
+is now load-bearing rather than a nicety: Barkeep must read back which song actually
+loaded and report a mismatch, because a plausible-looking query can silently select a
+different song.
+
+**YARG has a working setlist, reachable from the song list.** Holding the confirm key on a
+selected song changes the primary action to `ADD TO SETLIST` with `(HOLD) START THE SET`,
+and the footer changes from `PLAY A SHOW` to `START THE SET`. Whether the set
+*auto-advances* between songs is still unmeasured — that needs a song played to the score
+screen — and it remains the question that decides how much of M4 and M5 Cantina actually
+owns.
+
+## D-018 · YARG's setlist does not auto-advance; the score screen waits for one keypress
+
+- Date: 2026-08-27
+- Status: Accepted; measured, and it answers the premise question behind M4 and M5
+
+Context: YARG has a setlist. The open question was whether it *advances by itself* when a
+song ends. If it did, Cantina would be a nicer browser for 652 songs. If it does not,
+Cantina supplies something the game genuinely lacks. A previous attempt at this question
+produced a 900-second capture that never left `Menu` and answered nothing.
+
+Measured on the theater PC, unattended, with `spikes/Cantina.Spikes.YargSetlist`:
+
+| | |
+|---|---|
+| Setlist | *Detonation* (Trivium), then *The Unforgiven* (Metallica) — two distinct songs |
+| Song 1 | played to completion, 258.7 s of uninterrupted `PlayState=Playing`, no pause excursions |
+| Score screen reached | `Gameplay → Score` at T+258.8 |
+| **Observed on Score** | **180 s with no transition of any kind** |
+| Coverage | 39,799 datagrams accepted, 0 rejected, 1 sender, max inter-arrival gap 538 ms |
+| Input during the window | none — no keyboard, no mouse, no XInput packet change, no foreground change |
+
+Decision: **YARG does not auto-advance a setlist.** It completes a song, shows the score
+screen, and waits there indefinitely for a human. Cantina's premise holds.
+
+The follow-up matters as much as the result. Pressing `CONTINUE` once moved
+`Score → Gameplay` in **366 ms** and loaded *The Unforgiven* — the second queued song —
+**without returning to instrument setup**. Advancing a setlist is therefore a *single*
+keypress whose outcome is directly verifiable in `currentSong.json`.
+
+Rejected: Reading the 180-second silence as "never". It is bounded by the window and is
+recorded as `DOES-NOT-ADVANCE-WITHIN-N`. Also rejected: treating the run as sound merely
+because nothing moved — see the confounds below, one of which nearly invalidated it.
+
+Consequences, and one of them reopens a decision:
+
+**D-015 rejected driving the score screen on the grounds that it is "multi-step" and
+invisible.** That premise is now partly false. Leaving the score screen is **one key**, and
+its result is observable in `currentSong.json` — the same verify-by-outcome loop D-015
+already blesses for song choice. The instrument-setup half of D-015 stands unchallenged: it
+is genuinely per-player, and this run confirmed it is multi-step, needing one confirmation
+per configured player. Issue [#39](https://github.com/roguen/cantina/issues/39) should be
+settled with this evidence in hand rather than on the original reasoning.
+
+**The confound that nearly ruined it.** A one-song setlist produces a score screen that
+never advances — byte-identical to this result. The harness never verified the set was
+armed with two songs, so the negative was initially unsound. It was rescued after the fact
+by two observations: the score screen offers `END SETLIST`, which only exists while a set is
+live, and pressing `CONTINUE` loaded the second queued song. Both are screen and file
+evidence, not datagram evidence. A future run must verify arming *before* the window opens.
+
+**Two defects in the run to fix before it is repeated.** The 538 ms maximum datagram gap
+exceeds the 250 ms coverage bar the test design set; nothing that takes seconds — such as
+loading a song — can hide in 538 ms, so the conclusion survives, but the bar was not met.
+And binding the UDP socket raised a **Windows Defender Firewall prompt for the harness
+itself**, which sat on screen during the measurement. It never took foreground, and the
+100 ms foreground sentinel would have caught it if it had, but a dialog that *can* steal
+focus during a `PauseOnFocusLoss` measurement is a contamination risk, not a cosmetic one.

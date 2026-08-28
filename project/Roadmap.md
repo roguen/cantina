@@ -40,7 +40,12 @@ target-environment evidence.
   driver are needed. Still open: elevation mismatch, lock and logoff, held and repeated
   input, and visible bounded failure
 - [ ] Prove or reject deterministic song selection —
-  [#4](https://github.com/roguen/cantina/issues/4)
+  [#4](https://github.com/roguen/cantina/issues/4). Selection by typed query is **proven on
+  the theater PC** (D-017): a query narrowed 652 songs to one and Enter selected it. The
+  cost is that the search field cannot be focused from the keyboard, so the path needs a
+  pointer click at a screen coordinate. Still open: a keyboard-only focus route, the
+  metadata ambiguity in #33 that no query can resolve, and discovering the click target
+  rather than hard-coding it
 - [ ] Prove coexistence with the theater lighting consumer —
   [#11](https://github.com/roguen/cantina/issues/11). Socket semantics are captured on the
   theater PC: coexistence needs `SO_REUSEADDR` on both listeners, and YALCY does not set it
@@ -101,7 +106,14 @@ target-environment evidence.
   song restart produces in `currentSong` (D-010)
 - [ ] Specify the upstream observation interface for **playback position**, the only
   field no stock YARG surface exposes (D-010)
-- [ ] Safe score-screen auto-advance on the `CurrentScene` byte, with a cancel window
+- [ ] Safe score-screen auto-advance on the `CurrentScene` byte, with a cancel window.
+  **Now grounded in measurement (D-018): YARG does not auto-advance.** It waits on the score
+  screen indefinitely — 180 s observed with no transition — and `CONTINUE` advances it in
+  366 ms straight to gameplay, skipping instrument setup. So this bullet is about Cantina
+  supplying an advance YARG lacks, not about racing one it already does.
+  [#39](https://github.com/roguen/cantina/issues/39) settles whether Cantina presses that
+  key or the players do; D-015 rejected it as "multi-step", which the measurement shows it
+  is not
 - [ ] Recover acquisition and play intent without duplicate install, setlist insertion,
   refresh, or late cue — [#17](https://github.com/roguen/cantina/issues/17)
 - [ ] Record measured end-to-end latency
