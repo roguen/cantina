@@ -23,6 +23,127 @@ public sealed partial class Win32YargActuator(IOptions<YargCueOptions> options) 
 {
     public int YargProcessCount() => Process.GetProcessesByName("YARG").Length;
 
+    /// <summary>
+    /// The three ways this host can swallow injected input without saying so, checked in
+    /// the order they cost to check. All three were measured on the theater PC before this
+    /// was written: YARG runs at Medium integrity in session 1, the same as Barkeep, which
+    /// is why D-014's proven path works at all. Nothing here changes anything; it reads.
+    /// </summary>
+    public string? InputBlockedReason()
+    {
+        var processes = Process.GetProcessesByName("YARG");
+
+        if (processes.Length != 1)
+        {
+            // Process count is the cue gate's own signal and is reported there; this
+            // method has nothing to say without exactly one target.
+            return null;
+        }
+
+        using var yarg = processes[0];
+
+        // A locked workstation switches the input desktop to Winlogon's. Injected input
+        // then lands on a desktop YARG is not on, and the game sits there untouched while
+        // every call reports success.
+        var desktop = OpenInputDesktop(0, false, DesktopSwitchDesktop);
+
+        if (desktop == 0)
+        {
+            return "the workstation is locked; injected input reaches the secure desktop, not the game";
+        }
+
+        CloseDesktop(desktop);
+
+        // Input crosses no session boundary. This is the shape a service deployment would
+        // take, which architecture.md already refuses to assume for exactly this reason.
+        var session = CurrentSessionId();
+
+        if (yarg.SessionId != session)
+        {
+            return $"YARG runs in Windows session {yarg.SessionId} and Barkeep in {session}; input does not cross sessions";
+        }
+
+        // User Interface Privilege Isolation: a lower-integrity process cannot post input
+        // to a higher-integrity one, and it is refused silently.
+        var mine = IntegrityLevel(Environment.ProcessId);
+        var theirs = IntegrityLevel(yarg.Id);
+
+        if (mine is { } ours && theirs is { } target && target > ours)
+        {
+            return "YARG runs at a higher integrity level than Barkeep; Windows discards injected input without reporting it";
+        }
+
+        return null;
+    }
+
+    private static int CurrentSessionId()
+    {
+        using var self = Process.GetCurrentProcess();
+        return self.SessionId;
+    }
+
+    /// <summary>
+    /// The process's integrity level as its raw RID, or null when the token cannot be
+    /// read. Null is not "equal": an unreadable token is reported as unknown and the check
+    /// declines to claim anything, because a guess here would be a guess about whether
+    /// input works.
+    /// </summary>
+    private static uint? IntegrityLevel(int processId)
+    {
+        var process = OpenProcess(ProcessQueryLimitedInformation, false, processId);
+
+        if (process == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            if (!OpenProcessToken(process, TokenQuery, out var token))
+            {
+                return null;
+            }
+
+            try
+            {
+                GetTokenInformation(token, TokenIntegrityLevel, 0, 0, out var needed);
+
+                if (needed == 0)
+                {
+                    return null;
+                }
+
+                var buffer = Marshal.AllocHGlobal((int)needed);
+
+                try
+                {
+                    if (!GetTokenInformation(token, TokenIntegrityLevel, buffer, needed, out _))
+                    {
+                        return null;
+                    }
+
+                    // TOKEN_MANDATORY_LABEL is a SID_AND_ATTRIBUTES; the level is the SID's
+                    // last sub-authority.
+                    var sid = Marshal.ReadIntPtr(buffer);
+                    var count = Marshal.ReadByte(sid, 1);
+                    return (uint)Marshal.ReadInt32(sid, 8 + ((count - 1) * 4));
+                }
+                finally
+                {
+                    Marshal.FreeHGlobal(buffer);
+                }
+            }
+            finally
+            {
+                CloseHandle(token);
+            }
+        }
+        finally
+        {
+            CloseHandle(process);
+        }
+    }
+
     public bool TryFocusYarg()
     {
         var processes = Process.GetProcessesByName("YARG");
@@ -238,6 +359,33 @@ public sealed partial class Win32YargActuator(IOptions<YargCueOptions> options) 
 
     [LibraryImport("kernel32.dll")]
     private static partial uint GetCurrentThreadId();
+
+    private const uint DesktopSwitchDesktop = 0x0100;
+    private const uint ProcessQueryLimitedInformation = 0x1000;
+    private const uint TokenQuery = 0x0008;
+    private const int TokenIntegrityLevel = 25;
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    private static partial nint OpenInputDesktop(uint flags, [MarshalAs(UnmanagedType.Bool)] bool inherit, uint desiredAccess);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool CloseDesktop(nint desktop);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    private static partial nint OpenProcess(uint desiredAccess, [MarshalAs(UnmanagedType.Bool)] bool inherit, int processId);
+
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool CloseHandle(nint handle);
+
+    [LibraryImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool OpenProcessToken(nint process, uint desiredAccess, out nint token);
+
+    [LibraryImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetTokenInformation(nint token, int informationClass, nint buffer, uint length, out uint returnLength);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct MouseInput

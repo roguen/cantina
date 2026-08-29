@@ -1047,3 +1047,60 @@ filter. All three firewall profiles are enabled; the rules could not be enumerat
 elevation, so nothing is claimed about what exists. Binding TCP 5273 and 5274 raised no
 Defender prompt at all, unlike the UDP bind of D-020 — recorded, not explained. The
 remaining gap needs the printed rule, which is the owner's to run, and an actual iPad.
+
+## D-027 · Check that input can arrive before sending it, because Windows discards it silently
+
+- Date: 2026-08-28
+- Status: Accepted; advances issue [#3](https://github.com/roguen/cantina/issues/3)
+
+Context: Issue #3 asks for evidence about "focus loss, elevation mismatch, lock/logoff, and
+held/repeated input". Focus loss was measured (D-024) and held input was fixed in the
+production actuator, which wraps every key-down in a try/finally the spikes lacked. The
+other two share a property that makes them dangerous: **Windows blocks the input silently.**
+`SendInput` returns success, the accepted-event count is correct, and the game receives
+nothing. That is byte-identical to a delivered keystroke from Barkeep's side, and it is the
+exact shape that produced this project's second wrong conclusion — every failed typing run
+of D-017 had 100% acceptance.
+
+Proving those conditions by causing them would mean running YARG elevated or locking the
+theater PC. Both change the machine, and neither is something to do on the owner's behalf.
+
+Measured instead, read-only, on 2026-08-28: **YARG runs at Medium integrity in Windows
+session 1**, the same as Barkeep and every other process here. That is why D-014's proven
+path works at all, and it was previously an unstated assumption.
+
+Decision: an unprovable hazard becomes a **named readiness signal that fails closed**.
+`inputDeliverable` joins the five signals of `docs/failure-behavior.md` and is checked
+before anything is sent, covering the three conditions that swallow input without saying so:
+
+- **A locked workstation** — the input desktop becomes Winlogon's and injected events land
+  where YARG is not. Detected by `OpenInputDesktop` failing.
+- **A session boundary** — input does not cross Windows sessions. This is the same fact that
+  makes `architecture.md` refuse to assume a service deployment.
+- **An integrity mismatch** — User Interface Privilege Isolation discards input from a
+  lower-integrity process to a higher-integrity one, and does not report it.
+
+An unreadable token is reported as **unknown**, not assumed equal: a guess here would be a
+guess about whether the whole control path works.
+
+Rejected: causing any of the three to prove the failure mode, because it changes the
+operator's machine. Inferring deliverability after the fact from a failed cue, because a
+discarded keystroke and a delivered one are indistinguishable from here. Assuming Medium
+integrity because that is what was measured today — the check runs every time, since the
+condition is a property of how YARG was launched, not of the build.
+
+Consequences: the gate now refuses by name in three more cases, before any input is sent.
+`Cantina.SelfTest run readiness` reports the signal through the production actuator rather
+than a reimplementation, and on this host reads "no integrity, session, or desktop barrier
+between Barkeep and YARG". #3's lock/logoff and elevation items are answered as *detection
+and refusal* rather than as an untested claim that they work.
+
+**A correction found while doing this, worth recording on its own.** Every
+`Cantina.SelfTest` transcript has opened with `attest_no_input=true (links no SendInput/
+keybd_event/mouse_event/SetForegroundWindow)`. That line is true of
+`Cantina.Spikes.YargSetlist`, where innocence is a property of the assembly, and it was
+carried into this tool. It has been **false since the cue suite landed**, because
+`CueSuite` constructs `Win32YargActuator` in the same assembly. The attestation now states
+the weaker truth — which suites in *this run* send input — and names where the strong
+guarantee actually lives. A false attestation printed on every run is worse than no
+attestation, because it is read as evidence.

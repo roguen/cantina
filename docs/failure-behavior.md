@@ -31,13 +31,32 @@ Barkeep computes readiness from what it can observe without controlling anything
 | Signal | Source | Meaning |
 |---|---|---|
 | `processAlive` | process list | a single YARG process exists |
+| `inputDeliverable` | integrity level, session id, input desktop | Windows would not silently discard injected input |
 | `streamLive` | datagram age (live-state.md tiers) | the wire is current |
 | `singleSource` | sender endpoint tracking (D-013/D-020) | exactly one YARG is broadcasting |
 | `foreground` | `GetForegroundWindow` → pid | YARG owns the screen *right now* |
 | `attentive` | scene + play state | not paused, not on a blind menu mid-song |
 
-`foreground` is read, never taken *silently*. It is also the one signal of the five that
-is evaluated **during** actuation rather than before it, and the sequencing is deliberate:
+`inputDeliverable` is checked **before** anything is sent, and it exists because every way
+Windows blocks injected input is silent: `SendInput` returns success, the event count comes
+back right, and nothing arrives. Three conditions produce that shape.
+
+- **A locked workstation.** The input desktop becomes Winlogon's, and injected events land
+  on a desktop YARG is not on. Detected by `OpenInputDesktop` failing.
+- **A session boundary.** Input does not cross Windows sessions. This is why
+  `architecture.md` refuses to assume a service deployment without evidence.
+- **An integrity mismatch.** User Interface Privilege Isolation stops a lower-integrity
+  process posting input to a higher-integrity one, and refuses it without reporting it.
+
+Measured on the theater PC on 2026-08-28: YARG runs at **Medium integrity in session 1**,
+the same as Barkeep, which is why D-014's proven path works at all. None of the three
+conditions can be observed *after* a cue — a discarded keystroke and a delivered one look
+identical from here — and this project has already recorded one wrong conclusion from
+exactly that shape, where every failed typing run had 100% acceptance (D-017). So the check
+happens first, and an unreadable token is reported as unknown rather than assumed equal.
+
+`foreground` is read, never taken *silently*. It is also the only signal evaluated
+**during** actuation rather than before it, and the sequencing is deliberate:
 a cue is user-initiated, so it is permitted to bring YARG forward as its explicit first
 step, and only then does it require YARG to actually hold the screen. Refusing before that
 step would make every cue fail whenever YARG merely sat in the background, which is its
@@ -47,8 +66,8 @@ So the honest reading of the table row is: **if the cue cannot obtain the screen
 refuses and names who has it** — the Holocron case — and it never sends input to a window
 it does not own. What it does not do is refuse pre-emptively, because Cantina cannot tell
 an application that is actively presenting from one that merely happens to be focused.
-(`YargCueService.Gate` therefore checks four signals and `Actuate` checks foreground; a
-reader comparing the two should know that is the design, not a gap.)
+(`YargCueService.Gate` therefore checks every signal except `foreground`, which `Actuate`
+checks; a reader comparing the two should know that is the design, not a gap.)
 
 ## The fail-closed rule
 
@@ -58,6 +77,9 @@ fails *before any input is sent*, with the failing signal named:
 | Failure surfaced to the iPad | When |
 |---|---|
 | "YARG is not running" | `processAlive` false |
+| "The workstation is locked; injected input reaches the secure desktop" | input desktop unavailable |
+| "YARG runs in Windows session N and Barkeep in M" | session boundary |
+| "YARG runs at a higher integrity level than Barkeep" | UIPI would discard the input |
 | "Another application is holding the YARG data port" | bind fails (named fault, D-013) |
 | "Two YARG instances are broadcasting" | `singleSource` false — never guess which |
 | "YARG is not observable (last seen Ns ago)" | `streamLive` degraded to `stale`/`dead` |

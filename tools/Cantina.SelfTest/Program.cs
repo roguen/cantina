@@ -22,8 +22,10 @@ using Cantina.SelfTest;
 // a suite that cannot establish its preconditions says so rather than guessing.
 // Exit codes: 0 all pass, 1 any fail, 2 no failures but something inconclusive.
 //
-// This tool sends no input. Like the setlist harness, it links no SendInput,
-// keybd_event, mouse_event, or SetForegroundWindow; the readiness suite only reads.
+// Only `run cue` sends input, and the transcript header says so per run. This assembly
+// does link SendInput and SetForegroundWindow, because the cue suite needs them - so it
+// cannot offer the assembly-level innocence that Cantina.Spikes.YargSetlist can, and it
+// says the weaker true thing rather than the stronger false one. Every other suite reads.
 
 if (args.Length >= 1 && args[0] == "journal-child")
 {
@@ -45,10 +47,10 @@ if (args.Length < 2 || args[0] != "run")
 }
 
 var transcript = new Transcript();
-transcript.Banner();
+var which = args[1];
+transcript.Banner(runSendsInput: which is "cue");
 
 var results = new List<SuiteResult>();
-var which = args[1];
 
 if (which is "all" or "journal")
 {

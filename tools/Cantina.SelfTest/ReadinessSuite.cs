@@ -3,11 +3,12 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using Cantina.Barkeep.Yarg.Control;
 
 namespace Cantina.SelfTest;
 
 /// <summary>
-/// Reads the five readiness signals of docs/failure-behavior.md and reports each. This is
+/// Reads the readiness signals of docs/failure-behavior.md and reports each. This is
 /// the observation half of the D-024 gate, run standalone: nothing here acts, and a
 /// signal that fails names itself the way a refused cue would name it to the iPad.
 /// </summary>
@@ -39,6 +40,15 @@ internal static partial class ReadinessSuite
                     : "multiple YARG instances - the oracle is ambiguous");
         }
 
+        // Deliverability: whether this host would swallow injected input silently. Read
+        // through the production actuator rather than reimplemented here, so the suite
+        // reports what a cue would actually decide.
+        var actuator = new Win32YargActuator(
+            Microsoft.Extensions.Options.Options.Create(new YargCueOptions()));
+        var blocked = actuator.InputBlockedReason();
+        transcript.Case("readiness", "input-deliverable", blocked is null,
+            blocked ?? "no integrity, session, or desktop barrier between Barkeep and YARG");
+
         _ = GetWindowThreadProcessId(GetForegroundWindow(), out var foregroundPid);
         var foreground = foregroundPid == (uint)yargProcesses[0].Id;
         string foregroundOwner;
@@ -60,8 +70,9 @@ internal static partial class ReadinessSuite
                 ? "YARG holds the screen"
                 : $"another application has the screen: {foregroundOwner} (pid {foregroundPid}) - a cue would fail closed here");
 
-        return new SuiteResult("readiness", Verdict.Pass,
-            $"signals read: process=1, foreground={(foreground ? "YARG" : foregroundOwner)}; "
+        return new SuiteResult("readiness", blocked is null ? Verdict.Pass : Verdict.Fail,
+            $"signals read: process=1, input={(blocked ?? "deliverable")}, "
+            + $"foreground={(foreground ? "YARG" : foregroundOwner)}; "
             + "stream signals are the live suite's verdict");
     }
 

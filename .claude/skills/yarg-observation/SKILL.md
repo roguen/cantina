@@ -127,7 +127,10 @@ just in time.
   harness itself, which sat on screen through a measurement. It did not take foreground, but
   it could have. Decline such prompts — never grant firewall access.
 - **Windows accepting an injection is not YARG receiving it.** Count `SendInput`'s return
-  value. Every failed typing run so far had 100% acceptance; the variable was focus.
+  value. Every failed typing run so far had 100% acceptance; the variable was focus. Three
+  further conditions swallow input just as silently — a locked workstation, a session
+  boundary, and an integrity mismatch (UIPI). Barkeep now checks all three before sending
+  anything (D-027), and `run readiness` reports the answer for this host.
 - **`currentSong.json` populates during the LOAD SCREEN**, up to ~2 s before gameplay
   datagrams begin. Anything that latches identity can therefore latch during a menu dwell
   and have it cleared a moment later. The tracker handles this (the clear resets the

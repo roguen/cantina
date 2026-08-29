@@ -13,6 +13,19 @@ public interface IYargActuator
     int YargProcessCount();
 
     /// <summary>
+    /// Whether synthetic input can reach YARG at all, and the named reason when it cannot.
+    /// Null means the path is clear.
+    ///
+    /// This exists because the ways Windows blocks injected input are all **silent**:
+    /// <c>SendInput</c> returns success, the event count comes back right, and nothing
+    /// arrives. This project has already recorded one wrong conclusion from exactly that
+    /// shape — every failed typing run had 100% acceptance, and the variable was elsewhere
+    /// (D-017). A condition that cannot be observed after the fact has to be checked before
+    /// it, so the cue can refuse by name rather than report a success nobody received.
+    /// </summary>
+    string? InputBlockedReason();
+
+    /// <summary>
     /// Brings YARG to the foreground, verified by reading the foreground window rather
     /// than trusting the request (D-014's TryFocus). This is the explicit first step of a
     /// cue that docs/failure-behavior.md permits; it is never done silently.
