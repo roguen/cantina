@@ -22,10 +22,17 @@ typed query, which needs a **pointer click** because the search field has no key
 focus route (D-017); and that **YARG's setlist does not auto-advance** — it waits on the
 score screen, which `CONTINUE` clears in one key (D-018).
 
+**LAN transport and pairing are implemented** (D-026, `docs/lan-transport.md`): one
+explicit interface, a theater certificate authority, loopback-only pairing windows, hashed
+bearer tokens, single-use socket tickets, and a firewall rule Barkeep prints and never
+runs. `Cantina.SelfTest run lan` passed 8 of 8 here against a real binding. The default is
+still loopback and changing it is one deliberate setting.
+
 Still unproven, and not to be described otherwise: coexistence with the real lighting
 application (#11 — needs YALCY or Photonics installed), the Geomitron Bridge acquisition
-boundary (#17 — the Bridge has never been exercised), and LAN transport and pairing (#6 —
-Barkeep is loopback-only by design until that lands).
+boundary (#17 — the Bridge has never been exercised), whether iPadOS resolves this host by
+mDNS (#6 — needs a second device), and whether anything but this host can reach the LAN
+ports (#6 — needs the firewall rule run, which is the owner's call).
 
 ## Target facts
 
