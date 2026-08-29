@@ -38,10 +38,12 @@ not running. Do not assume it participates in any request.
 | Library index and search | `Barkeep/Library/` | D-025 |
 | Durable setlist | `Barkeep/Setlist/SetlistJournal.cs` | D-023 |
 | Cue gate + actuation + verify | `Barkeep/Yarg/Control/` | D-015, D-017, D-024 |
+| Binding, certificate authority, firewall text | `Barkeep/Network/` | D-026 |
+| Pairing, device registry, socket tickets, access middleware | `Barkeep/Access/` | D-026 |
 | Client honesty copy | `cantina-client/src/liveState.ts` | D-022, D-024 |
 
 The normative contracts these implement are `docs/live-state.md`,
-`docs/failure-behavior.md`, and `docs/yarg-interface.md`. **When code and contract
+`docs/failure-behavior.md`, `docs/yarg-interface.md`, and `docs/lan-transport.md`. **When code and contract
 disagree, that is a bug in one of them — decide which, and fix that one.**
 
 ## Two invariants worth stating plainly
@@ -71,7 +73,7 @@ dotnet run --project tools/Cantina.TestHarness --configuration Release --no-buil
 and in `src/cantina-client`: `npm ci` (on a fresh clone), then `npm run lint`,
 `npm run test`, `npm run build`.
 
-**The green baseline as of 2026-08-28: 66 server tests, 14 harness scenarios, 5 client
+**The green baseline as of 2026-08-28: 88 server tests, 14 harness scenarios, 5 client
 tests, zero warnings.** If a run reports fewer than that and you did not delete anything,
 find out why before continuing — a self-reported pass against no expected number is not a
 check.
@@ -93,7 +95,8 @@ It exists so nobody has to sit at the theater PC stepping through checks. Suites
 **PASS**, **FAIL**, or **INCONCLUSIVE with a named cause**, exit 0/1/2.
 
 - `run all` — journal (D-023 crash matrix with *real process kills*), live (the session
-  library against the real broadcast), readiness (the D-024 signals, read-only).
+  library against the real broadcast), readiness (the D-024 signals, read-only), lan (the
+  D-026 transport; INCONCLUSIVE unless Barkeep is running with `Network:Mode=Lan`).
 - `run cue` — the whole loop: stage, cue, stand in for the players, verify by outcome,
   pause what it started. **Sends input**, so it is deliberately excluded from `run all`.
 - `run confirmdiag` — reproduces the confirm loop in isolation against whatever is

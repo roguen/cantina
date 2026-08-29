@@ -1,20 +1,18 @@
 # Security model
 
-Status: **open design input for M0/M1, not an implemented guarantee.**
+Status: **the transport half is decided and implemented; the acquisition half is still
+open design input.**
 
 Cantina turns any authorized LAN client into a control surface for an interactive game
 session. The LAN is not assumed trustworthy merely because it is private.
 
-Before Barkeep binds beyond loopback, the design must resolve:
-
-- first-device pairing and credential rotation;
-- HTTPS/WSS certificate issuance and iPad trust onboarding;
-- allowed WebSocket and HTTP origins;
-- host-header and DNS-rebinding defense;
-- explicit network-interface binding and least-scope Windows firewall rules;
-- rate limiting and idempotency for control commands;
-- redaction of paths, packet contents, and local addresses from logs;
-- visible revocation and recovery when the iPad is replaced.
+The questions this file held about binding beyond loopback — first-device pairing and
+credential rotation, HTTPS/WSS issuance and iPad trust onboarding, allowed origins,
+host-header and DNS-rebinding defense, explicit interface binding and least-scope firewall
+rules, rate limiting and command idempotency, log redaction, and visible revocation and
+recovery — are answered by D-026 and specified in
+[`lan-transport.md`](lan-transport.md), which is the normative contract. Read that one
+first; this file keeps the threat framing and the questions that remain.
 
 Song acquisition adds an untrusted-content boundary. Before Geomitron Bridge arrivals or
 a future remote provider can trigger YARG or setlist changes, the design must also

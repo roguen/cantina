@@ -97,8 +97,16 @@ target-environment evidence.
 
 ## M3 · iPad client
 
-- [ ] Resolve discovery, pairing, HTTPS/WSS, and firewall design —
-  [#6](https://github.com/roguen/cantina/issues/6)
+- [x] Resolve discovery, pairing, HTTPS/WSS, and firewall design —
+  [#6](https://github.com/roguen/cantina/issues/6), decided and implemented in D-026.
+  `docs/lan-transport.md` is the normative contract: one explicit interface, a theater
+  certificate authority signing a 397-day server certificate so rotation never touches the
+  iPad, loopback-only pairing windows because physical presence is the authority, hashed
+  bearer tokens with no cookies anywhere, single-use socket tickets, and a least-scope
+  firewall rule Barkeep prints and never runs. `Cantina.SelfTest run lan` passed 8 of 8 on
+  this host against a real LAN binding. Two things stay unproven and are named as such:
+  whether iPadOS resolves this host by mDNS, and whether a second device can reach the
+  ports without the firewall rule
 - [ ] Installable Home Screen experience and automatic reconnection
 - [x] One-handed browse and search with persistent connection state — the client renders
   the live stage banner from /ws/live with automatic reconnection and honest staleness

@@ -171,9 +171,12 @@ Barkeep now implements what the spikes proved. To exercise it end to end:
 dotnet run --project src/Cantina.Barkeep --configuration Release
 ```
 
-It binds loopback `5273` only (LAN transport is issue #6) and serves `/api/health`,
-`/api/live`, `/ws/live`, `/api/songs`, `/api/library/rescan`, `/api/setlist`,
-`/api/setlist/commands`, `/api/cue`, and `/api/cue/current`. The library scan reads the same
+It binds loopback `5273` by default and serves `/api/health`, `/api/live`, `/ws/live`,
+`/api/songs`, `/api/library/rescan`, `/api/setlist`, `/api/setlist/commands`, `/api/cue`,
+`/api/cue/current`, and the D-026 access surface (`/api/onboarding`, `/onboarding`,
+`/cantina-theater-ca.cer`, `/api/pairing/window`, `/api/pair`, `/api/devices`,
+`/api/live/ticket`). `Network:Mode=Lan` adds the LAN listeners; see
+[`docs/lan-transport.md`](../../../docs/lan-transport.md). The library scan reads the same
 `SongFolders` YARG's settings name (D-025), so anything searchable is cueable.
 
 For the client, `npm run dev` in `src/cantina-client` proxies `/api` and `/ws` to

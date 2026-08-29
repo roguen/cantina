@@ -567,3 +567,36 @@ start was not captured.
   gets right and prose gets wrong; the project's own rule against second copies applies to
   its own handoff. The generator immediately flagged the unmerged branch this very change
   was sitting on.
+
+## 2026-08-28 · LAN transport and pairing session 013
+
+- Recorded: 2026-08-28 20:00 PDT
+- Duration: not captured
+- Took the #6 unit: Barkeep leaving loopback. Measured the host before designing anything —
+  `HOME-GRIFFEN-PC` at `192.168.68.54/24` by DHCP with no reservation, and a Tailscale
+  interface alongside the Ethernet one. That second address is the argument the design
+  needed: `IPAddress.Any` would have published the theater control surface to a network the
+  operator is not standing on.
+- Implemented D-026: explicit single-interface binding, a theater certificate authority
+  signing a 397-day server certificate, loopback-only pairing windows with a single-use
+  code, hashed bearer tokens, single-use WebSocket tickets, one access middleware deciding
+  origin/transport/credential in that order, host filtering computed from the real binding,
+  partitioned rate limits, and the least-scope firewall rule printed but never run.
+- Added 22 server tests (66 → 88) and a `Cantina.SelfTest run lan` suite. Ran Barkeep on
+  the LAN on this host and the suite **passed 8 of 8** against real listeners and a real
+  TLS handshake the client validated by name and by chain against the served authority,
+  with the machine's own root store taking no part in the decision.
+- **The mDNS measurement was wrong and the screen is what caught it.** A query for this
+  host's `.local` name drew zero answers in six seconds, which read as a finding. A
+  screenshot taken for an unrelated pre-check showed a Windows Defender dialog reporting it
+  had blocked PowerShell on all public and private networks — so the probe had been
+  measuring the firewall, not mDNS. The trap is the one this project keeps meeting:
+  something the tool could not see was doing the work. Recorded in D-026 as
+  `INCONCLUSIVE` with the cause named, and the design depends on mDNS for nothing.
+- **Left alone deliberately:** the firewall dialog is still on screen. "Allow access" and
+  "Cancel" sit about a hundred pixels apart at 3840×2160, and a mis-click would have
+  granted firewall access, which is the owner's decision and not one worth a coordinate
+  gamble. YARG was found at `QUICKPLAY PAUSED` with the cursor on `BACK TO LIBRARY` — the
+  blind-menu state the observation skill warns about — and received no input all session.
+- Reachability from a second device remains unproven, and is stated as such rather than
+  inferred from a same-host success.

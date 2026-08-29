@@ -972,3 +972,78 @@ client's display concern, not the index's. One open observation: YARG's library 
 displays "652 SONGS" against 447 folders on disk from its single configured source —
 unexplained, recorded rather than reconciled, and worth revisiting if selection ever
 misses.
+
+## D-026 · Physical presence is the pairing authority, and a theater certificate authority makes rotation free
+
+- Date: 2026-08-28
+- Status: Accepted; implements issue [#6](https://github.com/roguen/cantina/issues/6)
+
+Context: Barkeep has been loopback-only by design since M0, with `docs/security-model.md`
+holding the open questions. Issue #6 asked for seven answers before it binds anything
+wider: discovery, pairing and credential lifecycle, certificate issuance and iPad trust,
+origin and host validation, the least-scope firewall rule, reconnection without replay, and
+a recorded threat model.
+
+Measured on the theater PC first. It is `HOME-GRIFFEN-PC` at `192.168.68.54/24` by **DHCP,
+not reservation**, and it carries a **Tailscale interface at 100.102.146.115** as well as
+its Ethernet one — which is the whole argument against binding `IPAddress.Any`.
+
+Decision:
+
+- **One explicit interface, never `Any`.** `Network:Mode` stays `Loopback` by default;
+  `Lan` binds one address, chosen explicitly or from the interface holding the default IPv4
+  gateway. If `Lan` is configured and nothing resolves, Barkeep refuses to start. Silently
+  falling back looks healthy while being unreachable; silently binding everything publishes
+  the theater to a network nobody asked about.
+- **Physical presence at the theater PC is the pairing authority.** A pairing window can be
+  opened only from loopback, and the code it produces is shown there and nowhere else — not
+  on the onboarding page, not in `/api/onboarding`, not to any LAN client. A device Barkeep
+  already trusts still cannot authorise another one.
+- **A theater certificate authority, not a self-signed leaf.** The iPad trusts one
+  ten-year authority once; the server certificate it signs lives 397 days — inside Apple's
+  398-day ceiling — and is re-issued automatically whenever it stops naming where Barkeep
+  answers. That makes a DHCP address change and annual rotation invisible to the iPad,
+  which a self-signed leaf would not.
+- **Bearer tokens and no cookies at all.** 256 bits, handed out once, stored as a SHA-256
+  hash and compared in fixed time. No cookie anywhere is what makes cross-site request
+  forgery structurally impossible rather than merely defended against.
+- **The live socket takes a single-use thirty-second ticket**, because a browser cannot put
+  a header on a WebSocket and the alternatives put a long-lived credential in a URL that
+  gets logged.
+- **Plain HTTP on the LAN carries onboarding and a `307` to TLS**, never control. `307`
+  rather than `302`, because a redirect that turns a POST into a GET drops a command and
+  reports success.
+- **Barkeep prints the firewall rule and never runs it.** Two TCP ports, private profile,
+  the theater's own subnet, one program.
+
+Rejected: mDNS as a dependency (see below). Binding `IPAddress.Any`. A self-signed leaf.
+Cookies or sessions. The token in the WebSocket URL or in `Sec-WebSocket-Protocol`. Letting
+a paired device open a pairing window, which would make the first device a permanent
+authority rather than a peer.
+
+Consequences: `docs/lan-transport.md` is the normative contract; `docs/security-model.md`
+now points at it. 22 new server tests and a new `Cantina.SelfTest run lan` suite, which
+**passed 8 of 8 on this host against a real LAN binding**: both plain-HTTP cases, a TLS
+handshake whose certificate the client validated by name and by chain against the served
+authority with the machine's own root store taking no part, pairing over the wire,
+ticketed socket connect, single-use rejection on reuse, reconnect, no command replay, and
+immediate revocation.
+
+**Two things this did not prove, and neither should be described otherwise.**
+
+*mDNS is inconclusive, with a named cause.* A query for this host's own `.local` name and a
+`_services._dns-sd._udp.local` enumeration both drew zero answers in six seconds, and
+`svchost` does bind UDP 5353 here. That looked like a finding until the screen was captured
+for an unrelated reason and showed a Windows Defender dialog stating it had **blocked
+PowerShell on all public and private networks** — the measurement ran through a blocked
+socket, so it measured the firewall. This is the project's recurring trap firing again:
+something the tool could not see was doing the work. Whether iPadOS resolves this host by
+name needs two devices and remains unmeasured, which is why the design uses mDNS for
+nothing.
+
+*Reachability from another device is unproven.* Every client that reached the LAN binding
+was on this host, where traffic to the host's own address does not cross the inbound
+filter. All three firewall profiles are enabled; the rules could not be enumerated without
+elevation, so nothing is claimed about what exists. Binding TCP 5273 and 5274 raised no
+Defender prompt at all, unlike the UDP bind of D-020 — recorded, not explained. The
+remaining gap needs the printed rule, which is the owner's to run, and an actual iPad.

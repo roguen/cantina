@@ -1,0 +1,249 @@
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+using System.Net;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+
+namespace Cantina.Barkeep.Network;
+
+/// <summary>The certificates a LAN binding needs, and whether this start produced them.</summary>
+public sealed record TheaterCertificates(
+    X509Certificate2 Authority,
+    X509Certificate2 Server,
+    bool AuthorityCreated,
+    bool ServerIssued,
+    string AuthorityFingerprint,
+    string AuthorityFilePath);
+
+/// <summary>
+/// A private certificate authority for one theater, and the server certificate it signs.
+///
+/// Two certificates rather than one self-signed leaf, for a reason that shows up on the
+/// iPad: a trust anchor installed on the device once can keep signing new server
+/// certificates, so rotating the server certificate — annually, or the moment DHCP hands
+/// this host a different address — never asks the operator to touch the iPad again. A
+/// self-signed leaf would (D-026).
+///
+/// The private keys are files in Barkeep's data directory under the operator's profile,
+/// protected by the profile ACL and nothing more. That is exactly the protection the
+/// setlist journal already has on this single-user host, and it is stated here rather than
+/// implied: anyone who can read that directory can impersonate the theater to the iPad.
+/// </summary>
+public static class TheaterCertificateAuthority
+{
+    public const string AuthorityFileName = "theater-ca.pfx";
+    public const string ServerFileName = "theater-server.pfx";
+    public const string AuthorityPublicFileName = "cantina-theater-ca.cer";
+
+    private const string AuthoritySubject = "CN=Cantina Theater CA, O=Cantina";
+    private const string ServerSubject = "CN=Barkeep, O=Cantina";
+    private static readonly TimeSpan AuthorityLifetime = TimeSpan.FromDays(3650);
+    private static readonly TimeSpan RenewalMargin = TimeSpan.FromDays(30);
+
+    /// <summary>
+    /// Load or create the authority, then load or re-issue the server certificate. The
+    /// server certificate is re-issued when it is missing, near expiry, or no longer names
+    /// every address and host the binding actually uses — the last of which is what a DHCP
+    /// address change looks like from in here.
+    /// </summary>
+    public static TheaterCertificates Ensure(
+        string directory,
+        IReadOnlyList<string> hostNames,
+        IReadOnlyList<IPAddress> addresses,
+        int serverDays,
+        DateTimeOffset now)
+    {
+        Directory.CreateDirectory(directory);
+
+        var authorityPath = Path.Combine(directory, AuthorityFileName);
+        var serverPath = Path.Combine(directory, ServerFileName);
+
+        var authority = Load(authorityPath);
+        var authorityCreated = false;
+
+        if (authority is null || authority.NotAfter.ToUniversalTime() <= now.UtcDateTime.Add(RenewalMargin))
+        {
+            authority?.Dispose();
+            authority = CreateAuthority(now);
+            Save(authorityPath, authority);
+            authorityCreated = true;
+        }
+
+        var publicPath = Path.Combine(directory, AuthorityPublicFileName);
+        WriteBytes(publicPath, authority.Export(X509ContentType.Cert));
+
+        var server = Load(serverPath);
+        var serverIssued = false;
+
+        if (server is null || authorityCreated || !Covers(server, now, hostNames, addresses))
+        {
+            server?.Dispose();
+            server = IssueServer(authority, hostNames, addresses, serverDays, now);
+            Save(serverPath, server);
+            serverIssued = true;
+        }
+
+        return new TheaterCertificates(
+            authority,
+            server,
+            authorityCreated,
+            serverIssued,
+            Fingerprint(authority),
+            publicPath);
+    }
+
+    /// <summary>The SHA-256 fingerprint an operator compares on the iPad before trusting the profile.</summary>
+    public static string Fingerprint(X509Certificate2 certificate) =>
+        Convert.ToHexString(SHA256.HashData(certificate.RawData))
+            .Chunk(2)
+            .Select(pair => new string(pair))
+            .Aggregate((left, right) => left + ":" + right);
+
+    private static bool Covers(
+        X509Certificate2 certificate,
+        DateTimeOffset now,
+        IReadOnlyList<string> hostNames,
+        IReadOnlyList<IPAddress> addresses)
+    {
+        if (certificate.NotAfter.ToUniversalTime() <= now.UtcDateTime.Add(RenewalMargin) ||
+            certificate.NotBefore.ToUniversalTime() > now.UtcDateTime)
+        {
+            return false;
+        }
+
+        var extension = certificate.Extensions
+            .OfType<X509SubjectAlternativeNameExtension>()
+            .FirstOrDefault();
+
+        if (extension is null)
+        {
+            return false;
+        }
+
+        var dns = extension.EnumerateDnsNames().ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var ips = extension.EnumerateIPAddresses().ToHashSet();
+
+        return hostNames.All(dns.Contains) && addresses.All(ips.Contains);
+    }
+
+    private static X509Certificate2 CreateAuthority(DateTimeOffset now)
+    {
+        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var request = new CertificateRequest(AuthoritySubject, key, HashAlgorithmName.SHA256);
+
+        request.CertificateExtensions.Add(
+            new X509BasicConstraintsExtension(certificateAuthority: true, hasPathLengthConstraint: true, pathLengthConstraint: 0, critical: true));
+        request.CertificateExtensions.Add(
+            new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, critical: true));
+        request.CertificateExtensions.Add(
+            new X509SubjectKeyIdentifierExtension(request.PublicKey, critical: false));
+
+        using var created = request.CreateSelfSigned(now.AddMinutes(-5), now.Add(AuthorityLifetime));
+        return Persistable(created);
+    }
+
+    private static X509Certificate2 IssueServer(
+        X509Certificate2 authority,
+        IReadOnlyList<string> hostNames,
+        IReadOnlyList<IPAddress> addresses,
+        int serverDays,
+        DateTimeOffset now)
+    {
+        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var request = new CertificateRequest(ServerSubject, key, HashAlgorithmName.SHA256);
+
+        var subjectAlternativeNames = new SubjectAlternativeNameBuilder();
+
+        foreach (var name in hostNames)
+        {
+            subjectAlternativeNames.AddDnsName(name);
+        }
+
+        foreach (var address in addresses)
+        {
+            subjectAlternativeNames.AddIpAddress(address);
+        }
+
+        request.CertificateExtensions.Add(
+            new X509BasicConstraintsExtension(certificateAuthority: false, hasPathLengthConstraint: false, pathLengthConstraint: 0, critical: true));
+        request.CertificateExtensions.Add(
+            new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment, critical: true));
+        request.CertificateExtensions.Add(
+            new X509EnhancedKeyUsageExtension([new Oid("1.3.6.1.5.5.7.3.1")], critical: false));
+        request.CertificateExtensions.Add(
+            new X509SubjectKeyIdentifierExtension(request.PublicKey, critical: false));
+        request.CertificateExtensions.Add(
+            X509AuthorityKeyIdentifierExtension.CreateFromCertificate(authority, includeKeyIdentifier: true, includeIssuerAndSerial: false));
+        request.CertificateExtensions.Add(subjectAlternativeNames.Build());
+
+        // Apple rejects a server certificate valid for more than 398 days, so the caller's
+        // day count is clamped rather than trusted.
+        var lifetime = TimeSpan.FromDays(Math.Clamp(serverDays, 1, 397));
+        var notBefore = now.AddMinutes(-5);
+        var notAfter = now.Add(lifetime);
+
+        if (notAfter > authority.NotAfter.ToUniversalTime())
+        {
+            notAfter = authority.NotAfter.ToUniversalTime();
+        }
+
+        using var signed = request.Create(authority, notBefore, notAfter, SerialNumber());
+        using var withKey = signed.CopyWithPrivateKey(key);
+        return Persistable(withKey);
+    }
+
+    private static byte[] SerialNumber()
+    {
+        var serial = RandomNumberGenerator.GetBytes(16);
+        serial[0] &= 0x7F;
+        return serial;
+    }
+
+    private static X509Certificate2? Load(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        try
+        {
+            return X509CertificateLoader.LoadPkcs12(
+                File.ReadAllBytes(path),
+                password: null,
+                X509KeyStorageFlags.Exportable);
+        }
+        catch (CryptographicException)
+        {
+            // An unreadable key file is replaced, not fatal. Pairing survives it: a device
+            // token is bound to the registry, not to the certificate.
+            return null;
+        }
+    }
+
+    private static void Save(string path, X509Certificate2 certificate) =>
+        WriteBytes(path, certificate.Export(X509ContentType.Pkcs12));
+
+    private static void WriteBytes(string path, byte[] bytes)
+    {
+        var temp = path + ".tmp";
+
+        using (var stream = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            stream.Write(bytes);
+            stream.Flush(flushToDisk: true);
+        }
+
+        File.Move(temp, path, overwrite: true);
+    }
+
+    /// <summary>
+    /// A freshly built certificate carries an ephemeral key that Windows will not use for
+    /// TLS. The PKCS#12 round trip is what makes it serviceable.
+    /// </summary>
+    private static X509Certificate2 Persistable(X509Certificate2 certificate) =>
+        X509CertificateLoader.LoadPkcs12(
+            certificate.Export(X509ContentType.Pkcs12),
+            password: null,
+            X509KeyStorageFlags.Exportable);
+}
