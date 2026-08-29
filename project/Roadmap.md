@@ -100,7 +100,12 @@ target-environment evidence.
 - [ ] Resolve discovery, pairing, HTTPS/WSS, and firewall design —
   [#6](https://github.com/roguen/cantina/issues/6)
 - [ ] Installable Home Screen experience and automatic reconnection
-- [ ] One-handed browse and search with persistent connection state
+- [x] One-handed browse and search with persistent connection state — the client renders
+  the live stage banner from /ws/live with automatic reconnection and honest staleness
+  copy, debounced search over /api/songs, per-song Cue and Add, the setlist with its
+  cursor, and cue status including the fail-closed refusals in D-024 wording. Verified in
+  a real browser against the live paused theater: the banner read "Paused: The
+  Unforgiven" and a Cue click rendered "the game is paused; resume it on the pause menu"
 - [ ] Show honest acquisition, validation, refresh, and play-next progress; direct
   Geomitron Bridge search/download stays disabled until a supported external contract
   exists — [#17](https://github.com/roguen/cantina/issues/17)

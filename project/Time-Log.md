@@ -528,3 +528,11 @@ start was not captured.
   plain substring, ranked, deliberately not fuzzy. Live result on this host: 447 of 447
   folders indexed in 89 ms with zero skips, and the learned-hash join fired within a
   minute of startup because YARG sat paused on The Unforgiven. 66 tests total.
+- **Built the iPad client's working core (M3).** The live stage banner from `/ws/live`
+  with reconnect and honest staleness copy, debounced search over `/api/songs` with
+  charter color tags stripped at display, per-song Cue and Add-to-setlist, the setlist
+  view with cursor and recovery notice, and cue status following `pending-players` to
+  resolution. Verified in a real browser against the live theater: the banner showed
+  "Paused: The Unforgiven — Metallica" from the wire, search narrowed 447 to 1, and a
+  Cue click rendered the fail-closed refusal in D-024's exact wording — "the game is
+  paused; resume it on the pause menu". 5 client tests; lint and build clean.
