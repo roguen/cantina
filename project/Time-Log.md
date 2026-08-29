@@ -536,3 +536,12 @@ start was not captured.
   "Paused: The Unforgiven — Metallica" from the wire, search narrowed 447 to 1, and a
   Cue click rendered the fail-closed refusal in D-024's exact wording — "the game is
   paused; resume it on the pause menu". 5 client tests; lint and build clean.
+- **Read the next instance in and updated the skills.** Added
+  `.claude/skills/cantina-codebase/`: what each project owns, which decision each
+  component implements, the regression loop, and the three build facts that only fail in
+  CI (solution entry, `RuntimeIdentifiers` for the locked publish restore, committed
+  lockfile). Updated `yarg-observation` with the day's new hazards — `currentSong.json`
+  populating during the load screen ~2 s before gameplay datagrams, and sticky invisible
+  menu cursors — plus how to run the product against the real game. Corrected `AGENTS.md`,
+  which still described a project with no YARG integration and pointed durability at the
+  now-closed #7.
