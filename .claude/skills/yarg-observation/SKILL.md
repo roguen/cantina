@@ -36,10 +36,17 @@ inner key's *name*, which is constant across songs and silently suppresses ident
 
 | | |
 |---|---|
-| `spikes/Cantina.Spikes.YargObserve` | Listener and capture. Read-only. |
-| `spikes/Cantina.Spikes.YargInput` | Sends input. `--focus-yarg` runs it unattended. |
+| `src/Cantina.YargSession` | **The shared parser, latching, and freshness logic.** Barkeep and the spikes both reference it; never fork it (D-012's boolean trap is what a second copy causes). |
+| `src/Cantina.Barkeep/Yarg/Control` | The production cue pipeline: `IYargActuator` (the seam), `Win32YargActuator` (the proven primitives), `YargCueService` (gate + actuate + verify). |
+| `tools/Cantina.SelfTest` | **The acceptance harness. Start here.** `run all` for journal/live/readiness; `run cue` for the full unattended loop; `run confirmdiag` to reproduce the confirm loop in isolation. |
+| `spikes/Cantina.Spikes.YargObserve` | Listener and capture. Read-only. Still the fastest way to see raw wire state. |
+| `spikes/Cantina.Spikes.YargInput` | Sends input. `--focus-yarg` runs it unattended. Useful for one-off menu driving. |
 | `spikes/Cantina.Spikes.YargSetlist` | Watch-only verdict harness. Links no input APIs at all. |
 | `spikes/observe-screen.ps1` | Screen capture. Read-only. Writes to the gitignored `spikes/captures/`. |
+
+**Before writing a new spike, check whether the acceptance harness already answers it.**
+Most YARG questions now have a suite, and a suite reports PASS/FAIL/INCONCLUSIVE with a
+named cause instead of leaving you to interpret a transcript.
 
 Captures are **gitignored on purpose** — they show the local song library. The repository
 carries the spike sources and the Decision Log conclusions; the captures are local and
@@ -121,6 +128,23 @@ just in time.
   it could have. Decline such prompts — never grant firewall access.
 - **Windows accepting an injection is not YARG receiving it.** Count `SendInput`'s return
   value. Every failed typing run so far had 100% acceptance; the variable was focus.
+- **`currentSong.json` populates during the LOAD SCREEN**, up to ~2 s before gameplay
+  datagrams begin. Anything that latches identity can therefore latch during a menu dwell
+  and have it cleared a moment later. The tracker handles this (the clear resets the
+  change-detection hash so the next read re-latches), but any new reader must not assume
+  file-populated implies gameplay-started. This defect was invisible to every unit test
+  and was caught only by the full loop against the real game.
+- **YARG shows 652 songs; the disk holds 447 song folders.** Cantina indexes the 447
+  (D-025) but YARG's fuzzy search runs over its own 652, so a typed query can match
+  something Cantina cannot see or name. Unreconciled, recorded in D-025's final paragraph,
+  and the reason verify-by-outcome is load-bearing rather than a nicety: the cue reads back
+  what actually loaded instead of assuming the search hit what the index expected. There is
+  also one charted folder with no `song.ini` (448 note files against 447 inis), invisible
+  to the index — a small instance of the same gap.
+- **Menu cursors are sticky, invisible state.** The start menu remembers PRACTICE if that
+  is where you last were, and one blind Enter then opens the wrong mode. Sticky cursors
+  exist on the start menu, the pause menu, and instrument setup. Screenshot before any
+  Enter whose target you have not just verified.
 - **Escape moves the pause-menu cursor.** The pause menu (`SETLIST PAUSED`: RESUME /
   RESTART / SETTINGS / BACK TO LIBRARY) is a blind menu — cursor position is invisible on
   the wire, Escape does not resume, and stray Escapes left the cursor on BACK TO LIBRARY
@@ -129,7 +153,8 @@ just in time.
 
 ## Reaching a verdict
 
-Model the outcome space on `Cantina.Spikes.YargSetlist`:
+Model the outcome space on `tools/Cantina.SelfTest` (or `Cantina.Spikes.YargSetlist` for
+a watch-only measurement):
 
 - Name the **bounded** negative — "no advance within 180 s", never "never".
 - Keep a **third outcome** where one exists. "Left the score screen into a menu" is neither
@@ -137,6 +162,28 @@ Model the outcome space on `Cantina.Spikes.YargSetlist`:
 - **`INCONCLUSIVE` is first-class and should be common**, with a named cause and the stage
   reached. A gate that never fires is too loose. Report what was measured separately from
   what was inferred.
+
+## Running the product against the real game
+
+Barkeep now implements what the spikes proved. To exercise it end to end:
+
+```bash
+dotnet run --project src/Cantina.Barkeep --configuration Release
+```
+
+It binds loopback `5273` only (LAN transport is issue #6) and serves `/api/health`,
+`/api/live`, `/ws/live`, `/api/songs`, `/api/library/rescan`, `/api/setlist`,
+`/api/setlist/commands`, `/api/cue`, and `/api/cue/current`. The library scan reads the same
+`SongFolders` YARG's settings name (D-025), so anything searchable is cueable.
+
+For the client, `npm run dev` in `src/cantina-client` proxies `/api` and `/ws` to
+Barkeep. The full regression before any pull request is in
+[`docs/development.md`](../../../docs/development.md); the target-PC acceptance run is
+`Cantina.SelfTest`.
+
+**The cue pipeline sends input and can start a real song.** Treat running it the way you
+would treat any change to a live system: know what state the theater is in first, and
+leave it parked politely — the `cue` suite pauses what it started, and so should you.
 
 ## Recording the result
 

@@ -9,16 +9,23 @@ M0 foundations are established and the repository is public. The M1 spikes have 
 theater PC, so `docs/yarg-interface.md` is **confirmed by capture**, not provisional: the
 layout parses over 80,000 real datagrams with zero rejections (D-010).
 
-Proven so far: the wire contract and the `Menu → Gameplay → Score` transition (D-010,
-D-012); `SendInput` with scan codes reaching stock YARG from a background process (D-014);
-the narrowed control scope of choosing a song and verifying by outcome (D-015); song
-selection by typed query, which needs a **pointer click** because the search field has no
-keyboard focus route (D-017); and that **YARG's setlist does not auto-advance** — it waits
-on the score screen, which `CONTINUE` clears in one key (D-018).
+**The product core works end to end**, proven on the theater PC: Barkeep indexes the
+library (447 songs), serves live state over `/api/live` and `/ws/live`, keeps a durable
+journaled setlist, and cues a song through the D-024 readiness gate with verification by
+outcome. The iPad client renders all of it. `tools/Cantina.SelfTest` proves the target-PC
+claims in one command.
 
-Still unproven: listener coexistence with the lighting consumer, Geomitron Bridge
-acquisition, and the Windows 10 deployment artifact. Do not describe any of those as
-complete until the corresponding spike is captured on the theater PC.
+The measured foundations under that: the wire contract and the `Menu → Gameplay → Score`
+transition (D-010, D-012); `SendInput` with scan codes from a background process (D-014);
+control scope narrowed to choosing a song and verifying by outcome (D-015); selection by
+typed query, which needs a **pointer click** because the search field has no keyboard
+focus route (D-017); and that **YARG's setlist does not auto-advance** — it waits on the
+score screen, which `CONTINUE` clears in one key (D-018).
+
+Still unproven, and not to be described otherwise: coexistence with the real lighting
+application (#11 — needs YALCY or Photonics installed), the Geomitron Bridge acquisition
+boundary (#17 — the Bridge has never been exercised), and LAN transport and pairing (#6 —
+Barkeep is loopback-only by design until that lands).
 
 ## Target facts
 
@@ -35,9 +42,12 @@ complete until the corresponding spike is captured on the theater PC.
 
 ## Where the operating knowledge lives
 
-- **`.claude/skills/yarg-observation/`** — how to run an unattended spike against the running
-  game: what each oracle can and cannot see, the proven menu sequence, the confounds that
-  have actually fired here, and how to reach a verdict. Read it before driving YARG.
+- **`.claude/skills/cantina-codebase/`** — what this repository contains: which project
+  owns which responsibility, which decision each component implements, the regression
+  loop, and the acceptance harness. **Read this first when starting work here.**
+- **`.claude/skills/yarg-observation/`** — how to get evidence out of the running game:
+  what each oracle can and cannot see, the proven menu sequence, the confounds that have
+  actually fired here, and how to reach a verdict. Read it before driving YARG.
 - **`../cantina-agent/`** — the agent folder, a sibling directory outside this repository so
   it never appears in a diff. `AGENTS.md` there holds operating rules; `current.md` holds
   live session state and the next concrete action. A new session with an empty context
@@ -87,8 +97,9 @@ stale within the hour belongs in the agent folder and nowhere else.
 
 ## Architecture boundaries
 
-- The iPad is a thin client. Barkeep owns live setlist state and idempotent commands.
-  Durability across process and PC restarts remains unresolved until issue #7 closes.
+- The iPad is a thin client. Barkeep owns live setlist state and idempotent commands, and
+  they are durable: the D-023 journal is write-ahead at mutation time because graceful
+  shutdown does not exist on this host, and its crash matrix passes here with real kills.
 - YARG control sits behind one interface so input synthesis can be replaced by an
   upstream API without touching higher layers.
 - The YARG data-stream parser lives in `src/Cantina.YargSession`, the dependency-light
