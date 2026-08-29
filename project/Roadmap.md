@@ -148,8 +148,12 @@ target-environment evidence.
   observable readiness signals, cues fail closed with the failing signal named, pause
   attribution by the foreground sample at the transition, and players own recovery
   because the pause menu is a blind surface
-- [ ] Specify the smallest upstream YARG interface the measured control gaps require,
-  behind the existing replaceable adapter (D-010)
+- [x] Specify the smallest upstream YARG interface the measured control gaps require,
+  behind the existing replaceable adapter (D-010) — `docs/upstream-interface.md`, ordered by
+  what each ask costs YARG rather than by what Cantina wants most. The cheapest is not a
+  protocol change at all: a keyboard route to the song search field would delete the screen
+  coordinate D-017 left in the control path. Nothing in the product is conditional on any
+  of it
 
 ## M5 · Queue and state
 
@@ -171,8 +175,11 @@ target-environment evidence.
   without an upstream source (D-010, D-012)
 - [ ] Decimate the ~90 Hz datagram stream and debounce the transient empty window that a
   song restart produces in `currentSong` (D-010)
-- [ ] Specify the upstream observation interface for **playback position**, the only
-  field no stock YARG surface exposes (D-010)
+- [x] Specify the upstream observation interface for **playback position**, the only
+  field no stock YARG surface exposes (D-010) — `docs/upstream-interface.md` §3: two
+  unsigned 32-bit millisecond values in the datagram tail, integers rather than floats
+  because a ~90.7 Hz latest-wins snapshot should not accumulate representation error across
+  a five-minute song
 - [ ] Safe score-screen auto-advance on the `CurrentScene` byte, with a cancel window.
   **Now grounded in measurement (D-018): YARG does not auto-advance.** It waits on the score
   screen indefinitely — 180 s observed with no transition — and `CONTINUE` advances it in
@@ -194,7 +201,9 @@ consumer can share the host with YALCY in either startup order (D-013). YALCY is
 LGPL-3.0-or-later like Cantina, so the change is directly contributable and does not depend
 on anything Cantina ships first.
 
-**YARG: broadcast playback position.** The interface specified in M4 and M5. D-010 moved the
-*specification* work into those milestones because capability 4 cannot be met without it;
-what remains here is the contribution itself, which depends on upstream timelines Cantina
-does not control. Position is the only field no stock YARG surface exposes.
+**YARG: the asks in `docs/upstream-interface.md`.** The specification work is done and
+lives there, ordered by what each ask costs YARG. What remains here is the contribution
+itself, which depends on upstream timelines Cantina does not control. Position is the only
+field no stock YARG surface exposes, but it is the third item rather than the first: a
+keyboard route to the search field is a UI fix with no protocol at all, and it deletes the
+screen coordinate that is currently the most fragile thing in Cantina's control path.
