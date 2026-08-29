@@ -692,3 +692,34 @@ start was not captured.
   false attestation on every run is worse than none, because it is read as evidence.
 - `run readiness` on this host now reports `input-deliverable: no integrity, session, or
   desktop barrier between Barkeep and YARG`. Server tests 90 → 91.
+
+## 2026-08-28 · Latency measurement session 017
+
+- Recorded: 2026-08-28 20:45 PDT
+- Duration: not captured
+- Added `Cantina.SelfTest run latency` and recorded the M5 item. Measured on the theater PC
+  against a running Barkeep with YARG broadcasting, steady state, first request reported
+  separately because it carries JIT and connection setup:
+  - **search over 447 songs** — p50 0.5 ms, p95 4.1 ms (first 27 ms)
+  - **setlist command round trip, D-023 write-ahead flush included** — p50 1.3 ms,
+    p95 2.8 ms (first 50 ms)
+  - **delivered-state age**, how stale the YARG state in a frame is when the client has it —
+    p50 2.3 ms, p95 8.5 ms
+  - **change latency** — *derived, not measured*: bounded by the socket's 250 ms poll plus
+    the age above, so ≤ 263 ms at p95. Measuring it directly needs a scene change, which
+    needs input this suite does not send, and saying so is cheaper than pretending.
+- **The first version of the suite was quietly wrong, in two ways at once, and only a
+  count caught it.** Twenty adds plus twenty removes is 40 of Barkeep's own 60-per-minute
+  `commands` budget, so a second run inside the same minute was refused with 429 — and the
+  loop ignored status codes. The cleanup silently failed, leaving twenty probe entries in
+  the setlist. Worse: **a 429 returns fast**, so rate-limited requests would have made the
+  latency numbers look better than the truth. A measurement that gets quicker as it is
+  refused is a measurement that has to check what it is timing.
+- Both are guarded now, and the guard was verified by reproducing the failure: a clean run
+  reports `probe-leaves-the-setlist-as-it-found-it: entries 0 -> 0` and passes 4 of 4; an
+  immediate second run reports `20 of 40 commands were refused ... the timings are invalid`
+  and `entries 0 -> 20`, and fails. The suite verifies its own cleanup by outcome rather
+  than by having sent the right requests — D-015's rule applies to the harness too.
+- Also ticked two roadmap items that were already done and unrecorded: evidence-backed live
+  state only, and the ~90 Hz decimation with the freshness debounce. Both verified in the
+  code before ticking rather than assumed from memory.

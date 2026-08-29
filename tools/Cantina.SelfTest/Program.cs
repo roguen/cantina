@@ -13,6 +13,9 @@ using Cantina.SelfTest;
 //              actual kills rather than simulated file shapes.
 //   live       The Cantina.YargSession library against the real YARG broadcast.
 //   readiness  The five D-024 readiness signals, read-only.
+//   latency    What the iPad waits for: search, the journaled command round trip, and
+//              how stale delivered state is when it arrives. Needs Barkeep running; the
+//              observation half also needs YARG broadcasting.
 //   lan        The D-026 transport against a Barkeep actually bound to the LAN: the
 //              handshake, the chain to the theater authority, pairing, the live socket's
 //              ticket, reconnection, and revocation. INCONCLUSIVE when Barkeep is
@@ -34,7 +37,7 @@ if (args.Length >= 1 && args[0] == "journal-child")
 
 if (args.Length < 2 || args[0] != "run")
 {
-    Console.WriteLine("usage: Cantina.SelfTest run <all|journal|live|readiness|lan|cue>");
+    Console.WriteLine("usage: Cantina.SelfTest run <all|journal|live|readiness|latency|lan|cue>");
     Console.WriteLine();
     Console.WriteLine("cue options (defaults are this theater library, measured in D-017/D-018):");
     Console.WriteLine("  --query <text>   search text to type       (default: unforgiven)");
@@ -65,6 +68,11 @@ if (which is "all" or "live")
 if (which is "all" or "readiness")
 {
     results.Add(ReadinessSuite.Run(transcript));
+}
+
+if (which is "all" or "latency")
+{
+    results.Add(await LatencySuite.RunAsync(transcript, "http://localhost:5273").ConfigureAwait(false));
 }
 
 if (which is "all" or "lan")
