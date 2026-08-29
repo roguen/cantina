@@ -99,8 +99,18 @@ It exists so nobody has to sit at the theater PC stepping through checks. Suites
 
 - `run all` — journal (D-023 crash matrix with *real process kills*), live (the session
   library against the real broadcast), readiness (the D-024 signals plus D-027's
-  deliverability check, read-only), lan (the D-026 transport; INCONCLUSIVE unless Barkeep
-  is running with `Network:Mode=Lan`).
+  deliverability check, read-only). It names the suites it skipped.
+- `run latency` — what the iPad waits for. **Outside `all`.**
+- `run lan` — the D-026 transport. **Outside `all`**, and needs `Network:Mode=Lan`.
+
+**Three suites sit outside `run all`**: `cue` because it sends input, and `latency` and
+`lan` because both need a Barkeep already running on loopback — which is not the normal
+state when the harness runs. Leaving them in made `all` exit 2 every time, and an
+acceptance run that always reports degraded is one nobody reads.
+
+`latency` sends 40 setlist commands against Barkeep's own 60-per-minute limit, so two runs
+inside a minute trip it. That is a FAIL with the cause named, not a quieter number: a 429
+returns fast, so a rate-limited run would otherwise look *better* than the truth.
 
 **The transcript header states whether *this run* sends input.** The assembly links
 `SendInput` because the cue suite needs it, so it cannot claim assembly-level innocence —

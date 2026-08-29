@@ -170,11 +170,16 @@ target-environment evidence.
   `docs/live-state.md` is the normative contract: two trust-ordered sources, latched song
   identity, three-tier freshness with debounce, multi-sender `ambiguous`, and the
   advance-observation rule left neutral on #39
-- [ ] Show only evidence-backed live state: scene, play state, and beat from the datagram,
+- [x] Show only evidence-backed live state: scene, play state, and beat from the datagram,
   song identity and metadata from `currentSong.json`. No playback-position indicator ships
-  without an upstream source (D-010, D-012)
-- [ ] Decimate the ~90 Hz datagram stream and debounce the transient empty window that a
-  song restart produces in `currentSong` (D-010)
+  without an upstream source (D-010, D-012) — `docs/live-state.md` is the contract, the
+  tracker and `/api/live` implement it, and the client renders it. Position is specified as
+  an upstream ask (`docs/upstream-interface.md` §3) and ships nowhere
+- [x] Decimate the ~90 Hz datagram stream and debounce the transient empty window that a
+  song restart produces in `currentSong` (D-010) — `LiveStateSocket` polls the tracker every
+  250 ms and pushes only when a rendered field changed, plus a 5 s heartbeat; the tracker
+  debounces freshness demotions by 1 s and re-latches after the clear. Measured on this
+  host: delivered state is **p50 2.3 ms, p95 8.5 ms** old when it reaches the client
 - [x] Specify the upstream observation interface for **playback position**, the only
   field no stock YARG surface exposes (D-010) — `docs/upstream-interface.md` §3: two
   unsigned 32-bit millisecond values in the datagram tail, integers rather than floats
@@ -190,7 +195,14 @@ target-environment evidence.
   is not
 - [ ] Recover acquisition and play intent without duplicate install, setlist insertion,
   refresh, or late cue — [#17](https://github.com/roguen/cantina/issues/17)
-- [ ] Record measured end-to-end latency
+- [x] Record measured end-to-end latency — `Cantina.SelfTest run latency`, on the theater
+  PC with YARG broadcasting. Steady state, first request reported separately because it
+  carries JIT and connection setup: **search over 447 songs p50 0.5 ms / p95 4.1 ms**
+  (first 27 ms); **setlist command round trip, including D-023's write-ahead flush to disk,
+  p50 1.3 ms / p95 2.8 ms** (first 50 ms); **delivered-state age p50 2.3 ms / p95 8.5 ms**.
+  Change latency is *derived, not measured* — bounded by the socket's 250 ms poll plus that
+  age, so ≤ 263 ms at p95 — because measuring it directly needs a scene change, which needs
+  input the suite does not send
 
 ## Beyond
 
