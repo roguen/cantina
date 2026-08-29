@@ -1177,3 +1177,67 @@ Geomitron Bridge acquisition boundary (#17, needs the Bridge exercised), the two
 steps of #6, and one scope question that is the owner's alone — whether Cantina presses
 `CONTINUE` on the score screen (#39). None of those would be improved by a go/no-go that
 waited for them.
+
+## D-029 · The theater has a name, and the certificate comes from outside; the private authority becomes the fallback
+
+- Date: 2026-08-29
+- Status: Accepted; **supersedes the certificate half of D-026**, which stands in every other
+  respect — binding, pairing, tokens, tickets, origin and host validation, rate limits, and
+  the firewall rule are unchanged
+
+Context: D-026 built a private theater certificate authority because Cantina had no name to
+be issued a certificate *for*, only `192.168.68.54`. That was the right answer to the
+question as it stood and the wrong answer to the question the owner actually had. He asked
+for a real subdomain, which changes what is possible: with a name under a zone he controls,
+a publicly trusted certificate is obtainable **without exposing anything to the internet**,
+because DNS-01 validation never requires the host to be reachable.
+
+The site was already doing exactly this. `aero4ge.com` is on Cloudflare; `ha-blue` and
+`ha-blanc` both hold Let's Encrypt certificates issued over DNS-01; the ACME machinery lives
+on the NAS with a deploy key it already uses to push certificates to the CloudKey; and
+`nas.aero4ge.com` has resolved publicly to a private address for some time. Cantina was
+about to reinvent all of it, worse.
+
+Decision:
+
+- **`cantina.aero4ge.com` is the address.** A record created 2026-08-29, DNS-only, pointing
+  at `192.168.68.54`, whose DHCP reservation was confirmed first — a public name over an
+  unpinned lease breaks silently.
+- **Barkeep serves a supplied certificate when `Network:CertificatePath` is set**, and in
+  that case **creates no authority at all**. Not as a spare, not as a fallback on disk: two
+  certificates where one is unused is a private key nobody is watching.
+- **Barkeep runs no ACME client.** Issuance and renewal are a job this network already does
+  for other services; doing it here would put a second copy of a DNS credential on the
+  theater PC. Barkeep's whole contribution is to load a file and serve it.
+- **A configured certificate that will not load is fatal.** No silent fall back to the
+  private authority — a server quietly serving a different certificate than the operator
+  configured is a server whose clients fail in a way nobody can explain.
+- **Certificate expiry is a reported health signal**, on `/api/health` and in the client.
+  This is the mitigation for the one way a public certificate is *worse* than the private
+  authority: renewal is done by machinery Barkeep does not own and cannot see, so a renewal
+  that quietly stopped presents as a theater that works perfectly until a day weeks later
+  when nothing connects. The private authority has the opposite shape — a ten-year anchor
+  and a leaf Barkeep reissues itself — so the signal is reported for both and alarming for
+  one, and the client copy says which.
+- **The private theater authority remains, demoted.** It is what a site with no domain, no
+  internet, or no wish to run ACME still gets, and it needs no renewal machinery at all.
+
+Rejected: an ACME client inside Barkeep. Falling back silently when a configured certificate
+is missing. Keeping the private authority on disk alongside a supplied certificate. Asking
+the owner to install a general-purpose trust anchor on his personal iPad — one able to sign
+for any domain, with its private key protected by a profile ACL — to avoid work the network
+had already done twice.
+
+Consequences: the iPad's setup loses three of its five steps. No profile to install, no
+fingerprint to compare, no Certificate Trust Settings toggle; the onboarding page reduces to
+one sentence and a link, and `/cantina-theater-ca.cer` answers 404 because there is no
+authority to distribute. Measured on the theater PC the same day, still on the private
+authority because the public certificate has not been issued yet: `Cantina.SelfTest run lan`
+passed **10 of 10 against `cantina.aero4ge.com`**, with the client validating **by name** as
+well as by chain, and the plain-HTTP redirect now targeting the name rather than the address.
+
+Two things this does not yet do. **The certificate is not issued** — the name is added to
+the NAS issuer as a separate, approved change. And **nothing watches the renewal from
+outside Barkeep**: the health signal is visible to whoever looks at the iPad, which is better
+than nothing and is not a monitor. The same gap the network's own records describe against
+its backup chain, and worth closing the same way.

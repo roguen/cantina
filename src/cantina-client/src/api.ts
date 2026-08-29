@@ -8,6 +8,7 @@
 // `crypto.randomUUID` needs a secure context, which is exactly what Barkeep's LAN binding
 // provides and why loopback HTTP still works: localhost is a secure context too.
 
+import type { CertificateHealth } from './certificateNotice'
 import { forgetToken, pairingRefusal, storedToken } from './pairing'
 
 /// Thrown when Barkeep says this device is not paired. The caller shows the pairing
@@ -120,6 +121,14 @@ export async function liveTicket(): Promise<string> {
   if (!response.ok) throw new Error(`ticket failed: ${response.status}`)
   const issued = (await response.json()) as { ticket: string }
   return issued.ticket
+}
+
+// Barkeep's own view of the certificate it is serving, so a renewal that quietly stopped
+// is visible on the iPad while the iPad can still connect at all (D-029).
+export async function fetchHealth(): Promise<{ certificate: CertificateHealth | null }> {
+  const response = await call('/api/health')
+  if (!response.ok) throw new Error(`health failed: ${response.status}`)
+  return response.json() as Promise<{ certificate: CertificateHealth | null }>
 }
 
 export async function currentCue(): Promise<CueStatus | null> {

@@ -1,8 +1,12 @@
 # LAN transport, pairing, and trust
 
 Status: **normative.** Implemented in `src/Cantina.Barkeep/Network/` and
-`src/Cantina.Barkeep/Access/`, decided in D-026, proved on the theater PC by
-`Cantina.SelfTest run lan`.
+`src/Cantina.Barkeep/Access/`, decided in D-026 and amended by **D-029**, proved on the
+theater PC by `Cantina.SelfTest run lan`.
+
+**The theater is `cantina.aero4ge.com`.** D-029 supersedes D-026's certificate design: the
+certificate normally comes from outside, and the private authority below is the fallback for
+a site with no name.
 
 This is what happens when Barkeep stops being loopback-only. `docs/security-model.md`
 states the open questions this answers; where the two disagree, this file is the contract
@@ -47,10 +51,15 @@ being unreachable.
 
 ## Discovery
 
-**The address is the route.** The operator types `http://<address>:5273/onboarding` on the
-iPad once. Nothing shipped generates a QR code yet; when one does, it carries that same
-address and is a convenience over typing, never a credential — the pairing code stays on
-the theater PC.
+**The name is the route.** `cantina.aero4ge.com`, an A record in Cloudflare pointing at
+`192.168.68.54`, DNS-only. Publicly resolvable is not publicly reachable, and the same
+pattern already carries `nas.aero4ge.com` and `fios-blanc.aero4ge.com`. Nothing shipped
+generates a QR code yet; when one does, it carries the name and is a convenience over
+typing, never a credential — the pairing code stays on the theater PC.
+
+**The reservation is load-bearing.** A public name over a DHCP lease breaks silently when
+the lease moves, so `192.168.68.54` is pinned to the theater PC's MAC before the record
+exists.
 
 mDNS is a convenience Cantina may add and must never depend on: whether iPadOS resolves
 this host's `.local` name has not been measured with two devices, and D-026 records why the
@@ -63,7 +72,32 @@ go stale, and that is a trip to the theater to fix.
 
 ## Certificates
 
-Two certificates, not one.
+There are two configurations, and which one is running is visible in `/api/health` and in
+the shape of the onboarding page.
+
+### Supplied, and publicly trusted — the normal case (D-029)
+
+`Network:CertificatePath` names a PKCS#12 file holding the server certificate, its key, and
+any intermediates; `Network:CertificatePassword` is its password, empty when it has none.
+When that is set:
+
+- Barkeep serves it and **creates no theater authority at all** — not even as a spare,
+  because an unused private key on disk is one nobody is watching.
+- There is **nothing for the iPad to install**. `/onboarding` reduces to one sentence and a
+  link, and `/cantina-theater-ca.cer` answers `404` because no authority exists to hand out.
+- **A configured certificate that will not load is fatal.** Barkeep refuses to start rather
+  than falling back, because a server quietly serving a certificate the operator did not
+  configure fails its clients in a way nobody can diagnose.
+
+**Barkeep runs no ACME client**, deliberately. Issuance and renewal belong to the machinery
+the site already runs for its other services; doing it here would put a second copy of a DNS
+credential on the theater PC. Barkeep loads a file and serves it, and that is the whole
+contribution.
+
+### The private theater authority — the fallback
+
+Used when `Network:CertificatePath` is empty: a site with no domain name, no internet, or no
+wish to run ACME. Two certificates, not one.
 
 - **`Cantina Theater CA`** — a private authority for this theater. Ten years, generated
   once, and the thing the iPad is asked to trust.
@@ -82,7 +116,9 @@ profile ACL and nothing more. **State that plainly:** anyone who can read that d
 can impersonate the theater to the iPad. It is the same protection the setlist journal
 already has on this host, and no stronger.
 
-### iPad trust onboarding
+### iPad trust onboarding — fallback configuration only
+
+None of this applies with a supplied certificate. It is what the private authority costs.
 
 1. Open `http://<address>:5273/onboarding` on the iPad. This page is served without
    encryption on purpose — it exists to deliver the certificate that makes encryption
@@ -164,6 +200,31 @@ before this was fixed.
 A path that matches no file and no endpoint returns the app, because a single-page client
 owns its own routing — except under `/api` and `/ws`, where a mistyped endpoint must fail
 as an endpoint rather than quietly return HTML the caller will try to parse as JSON.
+
+## Certificate expiry is a reported signal
+
+The one way a publicly trusted certificate is *worse* than the private authority: renewal is
+done by machinery Barkeep does not own and cannot see. A renewal that quietly stopped looks
+like nothing at all until the day it lapses and every device refuses at once.
+
+So `/api/health` reports it, for both configurations:
+
+```json
+"certificate": { "source": "supplied", "needsDeviceTrust": false,
+                 "notAfter": "...", "daysRemaining": 62, "status": "ok" }
+```
+
+`status` is `ok`, `expiring` within `Network:CertificateWarnDays` (default 21), or `expired`.
+The client renders a warning for anything but `ok`, and the copy names **whose** problem it
+is — the renewal on the NAS for a supplied certificate, a Barkeep restart for the theater
+authority, which reissues its own leaf.
+
+There is deliberately no client copy for a certificate that has already lapsed: the handshake
+fails, so the client is not running to render anything. The only useful window is before
+that, and it is the only one the client has words for.
+
+**This is a signal, not a monitor.** It is visible to whoever looks at the iPad. Nothing
+outside Barkeep watches the renewal, and closing that gap is separate work.
 
 ## Rate limits
 

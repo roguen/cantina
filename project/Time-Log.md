@@ -748,3 +748,43 @@ start was not captured.
 - Nothing in this entry was recalled: the cue-suite result is cited with its date as a
   previously recorded observation rather than re-run, because running it now would start a
   song in the owner's paused quickplay session.
+
+## 2026-08-29 · The theater gets a name, and the certificate comes from outside — session 019
+
+- Recorded: 2026-08-29 06:30 PDT
+- Duration: not captured
+- The owner asked for a real subdomain instead of an IP, which turned out to change the
+  certificate design rather than just the URL. **`cantina.aero4ge.com` now exists**, an A
+  record in Cloudflare pointing at `192.168.68.54`, DNS-only, created through his own
+  authenticated browser session rather than by taking a token.
+- **The site was already doing all of this.** `aero4ge.com` is on Cloudflare, both Home
+  Assistant instances hold Let's Encrypt certificates issued over DNS-01, the ACME machinery
+  lives on the NAS with a deploy key it already uses to push certificates to the CloudKey,
+  and `nas.aero4ge.com` has resolved publicly to a private address for some time. Cantina
+  was about to reinvent all of it, worse. Reading the network's own records before designing
+  is what stopped that.
+- D-029 supersedes D-026's certificate half. Barkeep serves a supplied certificate when one
+  is configured and **creates no authority at all** in that case; it runs no ACME client,
+  because issuance is a job the network already does and duplicating it would put a second
+  DNS credential on the theater PC; and a configured certificate that will not load is fatal
+  rather than a silent fallback.
+- **Certificate expiry is now a reported signal**, on `/api/health` and in the client. This
+  is the price of a public certificate: renewal happens in machinery Barkeep cannot see, so
+  a renewal that quietly stopped is invisible until the day everything fails at once. The
+  client copy names whose problem it is — the NAS for a supplied certificate, a Barkeep
+  restart for the theater authority. Stated plainly in the contract: it is a signal, not a
+  monitor.
+- **A stale row in the network inventory was corrected, and the live machine is what caught
+  it.** The inventory recorded `192.168.68.54` as merely *held for* a host still sitting at
+  `.144`, move "not yet done". The theater PC's MAC is `24:4b:fe:81:13:4b` — exactly that
+  row's MAC — and it holds `.54` today under the name `HOME-GRIFFEN-PC`. The move had
+  happened and nobody wrote it down. `.144` is now taken by a different MAC, which the same
+  file identifies two rows up as a kids' PC's wireless NIC that was supposed to have been
+  disabled; recorded as an observation to confirm, not a conclusion.
+- Also recorded: the iPad presents a **randomised** Wi-Fi MAC, `f6:3d:84:12:30:12`, not the
+  hardware address ending `fe:f7`. Any reservation would have to key on the randomised one.
+  Caught before it cost anything, unlike the inventory row.
+- Verified on the theater PC: `Cantina.SelfTest run lan` passed **10 of 10 against
+  `cantina.aero4ge.com`** — still on the private authority, since the public certificate is
+  not issued yet — with the client validating **by name** as well as by chain, and the
+  plain-HTTP redirect now targeting the name. Server tests 91 → 99, client 11 → 16.

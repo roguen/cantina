@@ -38,7 +38,7 @@ not running. Do not assume it participates in any request.
 | Library index and search | `Barkeep/Library/` | D-025 |
 | Durable setlist | `Barkeep/Setlist/SetlistJournal.cs` | D-023 |
 | Cue gate + actuation + verify | `Barkeep/Yarg/Control/` | D-015, D-017, D-024 |
-| Binding, certificate authority, firewall text | `Barkeep/Network/` | D-026 |
+| Binding, certificates, firewall text | `Barkeep/Network/` | D-026, D-029 |
 | Pairing, device registry, socket tickets, access middleware | `Barkeep/Access/` | D-026 |
 | Device token, pairing screen, ticketed socket | `cantina-client/src/pairing.ts`, `PairingScreen.tsx` | D-026 |
 | Client honesty copy | `cantina-client/src/liveState.ts` | D-022, D-024 |
@@ -76,7 +76,7 @@ dotnet run --project tools/Cantina.TestHarness --configuration Release --no-buil
 and in `src/cantina-client`: `npm ci` (on a fresh clone), then `npm run lint`,
 `npm run test`, `npm run build`.
 
-**The green baseline as of 2026-08-28: 91 server tests, 14 harness scenarios, 11 client
+**The green baseline as of 2026-08-29: 99 server tests, 14 harness scenarios, 16 client
 tests, zero warnings.** If a run reports fewer than that and you did not delete anything,
 find out why before continuing — a self-reported pass against no expected number is not a
 check.

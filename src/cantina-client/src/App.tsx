@@ -7,6 +7,7 @@ import {
   addToSetlist,
   cueSong,
   currentCue,
+  fetchHealth,
   fetchSetlist,
   searchSongs,
   stripColorTags,
@@ -14,6 +15,7 @@ import {
   type IndexedSong,
   type SetlistView,
 } from './api'
+import { certificateNotice, type CertificateHealth } from './certificateNotice'
 import { PairingScreen } from './PairingScreen'
 import { connectionCopy } from './connectionState'
 import { stageCopy } from './liveState'
@@ -47,6 +49,7 @@ function App() {
   const [setlist, setSetlist] = useState<SetlistView | null>(null)
   const [cue, setCue] = useState<CueStatus | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [certificate, setCertificate] = useState<CertificateHealth | null>(null)
 
   const refreshSetlist = useCallback(() => {
     fetchSetlist()
@@ -59,6 +62,23 @@ function App() {
   useEffect(() => {
     if (paired) refreshSetlist()
   }, [paired, refreshSetlist])
+
+  // Certificate life changes on the scale of days, so once an hour is plenty and anything
+  // more often is noise on a device that spends most of its time asleep.
+  useEffect(() => {
+    if (!paired) return
+
+    const read = () =>
+      fetchHealth()
+        .then((health) => setCertificate(health.certificate))
+        .catch(() => {
+          // The connection banner already reports an unreachable Barkeep.
+        })
+
+    read()
+    const timer = window.setInterval(read, 60 * 60 * 1000)
+    return () => window.clearInterval(timer)
+  }, [paired])
 
   // Debounced search against the index.
   useEffect(() => {
@@ -130,6 +150,7 @@ function App() {
   const connectionState = connection
   const banner = live ? stageCopy(live) : null
   const copy = connectionCopy(connectionState)
+  const expiry = certificateNotice(certificate)
 
   return (
     <main>
@@ -151,6 +172,13 @@ function App() {
           </div>
         )}
       </section>
+
+      {expiry && (
+        <section className="cue cue--failed" aria-live="polite">
+          <h2>{expiry.headline}</h2>
+          <p>{expiry.detail}</p>
+        </section>
+      )}
 
       {cue && (
         <section className={`cue cue--${cue.state}`} aria-live="polite">
