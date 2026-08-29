@@ -66,6 +66,18 @@ server operating-system jobs, publishes the Windows artifact, and exposes one st
 
 ## Target-PC acceptance boundary
 
+The acceptance run for everything below is one command on the theater PC:
+
+```bash
+dotnet run --project tools/Cantina.SelfTest --configuration Release -- run all
+```
+
+It reports PASS, FAIL, or INCONCLUSIVE with a named cause per suite (exit 0/1/2) and
+covers the D-023 crash matrix with real process kills, the session library against the
+real broadcast, and the D-024 readiness signals. `run cue` exercises the whole cue loop
+and is excluded from `run all` because it sends input and starts a real song. See
+[`test-harness.md`](test-harness.md).
+
 Work now happens on the Windows 10 Pro 22H2 host itself, the full regression runs there,
 and YARG, YARC Launcher, and Geomitron Bridge are all installed on it. That is necessary
 but not sufficient: hosted CI still uses hosted machines, and an installed game is not a

@@ -22,6 +22,11 @@ restates — a second copy of a rule is a copy that goes stale and gets believed
 | `tools/Cantina.SelfTest` | **The target-PC acceptance harness.** Proves what only this machine can prove. |
 | `spikes/*` | Historical evidence-gathering tools. Still useful; no longer the product. |
 
+`src/Cantina.Barkeep/Acquisition/` is the **unwired** import-and-play-next coordinator
+from D-008: real policy code, exercised only by `Cantina.TestHarness`, registered nowhere
+in `Program.cs`. It is the seam issue #17 will grow into, and until then it is deliberately
+not running. Do not assume it participates in any request.
+
 ## Where each behaviour lives, and what it implements
 
 | Behaviour | Code | Decision |
@@ -63,7 +68,13 @@ dotnet test --configuration Release --no-build
 dotnet run --project tools/Cantina.TestHarness --configuration Release --no-build -- run all
 ```
 
-and in `src/cantina-client`: `npm run lint`, `npm run test`, `npm run build`.
+and in `src/cantina-client`: `npm ci` (on a fresh clone), then `npm run lint`,
+`npm run test`, `npm run build`.
+
+**The green baseline as of 2026-08-28: 66 server tests, 14 harness scenarios, 5 client
+tests, zero warnings.** If a run reports fewer than that and you did not delete anything,
+find out why before continuing — a self-reported pass against no expected number is not a
+check.
 
 **A new project needs three things or CI fails in ways local builds do not**: an entry in
 `Cantina.slnx`, `<RuntimeIdentifiers>win-x64</RuntimeIdentifiers>` if the publish job will

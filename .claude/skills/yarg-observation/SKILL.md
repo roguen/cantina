@@ -134,6 +134,13 @@ just in time.
   change-detection hash so the next read re-latches), but any new reader must not assume
   file-populated implies gameplay-started. This defect was invisible to every unit test
   and was caught only by the full loop against the real game.
+- **YARG shows 652 songs; the disk holds 447 song folders.** Cantina indexes the 447
+  (D-025) but YARG's fuzzy search runs over its own 652, so a typed query can match
+  something Cantina cannot see or name. Unreconciled, recorded in D-025's final paragraph,
+  and the reason verify-by-outcome is load-bearing rather than a nicety: the cue reads back
+  what actually loaded instead of assuming the search hit what the index expected. There is
+  also one charted folder with no `song.ini` (448 note files against 447 inis), invisible
+  to the index — a small instance of the same gap.
 - **Menu cursors are sticky, invisible state.** The start menu remembers PRACTICE if that
   is where you last were, and one blind Enter then opens the wrong mode. Sticky cursors
   exist on the start menu, the pause menu, and instrument setup. Screenshot before any
@@ -164,8 +171,9 @@ Barkeep now implements what the spikes proved. To exercise it end to end:
 dotnet run --project src/Cantina.Barkeep --configuration Release
 ```
 
-It binds loopback `5273` only (LAN transport is issue #6) and serves `/api/live`,
-`/ws/live`, `/api/songs`, `/api/setlist`, `/api/cue`. The library scan reads the same
+It binds loopback `5273` only (LAN transport is issue #6) and serves `/api/health`,
+`/api/live`, `/ws/live`, `/api/songs`, `/api/library/rescan`, `/api/setlist`,
+`/api/setlist/commands`, `/api/cue`, and `/api/cue/current`. The library scan reads the same
 `SongFolders` YARG's settings name (D-025), so anything searchable is cueable.
 
 For the client, `npm run dev` in `src/cantina-client` proxies `/api` and `/ws` to

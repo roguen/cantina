@@ -545,3 +545,25 @@ start was not captured.
   menu cursors — plus how to run the product against the real game. Corrected `AGENTS.md`,
   which still described a project with no YARG integration and pointed durability at the
   now-closed #7.
+- **Spun up a fresh instance to audit the handoff, and it found ten gaps.** Given only the
+  onboarding path and no session context, it reported back correctly on the project's
+  state and next action — and then found: `cantina-agent/AGENTS.md` naming "D-001 to
+  D-018" against a log at D-025 and omitting the new `cantina-codebase` skill;
+  `current.md` listing issue #5 as not-started three lines above the entry recording its
+  closure; the 652-vs-447 library discrepancy stated as two different facts in two
+  documents and reconciled only in D-025's last paragraph; `docs/development.md` never
+  learning that `Cantina.SelfTest` exists; the five readiness signals of
+  `failure-behavior.md` against four checked in `Gate()`; `Acquisition/` present, unwired,
+  and unmapped; no expected test count anywhere; a missing `npm ci`; an incomplete
+  endpoint list; and a merge-authority rule ("unless he has asked, **in this session**")
+  that a fresh instance cannot satisfy by construction. All fixed.
+- **One of those was my own unverified claim.** An earlier edit to `docs/development.md`
+  silently failed to match its anchor and I reported it applied from the script's echo
+  rather than from the file. The edit scripts now throw on a missing anchor, and every fix
+  in this change was verified by grep afterwards rather than by its own success message.
+- **The state block in `current.md` is now generated, not written.** `refresh-state.js`
+  emits HEAD and branch, `origin/main`, open PRs, **branches not merged with no PR open**,
+  open issues, and the decision count. Every stale fact the audit found was one a command
+  gets right and prose gets wrong; the project's own rule against second copies applies to
+  its own handoff. The generator immediately flagged the unmerged branch this very change
+  was sitting on.

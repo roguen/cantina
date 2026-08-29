@@ -36,9 +36,19 @@ Barkeep computes readiness from what it can observe without controlling anything
 | `foreground` | `GetForegroundWindow` → pid | YARG owns the screen *right now* |
 | `attentive` | scene + play state | not paused, not on a blind menu mid-song |
 
-`foreground` is read, never taken. Barkeep may bring YARG forward only as the explicit,
-user-initiated first step of a cue — never silently, because a focus change moves the
-game's pause state on its own.
+`foreground` is read, never taken *silently*. It is also the one signal of the five that
+is evaluated **during** actuation rather than before it, and the sequencing is deliberate:
+a cue is user-initiated, so it is permitted to bring YARG forward as its explicit first
+step, and only then does it require YARG to actually hold the screen. Refusing before that
+step would make every cue fail whenever YARG merely sat in the background, which is its
+normal state.
+
+So the honest reading of the table row is: **if the cue cannot obtain the screen, it
+refuses and names who has it** — the Holocron case — and it never sends input to a window
+it does not own. What it does not do is refuse pre-emptively, because Cantina cannot tell
+an application that is actively presenting from one that merely happens to be focused.
+(`YargCueService.Gate` therefore checks four signals and `Actuate` checks foreground; a
+reader comparing the two should know that is the design, not a gap.)
 
 ## The fail-closed rule
 
