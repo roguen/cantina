@@ -188,6 +188,14 @@ Barkeep. The full regression before any pull request is in
 would treat any change to a live system: know what state the theater is in first, and
 leave it parked politely — the `cue` suite pauses what it started, and so should you.
 
+## When the answer is "stock YARG cannot"
+
+Some gaps are structural, and the honest end of a spike is naming one rather than working
+around it. `docs/upstream-interface.md` collects them: what Cantina cannot do, the
+measurement that proved it, what Cantina does instead today, and the smallest upstream
+change that would close it. If a spike finds a new one, add it there in that shape — and
+keep the product working without it.
+
 ## Recording the result
 
 Records live in the repository (D-016) and change through the same pull request as the code.

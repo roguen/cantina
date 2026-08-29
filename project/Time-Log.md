@@ -632,3 +632,36 @@ start was not captured.
   SChannel and .NET 10's client both succeed repeatedly. It is the legacy .NET Framework
   TLS stack, not the certificate. Use `curl.exe` or the SelfTest suite for this.
 - Server tests 88 → 90, client tests 5 → 11.
+
+## 2026-08-28 · Upstream interface specification session 015
+
+- Recorded: 2026-08-28 20:45 PDT
+- Duration: not captured
+- Wrote `docs/upstream-interface.md`, closing the M4 item "specify the smallest upstream
+  YARG interface the measured control gaps require" and the M5 item "specify the upstream
+  observation interface for playback position". No code; it is a specification and it says
+  so.
+- **Ordered by what each ask costs YARG, not by what Cantina wants most**, which changed
+  the answer. The most valuable ask is playback position; the *first* ask is a keyboard
+  route to the song search field, which is not a protocol change at all. D-017 left a click
+  aimed at a screen coordinate in the control path — `(1968, 161)` on this theater — and it
+  is the only part of that path that cannot be verified before it is used, because a YARG
+  update that moves the search box breaks selection silently. A focus accelerator deletes
+  it, and D-014 already proved keyboard-only actuation works from a background process.
+- Second is one byte naming the current menu screen. It is the best value per byte on the
+  list: it converts three separate "Cantina must not attempt this because it cannot see"
+  rules — blind typing into the song list, the blind pause menu where one Enter destroys a
+  setlist, and sticky invisible menu cursors — into ordinary checkable preconditions.
+- Third is position and length as two unsigned 32-bit millisecond values in the datagram
+  tail. Integers rather than floats, because a ~90.7 Hz latest-wins snapshot should not
+  accumulate representation error across a five-minute song.
+- Fourth, and listed last on purpose, is selecting a song by content hash. It is the only
+  ask needing a new surface rather than a new field, so it needs an authorisation story, a
+  legality story, and a failure story that the observation asks all avoid. The first ask
+  removes most of what motivates it.
+- Also recorded what Cantina deliberately does **not** ask for, and why each: song identity
+  (`currentSong.json` already states it, and D-010 originally got this wrong before the
+  captures corrected it), score and stars (screen-only, never promised), and anything
+  about the score screen or YARG's setlist — because #39 is an open scope question for the
+  owner, and asking upstream for it would be designing a feature through a protocol
+  request.

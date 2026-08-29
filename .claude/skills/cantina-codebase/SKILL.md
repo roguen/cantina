@@ -44,7 +44,9 @@ not running. Do not assume it participates in any request.
 | Client honesty copy | `cantina-client/src/liveState.ts` | D-022, D-024 |
 
 The normative contracts these implement are `docs/live-state.md`,
-`docs/failure-behavior.md`, `docs/yarg-interface.md`, and `docs/lan-transport.md`. **When code and contract
+`docs/failure-behavior.md`, `docs/yarg-interface.md`, and `docs/lan-transport.md`.
+`docs/upstream-interface.md` is the one document that is **not** normative: it is what
+Cantina would ask YARG for, and nothing in the product may become conditional on it. **When code and contract
 disagree, that is a bug in one of them — decide which, and fix that one.**
 
 ## Two invariants worth stating plainly

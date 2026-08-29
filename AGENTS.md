@@ -25,8 +25,14 @@ score screen, which `CONTINUE` clears in one key (D-018).
 **LAN transport and pairing are implemented** (D-026, `docs/lan-transport.md`): one
 explicit interface, a theater certificate authority, loopback-only pairing windows, hashed
 bearer tokens, single-use socket tickets, and a firewall rule Barkeep prints and never
-runs. `Cantina.SelfTest run lan` passed 8 of 8 here against a real binding. The default is
-still loopback and changing it is one deliberate setting.
+runs. **Barkeep serves the iPad its own client** from `wwwroot`, so the theater PC is the
+only place the app comes from; the app shell is public and every `/api` and `/ws` path
+behind it is not. `Cantina.SelfTest run lan` passed 10 of 10 here against a real binding.
+The default is still loopback and changing it is one deliberate setting.
+
+**What Cantina would ask YARG for, if it could, is written down and depends on nothing**:
+`docs/upstream-interface.md`, ordered by what each ask costs upstream rather than by what
+Cantina wants most.
 
 Still unproven, and not to be described otherwise: coexistence with the real lighting
 application (#11 — needs YALCY or Photonics installed), the Geomitron Bridge acquisition
