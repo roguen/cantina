@@ -223,4 +223,5 @@ this machine.
 
 The unit tests run against a test server, which has no sockets and no TLS; they prove
 decisions, not transport. `run lan` proves transport and reports `INCONCLUSIVE` with a
-named cause when Barkeep is loopback-only, which is the default.
+named cause when Barkeep is loopback-only, which is the default. It sits outside `run all`
+for that reason and is run deliberately.

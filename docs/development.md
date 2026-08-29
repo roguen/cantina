@@ -74,19 +74,22 @@ dotnet run --project tools/Cantina.SelfTest --configuration Release -- run all
 
 It reports PASS, FAIL, or INCONCLUSIVE with a named cause per suite (exit 0/1/2) and
 covers the D-023 crash matrix with real process kills, the session library against the
-real broadcast, the D-024 readiness signals, and the D-026 LAN transport. `run cue`
-exercises the whole cue loop and is excluded from `run all` because it sends input and
-starts a real song. See [`test-harness.md`](test-harness.md).
+real broadcast, and the D-024 readiness signals with D-027's deliverability check. Three
+suites sit outside it and are run deliberately: `run cue`, because it sends input and
+starts a real song, and `run lan` and `run latency`, because both need a Barkeep already
+running. `run all` names what it skipped. See [`test-harness.md`](test-harness.md).
 
-`run lan` reports INCONCLUSIVE unless Barkeep is running with `Network:Mode=Lan`, which is
-not the default. To exercise it:
+`run lan` and `run latency` sit outside `run all`, because both need a Barkeep already
+running on loopback and that is not the normal state when the harness runs; `run all` names
+them as skipped rather than reporting itself degraded. `run lan` additionally needs
+`Network:Mode=Lan`. To exercise them:
 
 ```bash
 Network__Mode=Lan dotnet run --project src/Cantina.Barkeep --configuration Release
 ```
 
-then `dotnet run --project tools/Cantina.SelfTest --configuration Release -- run lan` in
-another shell. See [`lan-transport.md`](lan-transport.md).
+then, in another shell, `dotnet run --project tools/Cantina.SelfTest --configuration
+Release -- run lan` or `-- run latency`. See [`lan-transport.md`](lan-transport.md).
 
 Work now happens on the Windows 10 Pro 22H2 host itself, the full regression runs there,
 and YARG, YARC Launcher, and Geomitron Bridge are all installed on it. That is necessary

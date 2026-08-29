@@ -12,14 +12,14 @@ using Cantina.SelfTest;
 //              appends and the parent kills it hard, so torn writes are produced by
 //              actual kills rather than simulated file shapes.
 //   live       The Cantina.YargSession library against the real YARG broadcast.
-//   readiness  The five D-024 readiness signals, read-only.
+//   readiness  The D-024 readiness signals plus D-027's deliverability check, read-only.
 //   latency    What the iPad waits for: search, the journaled command round trip, and
 //              how stale delivered state is when it arrives. Needs Barkeep running; the
-//              observation half also needs YARG broadcasting.
+//              observation half also needs YARG broadcasting. NOT part of run all.
 //   lan        The D-026 transport against a Barkeep actually bound to the LAN: the
 //              handshake, the chain to the theater authority, pairing, the live socket's
 //              ticket, reconnection, and revocation. INCONCLUSIVE when Barkeep is
-//              loopback-only, which is the default.
+//              loopback-only, which is the default. NOT part of run all.
 //
 // Verdicts follow the house rule: PASS, FAIL, or INCONCLUSIVE with a named cause -
 // a suite that cannot establish its preconditions says so rather than guessing.
@@ -46,6 +46,9 @@ if (args.Length < 2 || args[0] != "run")
     Console.WriteLine();
     Console.WriteLine("The cue suite SENDS INPUT and starts a real song, then pauses it. It is not");
     Console.WriteLine("part of run all; run it deliberately.");
+    Console.WriteLine();
+    Console.WriteLine("latency and lan also sit outside run all: both need a Barkeep already");
+    Console.WriteLine("running on loopback, and lan needs it bound with Network:Mode=Lan.");
     return 2;
 }
 
@@ -70,14 +73,24 @@ if (which is "all" or "readiness")
     results.Add(ReadinessSuite.Run(transcript));
 }
 
-if (which is "all" or "latency")
+// `latency` and `lan` need a Barkeep already running, which is not the normal state when
+// the harness is run. Leaving them in `run all` made it exit 2 every time - and an
+// acceptance run that always reports degraded is one nobody reads. They are deliberate
+// runs, like `cue`, and `all` names what it skipped rather than skipping silently.
+if (which is "latency")
 {
     results.Add(await LatencySuite.RunAsync(transcript, "http://localhost:5273").ConfigureAwait(false));
 }
 
-if (which is "all" or "lan")
+if (which is "lan")
 {
     results.Add(await LanTransportSuite.RunAsync(transcript, "http://localhost:5273").ConfigureAwait(false));
+}
+
+if (which is "all")
+{
+    transcript.Log("SKIPPED", "latency, lan: both need a Barkeep already running on loopback; "
+        + "run them deliberately. cue: sends input and starts a real song.");
 }
 
 if (which is "confirmdiag")
