@@ -128,7 +128,12 @@ Every request is decided in one middleware, in this order:
    WebSocket, and the alternatives put a long-lived credential in a URL that gets logged. A
    paired device spends its token on `POST /api/live/ticket` and receives a ticket good for
    one connection and thirty seconds.
-5. **Everything else takes a bearer token** from `POST /api/pair`.
+5. **The app shell is public; its data is not.** A `GET` or `HEAD` outside `/api` and `/ws`
+   is the client bundle, which an unpaired iPad has to load in order to have anywhere to
+   type its pairing code. It is markup and script, it carries no theater state, and
+   treating it as a secret would make pairing impossible. Any other method, and every
+   `/api` and `/ws` path, takes a credential.
+6. **Everything else takes a bearer token** from `POST /api/pair`.
 
 **There are no cookies anywhere in Cantina.** That is what makes cross-site request forgery
 structurally impossible rather than defended against: a hostile page cannot make a browser
@@ -141,6 +146,24 @@ is rejected before any endpoint sees it.
 
 **Refusals are named and say nothing else.** `pairing-required`, `ticket-required`,
 `origin-not-served`. No echo of what was presented, no host, no path.
+
+## Serving the client
+
+Barkeep serves the iPad its own app from `wwwroot`, so the theater PC is the only place the
+client comes from: no app store, no CDN, and nothing to install but a home-screen shortcut.
+The bundle is built by `npm run build` in `src/cantina-client` and copied into the server's
+output; the Windows artifact job builds it and fails if the published artifact has no
+`index.html`.
+
+**The web root is pinned to the binary's own directory.** ASP.NET Core's default content
+root is the *working* directory, so a Barkeep started from a shortcut or a scheduled task
+would look for its client somewhere else entirely. That was measured, not assumed: a
+published Barkeep launched from the repository root answered 404 for its own front page
+before this was fixed.
+
+A path that matches no file and no endpoint returns the app, because a single-page client
+owns its own routing — except under `/api` and `/ws`, where a mistyped endpoint must fail
+as an endpoint rather than quietly return HTML the caller will try to parse as JSON.
 
 ## Rate limits
 
@@ -196,7 +219,7 @@ this machine.
 |---|---|
 | Refusal, redirect, credential, ticket, revocation logic | `tests/Cantina.Barkeep.Tests/AccessEndpointTests.cs` |
 | Registry storage, pairing window, ticket lifetime, certificate coverage and rotation | `tests/Cantina.Barkeep.Tests/AccessUnitTests.cs` |
-| Real listeners, real TLS handshake, chain to the theater authority, pairing over the wire, socket reconnection, revocation | `tools/Cantina.SelfTest run lan` |
+| Real listeners, real TLS handshake, chain to the theater authority, the public app shell, pairing over the wire, socket reconnection, revocation | `tools/Cantina.SelfTest run lan` |
 
 The unit tests run against a test server, which has no sockets and no TLS; they prove
 decisions, not transport. `run lan` proves transport and reports `INCONCLUSIVE` with a

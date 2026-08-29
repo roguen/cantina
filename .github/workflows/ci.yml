@@ -93,6 +93,19 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+      - name: Install Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: src/cantina-client/package-lock.json
+      # Barkeep serves the iPad its own client, so the artifact is only complete with the
+      # bundle in it (D-026). The client job proves the client; this one ships it.
+      - name: Build the iPad client
+        working-directory: src/cantina-client
+        run: |
+          npm ci
+          npm run build
       - name: Restore locked Windows dependencies
         run: dotnet restore src/Cantina.Barkeep/Cantina.Barkeep.csproj --runtime win-x64 --locked-mode
       - name: Publish self-contained Barkeep
@@ -104,6 +117,9 @@ jobs:
         run: |
           Remove-Item artifacts/barkeep-win-x64/*.pdb -ErrorAction Stop
           Remove-Item artifacts/barkeep-win-x64/appsettings.Development.json -ErrorAction Stop
+          if (-not (Test-Path artifacts/barkeep-win-x64/wwwroot/index.html)) {
+            throw 'The artifact has no client bundle; the iPad would have nothing to install.'
+          }
       - name: Upload Barkeep
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
