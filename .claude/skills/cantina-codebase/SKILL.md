@@ -76,7 +76,7 @@ dotnet run --project tools/Cantina.TestHarness --configuration Release --no-buil
 and in `src/cantina-client`: `npm ci` (on a fresh clone), then `npm run lint`,
 `npm run test`, `npm run build`.
 
-**The green baseline as of 2026-08-28: 90 server tests, 14 harness scenarios, 11 client
+**The green baseline as of 2026-08-28: 91 server tests, 14 harness scenarios, 11 client
 tests, zero warnings.** If a run reports fewer than that and you did not delete anything,
 find out why before continuing — a self-reported pass against no expected number is not a
 check.
@@ -98,8 +98,15 @@ It exists so nobody has to sit at the theater PC stepping through checks. Suites
 **PASS**, **FAIL**, or **INCONCLUSIVE with a named cause**, exit 0/1/2.
 
 - `run all` — journal (D-023 crash matrix with *real process kills*), live (the session
-  library against the real broadcast), readiness (the D-024 signals, read-only), lan (the
-  D-026 transport; INCONCLUSIVE unless Barkeep is running with `Network:Mode=Lan`).
+  library against the real broadcast), readiness (the D-024 signals plus D-027's
+  deliverability check, read-only), lan (the D-026 transport; INCONCLUSIVE unless Barkeep
+  is running with `Network:Mode=Lan`).
+
+**The transcript header states whether *this run* sends input.** The assembly links
+`SendInput` because the cue suite needs it, so it cannot claim assembly-level innocence —
+`Cantina.Spikes.YargSetlist` is where that guarantee lives. The old
+`attest_no_input=true` line claimed otherwise and was wrong from the day the cue suite
+landed (D-027).
 - `run cue` — the whole loop: stage, cue, stand in for the players, verify by outcome,
   pause what it started. **Sends input**, so it is deliberately excluded from `run all`.
 - `run confirmdiag` — reproduces the confirm loop in isolation against whatever is

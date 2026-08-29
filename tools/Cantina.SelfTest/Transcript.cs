@@ -18,10 +18,26 @@ internal sealed class Transcript
 {
     private readonly Stopwatch _clock = Stopwatch.StartNew();
 
-    public void Banner()
+    /// <summary>
+    /// The run header, and an attestation that is true.
+    ///
+    /// This line used to read <c>attest_no_input=true (links no SendInput/...)</c>, which
+    /// was inherited from <c>Cantina.Spikes.YargSetlist</c> — where it is true, because that
+    /// assembly links no input API at all — and was carried into this tool when the cue
+    /// suite was added. It has been false ever since: <c>CueSuite</c> constructs
+    /// <c>Win32YargActuator</c>, so this assembly links every one of those entry points.
+    ///
+    /// The project's rule is that innocence should be a property of the assembly rather
+    /// than a claim in a log. This assembly cannot offer that, so it states the weaker
+    /// truth instead of the stronger falsehood, and names where the strong guarantee lives.
+    /// </summary>
+    public void Banner(bool runSendsInput)
     {
         Log("RUN", $"wall_start={DateTimeOffset.Now:O}");
-        Log("RUN", "attest_no_input=true (links no SendInput/keybd_event/mouse_event/SetForegroundWindow)");
+        Log("RUN", runSendsInput
+            ? "attest_input=THIS RUN SENDS INPUT (the cue suite actuates and can start a song)"
+            : "attest_input=none in this run (the assembly links SendInput for the cue suite; "
+              + "for assembly-level innocence use Cantina.Spikes.YargSetlist)");
         Log("RUN", $"self_pid={Environment.ProcessId}");
     }
 

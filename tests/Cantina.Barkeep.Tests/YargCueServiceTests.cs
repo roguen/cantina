@@ -22,9 +22,14 @@ public sealed class YargCueServiceTests : IDisposable
 
         public bool TypeSucceeds { get; set; } = true;
 
+        /// <summary>Set to the named reason when the host would swallow injected input.</summary>
+        public string? InputBlocked { get; set; }
+
         public List<string> Actions { get; } = [];
 
         public int YargProcessCount() => Processes;
+
+        public string? InputBlockedReason() => InputBlocked;
 
         public bool TryFocusYarg()
         {
@@ -112,6 +117,22 @@ public sealed class YargCueServiceTests : IDisposable
 
         Assert.Equal("refused", status.State);
         Assert.Equal("YARG is not running", status.Detail);
+        Assert.Empty(_actuator.Actions);
+    }
+
+    [Fact]
+    public void RefusesWhenTheHostWouldSwallowTheInput()
+    {
+        // The failure this guards against is invisible after the fact: Windows accepts
+        // every event and the game receives none. So it is refused before anything is
+        // sent, and the reason is the one the host gave.
+        _actuator.InputBlocked = "the workstation is locked; injected input reaches the secure desktop, not the game";
+        FeedMenu();
+
+        var status = _service.Cue(Request());
+
+        Assert.Equal("refused", status.State);
+        Assert.Equal(_actuator.InputBlocked, status.Detail);
         Assert.Empty(_actuator.Actions);
     }
 

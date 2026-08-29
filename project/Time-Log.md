@@ -665,3 +665,30 @@ start was not captured.
   about the score screen or YARG's setlist — because #39 is an open scope question for the
   owner, and asking upstream for it would be designing a feature through a protocol
   request.
+
+## 2026-08-28 · Input deliverability session 016
+
+- Recorded: 2026-08-28 20:30 PDT
+- Duration: not captured
+- Took the part of #3 that could be advanced without changing the owner's machine.
+  Focus loss was already measured (D-024) and held input was already fixed in the
+  production actuator; what remained were elevation mismatch and lock/logoff, which share
+  the property that makes them dangerous — **Windows discards the input silently**, so a
+  failure is byte-identical to a success from Barkeep's side.
+- Measured read-only on this host: **YARG runs at Medium integrity in Windows session 1**,
+  the same as Barkeep. That is why D-014's proven input path works at all, and it had been
+  an unstated assumption until now.
+- Proving the failure modes would mean running YARG elevated or locking the theater PC.
+  Both change the machine, so neither was done. D-027 turns the hazard into a named
+  readiness signal that fails closed instead: `inputDeliverable` checks the input desktop,
+  the session boundary, and the integrity level before any input is sent, and reports an
+  unreadable token as unknown rather than assuming it equal.
+- **Found while wiring it: every SelfTest transcript has been printing a false
+  attestation.** The header read `attest_no_input=true (links no SendInput/...)`, which is
+  true of `Cantina.Spikes.YargSetlist` — where innocence is a property of the assembly —
+  and was carried into this tool. It has been wrong since the cue suite landed, because
+  `CueSuite` constructs `Win32YargActuator` in the same assembly. The header now states
+  whether *this run* sends input and points at where the strong guarantee actually lives. A
+  false attestation on every run is worse than none, because it is read as evidence.
+- `run readiness` on this host now reports `input-deliverable: no integrity, session, or
+  desktop barrier between Barkeep and YARG`. Server tests 90 → 91.

@@ -154,6 +154,15 @@ public sealed class YargCueService(
             return $"{processes} YARG instances are running; the oracle is ambiguous";
         }
 
+        // Deliverability is checked here rather than discovered afterwards, because every
+        // way Windows blocks injected input is silent (D-014's UIPI case, a locked
+        // workstation, a session boundary). A cue that cannot arrive must fail before it
+        // is sent, not report a success nobody received.
+        if (actuator.InputBlockedReason() is { } blocked)
+        {
+            return blocked;
+        }
+
         if (snapshot.Fault == SessionFault.PortConflict)
         {
             return "another application is holding the YARG data port";
