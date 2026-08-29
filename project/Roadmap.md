@@ -75,7 +75,13 @@ target-environment evidence.
 - [x] Confirm the wire contract in
   [`docs/yarg-interface.md`](../docs/yarg-interface.md) against captured packets, and
   commit the spike under `spikes/`
-- [ ] Record a stock-YARG go/no-go decision
+- [x] Record a stock-YARG go/no-go decision — **go**, recorded as D-028 with the three
+  things stock YARG cannot do named rather than worked around: no playback position, no
+  menu-screen identity, and no keyboard route to the search field. The entry also names what
+  would make it a no-go later — the click coordinate is the one element of the control path
+  that cannot be verified before use, so a YARG update that moves the search box breaks
+  selection silently. That is why a keyboard focus route is the first ask in
+  `docs/upstream-interface.md`, ahead of the more valuable position field
 
 ## M2 · Library
 
@@ -134,11 +140,12 @@ target-environment evidence.
 - [ ] Refresh stock YARG, prove the exact imported song is visible, and fulfill
   play-next without interrupting an active song —
   [#17](https://github.com/roguen/cantina/issues/17)
-- [ ] Report bounded success and honest failure on the iPad. The observation half is
-  served two ways now — `GET /api/live` and the decimated, change-driven `/ws/live`
-  push feed per docs/live-state.md — and the command half exists (`/api/cue`,
-  `/api/setlist`) with named refusals and honest pending states. What remains is the
-  iPad rendering them (M3). Previously recorded:
+- [x] Report bounded success and honest failure on the iPad — the observation half is
+  served two ways, `GET /api/live` and the decimated, change-driven `/ws/live` push feed per
+  docs/live-state.md, and the command half (`/api/cue`, `/api/setlist`) answers with named
+  refusals and honest pending states. The iPad renders all of it, verified in a real browser
+  against the live paused theater: the banner read "Paused: The Unforgiven" and a Cue click
+  rendered "the game is paused; resume it on the pause menu". Previously recorded:
   implemented: `src/Cantina.YargSession` (parser, latching, freshness, named faults) with
   `GET /api/live` serving the D-022 contract, validated on this host against live traffic
   and against YARG being absent

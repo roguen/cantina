@@ -5,8 +5,10 @@ Cantina is an iPad web remote for stock YARG. Read `README.md`,
 
 ## Current state
 
-M0 foundations are established and the repository is public. The M1 spikes have run on the
-theater PC, so `docs/yarg-interface.md` is **confirmed by capture**, not provisional: the
+M0 foundations are established and the repository is public. **M1 is finished and the
+stock-YARG verdict is go** (D-028): every capability the brief asked for is delivered
+without modifying the game, and the three things stock YARG cannot do are named rather than
+worked around. `docs/yarg-interface.md` is **confirmed by capture**, not provisional: the
 layout parses over 80,000 real datagrams with zero rejections (D-010).
 
 **The product core works end to end**, proven on the theater PC: Barkeep indexes the

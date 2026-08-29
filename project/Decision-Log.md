@@ -1104,3 +1104,76 @@ carried into this tool. It has been **false since the cue suite landed**, becaus
 the weaker truth — which suites in *this run* send input — and names where the strong
 guarantee actually lives. A false attestation printed on every run is worse than no
 attestation, because it is read as evidence.
+
+## D-028 · Stock YARG is a go, and the three things it cannot do are named rather than worked around
+
+- Date: 2026-08-28
+- Status: Accepted; closes the M1 milestone item "record a stock-YARG go/no-go decision"
+
+Context: D-005 set the rule — prove stock YARG before proposing an upstream hook. The
+kickoff brief's four capabilities were not obviously reachable without one: YARG exposes no
+remote-control API, ViGEmBus is retired, and the first reading of YALCY's parser suggested
+the datagram carried neither song identity nor position. M1 existed to find out. It is
+finished, so this entry records the verdict.
+
+**The verdict is go.** Every capability the brief asked for is delivered on stock YARG 0.15
+with no game modification, and the product core has been exercised end to end on the
+theater PC.
+
+What carries it, each with the evidence rather than the claim:
+
+- **Observation, from two surfaces.** The 47-byte version-3 datagram parses over 80,000
+  real packets with zero rejections (D-010), byte 7 is a three-state play state (D-012), and
+  `currentSong.json` supplies the identity the datagram omits. `Cantina.SelfTest run live`
+  passes here against the running game.
+- **Selection, as request-and-verify.** `SendInput` with scan codes drives stock YARG from
+  a background process without taking foreground (D-014), scope is narrowed to choosing a
+  song (D-015), and the cue gate refuses by name before sending anything (D-024, D-027).
+  Recorded on 2026-08-28 by the `cue` suite: staged, cued, players stood in, verified by
+  outcome in 15 s.
+- **A setlist that survives the host.** Write-ahead at mutation time because graceful
+  shutdown does not exist here (D-023), with the crash matrix passing under **real process
+  kills**.
+- **A remote that is actually a remote.** One explicit LAN interface over TLS that chains
+  to a theater authority, pairing gated on physical presence, and Barkeep serving the iPad
+  its own client (D-026). `run lan` passes 10 of 10 against the published binary.
+- **Latency that is not a problem.** Search p50 0.5 ms, a journaled command round trip p50
+  1.3 ms, delivered state p50 2.3 ms old (M5 measurement, 2026-08-28).
+
+**Three things stock YARG cannot do, and what Cantina does instead.** None is worked
+around by guessing; each is either refused honestly or specified as an upstream ask in
+`docs/upstream-interface.md`.
+
+1. **No playback position, anywhere.** Dead-reckoning from BPM was rejected (D-010) because
+   there is no length, no seek, and no reconciliation, so the indicator would drift with no
+   way for the client to notice. Cantina ships no progress indicator at all.
+2. **No menu-screen identity.** `CurrentScene` reports `Menu` for the start menu, the song
+   list, settings, and instrument setup alike (D-015). Cantina therefore cannot confirm a
+   precondition before typing, and answers by verifying afterwards and by handing the blind
+   surfaces — instrument setup, the pause menu, the score screen — to the players.
+3. **No keyboard route to the search field, and a fuzzy search.** Selection needs a pointer
+   click at a screen coordinate (D-017), and a query resolves to whatever YARG ranked first
+   across 652 searchable entries against 447 indexed folders (D-025). Cantina reads back
+   what actually loaded rather than assuming the search hit what it asked for.
+
+**What would make this a no-go later, stated now so it is recognised when it happens.** The
+control path contains exactly one element that cannot be verified before it is used: the
+click coordinate. A YARG update that moves the search box breaks song selection **silently**
+— the click lands somewhere harmless, the typing goes nowhere, and the cue fails by outcome
+with no indication of the cause. Verify-by-outcome contains the damage but does not explain
+it. That is why a keyboard focus route is the *first* ask upstream, ahead of the more
+valuable position field: it is the one change that would remove a standing fragility rather
+than add a feature.
+
+Rejected: proposing an upstream hook before proving the stock path, which D-005 forbade and
+which the captures would have made embarrassing — the first reading of the parser was wrong
+about identity. Shipping a derived progress indicator. Treating a sent keystroke as
+evidence. A virtual-controller path, because ViGEmBus is retired and has no maintainable
+installation story for a theater PC.
+
+Consequences: M1 closes. What remains open is not about whether stock YARG suffices: it is
+coexistence with a real lighting consumer (#11, needs software this host lacks), the
+Geomitron Bridge acquisition boundary (#17, needs the Bridge exercised), the two hardware
+steps of #6, and one scope question that is the owner's alone — whether Cantina presses
+`CONTINUE` on the score screen (#39). None of those would be improved by a go/no-go that
+waited for them.

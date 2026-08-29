@@ -723,3 +723,28 @@ start was not captured.
 - Also ticked two roadmap items that were already done and unrecorded: evidence-backed live
   state only, and the ~90 Hz decimation with the freshness debounce. Both verified in the
   code before ticking rather than assumed from memory.
+
+## 2026-08-28 · Stock-YARG go/no-go session 018
+
+- Recorded: 2026-08-28 21:00 PDT
+- Duration: not captured
+- Recorded D-028, the M1 capstone: **stock YARG is a go.** Every capability the brief asked
+  for is delivered without modifying the game, and the entry names what carries it with the
+  evidence rather than the claim — two observation surfaces, selection as request-and-verify,
+  a setlist that survives real process kills, a TLS LAN remote, and latency that is not a
+  problem.
+- The three things stock YARG cannot do are stated as limitations rather than worked around:
+  no playback position anywhere, no menu-screen identity, and no keyboard route to the
+  search field with a fuzzy search behind it. Each is either refused honestly at runtime or
+  specified as an upstream ask.
+- The entry also names **what would make this a no-go later**, which is the part worth
+  writing down while things are going well: the click coordinate is the single element of
+  the control path that cannot be verified before it is used, so a YARG update that moves
+  the search box breaks song selection silently. Verify-by-outcome contains that damage but
+  does not explain it. That is why a keyboard focus route is the first upstream ask, ahead
+  of the more valuable position field.
+- Ticked the M4 item for honest reporting on the iPad, which the client has satisfied since
+  #54 and which the roadmap still described as outstanding.
+- Nothing in this entry was recalled: the cue-suite result is cited with its date as a
+  previously recorded observation rather than re-run, because running it now would start a
+  song in the owner's paused quickplay session.
