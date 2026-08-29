@@ -58,8 +58,8 @@ single-host attempt was inconclusive.
 
 The bound address must be a **DHCP reservation** on the theater's router. Without one, the
 address can change; Barkeep survives that — it re-issues the server certificate as soon as
-the certificate stops naming where it answers — but the QR code, the bookmark, and the
-home-screen icon all go stale, and that is a trip to the theater to fix.
+the certificate stops naming where it answers — but the bookmark and the home-screen icon
+go stale, and that is a trip to the theater to fix.
 
 ## Certificates
 
@@ -183,9 +183,10 @@ TCP ports.
 
 ## Logging
 
-Barkeep logs its binding and nothing about the requests it serves. There is no request log,
-because a line naming a token, a ticket, a song path, or a device's address outlives the
-session it describes. The pairing code is the one secret that is logged, because the
+Barkeep logs its binding and nothing about the requests it serves. Cantina writes no
+request log, and the framework's own is suppressed by the `Microsoft.AspNetCore: Warning`
+level in `appsettings.json` — a line naming a token, a ticket, a song path, or a device's
+address outlives the session it describes. The pairing code is the one secret that is logged, because the
 console is where the operator reads it, and it is short-lived, single-use, and useless off
 this machine.
 
