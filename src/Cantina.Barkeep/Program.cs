@@ -67,7 +67,8 @@ if (endpoints.Mode == BarkeepBinding.Lan)
             endpoints.CertificateAddresses,
             network.LeafCertificateDays,
             TimeProvider.System.GetUtcNow())
-        : TheaterCertificateAuthority.LoadSupplied(network.CertificatePath, network.CertificatePassword);
+        : TheaterCertificateAuthority.LoadSupplied(
+            network.CertificatePath, network.CertificatePassword, network.CertificateKeyPath);
 }
 
 builder.WebHost.ConfigureKestrel(options =>
@@ -79,8 +80,20 @@ builder.WebHost.ConfigureKestrel(options =>
         // Plain HTTP on the LAN carries the onboarding surface and a redirect, nothing
         // else; the control surface is on the TLS port alone.
         options.Listen(endpoints.LanAddress, endpoints.Port);
-        options.Listen(endpoints.LanAddress, endpoints.SecurePort,
-            listener => listener.UseHttps(certificates.Server));
+        options.Listen(endpoints.LanAddress, endpoints.SecurePort, listener =>
+            listener.UseHttps(https =>
+            {
+                https.ServerCertificate = certificates.Server;
+
+                // The intermediates travel with the leaf. Without this a client that does
+                // not already hold Let's Encrypt's intermediate cannot build a path to the
+                // root - and it works on whichever machine you tested on, which is what
+                // makes the omission expensive to find.
+                if (certificates.Chain is { Count: > 0 } chain)
+                {
+                    https.ServerCertificateChain = chain;
+                }
+            }));
     }
 });
 
