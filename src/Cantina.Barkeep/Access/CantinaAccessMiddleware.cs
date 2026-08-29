@@ -83,9 +83,14 @@ public sealed class CantinaAccessMiddleware(
 
             // 307, not 302: a redirect that turns a POST into a GET would drop a command on
             // the floor and report success.
+            //
+            // The port is elided when it is 443, because a redirect that reads
+            // https://name:443/ is a redirect that tells the operator the deployment is
+            // half-configured when it is not.
             var host = context.Request.Host.Host;
+            var authority = endpoints.SecurePort == 443 ? host : $"{host}:{endpoints.SecurePort}";
             context.Response.Redirect(
-                $"https://{host}:{endpoints.SecurePort}{context.Request.Path}{context.Request.QueryString}",
+                $"https://{authority}{context.Request.Path}{context.Request.QueryString}",
                 permanent: false,
                 preserveMethod: true);
             return;

@@ -54,8 +54,10 @@ internal static class LanTransportSuite
             return new SuiteResult(Name, Verdict.Inconclusive, "Barkeep is bound to loopback, so there is no LAN transport to measure.");
         }
 
+        // The plain LAN port and the loopback port are the same setting (Network:Port), so
+        // it comes from the origin this suite was given rather than a constant.
         var secure = new Uri(onboarding.SecureUrl);
-        var plain = new UriBuilder("http", secure.Host, 5273).Uri;
+        var plain = new UriBuilder("http", secure.Host, new Uri(loopback).Port).Uri;
         transcript.Log("SETUP", $"{Name}: secure={secure} plain={plain} needs_device_trust={onboarding.NeedsDeviceTrust}");
 
         // With a supplied certificate there is no theater authority to fetch, and trust is
@@ -88,9 +90,15 @@ internal static class LanTransportSuite
             // 1. The unencrypted LAN port carries onboarding and nothing else.
             using var page = await lanPlain.GetAsync("/onboarding").ConfigureAwait(false);
             var html = await page.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+            // The page has two shapes and the right one depends on the certificate. Asserting
+            // the trust-steps wording unconditionally was correct until a publicly trusted
+            // certificate made it wrong - the page said "Nothing to install", which is exactly
+            // what it should say, and the suite called it a failure.
+            var expected = onboarding.NeedsDeviceTrust ? "Certificate Trust Settings" : "Nothing to install";
             cases.Add(Case(transcript, "plain-http-onboarding",
-                page.StatusCode == HttpStatusCode.OK && html.Contains("Certificate Trust Settings", StringComparison.Ordinal),
-                $"status={(int)page.StatusCode} bytes={html.Length}"));
+                page.StatusCode == HttpStatusCode.OK && html.Contains(expected, StringComparison.Ordinal),
+                $"status={(int)page.StatusCode} bytes={html.Length} expected=\"{expected}\""));
 
             using var redirected = await lanPlain.GetAsync("/api/live").ConfigureAwait(false);
             cases.Add(Case(transcript, "plain-http-redirects-control",

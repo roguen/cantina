@@ -212,6 +212,31 @@ A path that matches no file and no endpoint returns the app, because a single-pa
 owns its own routing — except under `/api` and `/ws`, where a mistyped endpoint must fail
 as an endpoint rather than quietly return HTML the caller will try to parse as JSON.
 
+## A renewal is picked up without a restart
+
+**Kestrel reads its certificate once, at startup.** Left alone, that makes the whole
+arrangement useless: the issuer renews on its own schedule, delivers a new file, and Barkeep
+goes on serving the old certificate until somebody restarts it — which is to say, until the
+old one expires and the theater stops working. The renewal runs perfectly and changes
+nothing.
+
+So a supplied certificate is held behind a source that can swap it. The TLS handshake reads
+whatever is current, a background poll notices the file changing every five minutes, and a
+renewal takes effect on the next connection.
+
+Two behaviours are deliberate:
+
+- **A failed reload keeps the certificate that is working.** The file arrives by `scp`, which
+  is not atomic, so a poll can catch it half-written. Dropping the live certificate because a
+  copy was in flight would turn a renewal into an outage. The failure is logged and the next
+  poll retries.
+- **The initial load is still fatal**, for the reason above: a server quietly serving
+  something other than what was configured fails its clients undiagnosably.
+
+The theater authority is not watched. It reissues its own leaf at startup and has a ten-year
+anchor, so there is nothing arriving from outside to notice, and claiming to watch it would
+be a claim with no mechanism behind it.
+
 ## Certificate expiry is a reported signal
 
 The one way a publicly trusted certificate is *worse* than the private authority: renewal is
@@ -292,6 +317,13 @@ this machine.
 | Refusal, redirect, credential, ticket, revocation logic | `tests/Cantina.Barkeep.Tests/AccessEndpointTests.cs` |
 | Registry storage, pairing window, ticket lifetime, certificate coverage and rotation | `tests/Cantina.Barkeep.Tests/AccessUnitTests.cs` |
 | Real listeners, real TLS handshake, chain to the theater authority, the public app shell, pairing over the wire, socket reconnection, revocation | `tools/Cantina.SelfTest run lan` |
+| A delivered renewal taking effect, and a half-written file not causing an outage | `tests/Cantina.Barkeep.Tests/CertificateReloadTests.cs` |
+
+`run lan` and `run latency` take `--barkeep <origin>` to say where Barkeep is listening on
+loopback. It defaults to `http://localhost:5273`; a theater configured for a portless URL is
+on `http://localhost:80`. The harness assumed 5273 until the port became configuration, at
+which point both suites reported `INCONCLUSIVE` against a port nothing was on — a harness
+confidently measuring the wrong thing.
 
 The unit tests run against a test server, which has no sockets and no TLS; they prove
 decisions, not transport. `run lan` proves transport and reports `INCONCLUSIVE` with a

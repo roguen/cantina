@@ -49,7 +49,25 @@ if (args.Length < 2 || args[0] != "run")
     Console.WriteLine();
     Console.WriteLine("latency and lan also sit outside run all: both need a Barkeep already");
     Console.WriteLine("running on loopback, and lan needs it bound with Network:Mode=Lan.");
+    Console.WriteLine();
+    Console.WriteLine("  --barkeep <origin>   where Barkeep is listening on loopback");
+    Console.WriteLine("                       (default http://localhost:5273; use http://localhost:80");
+    Console.WriteLine("                        when the theater is configured for a portless URL)");
     return 2;
+}
+
+// Barkeep's loopback port is configuration (Network:Port), so the harness is told where
+// to look rather than assuming. It assumed 5273 until the theater moved to 80, at which
+// point both network suites reported INCONCLUSIVE against a port nothing was on - a
+// harness confidently measuring the wrong thing.
+var barkeep = "http://localhost:5273";
+
+for (var index = 0; index < args.Length - 1; index++)
+{
+    if (args[index] == "--barkeep")
+    {
+        barkeep = args[index + 1].TrimEnd('/');
+    }
 }
 
 var transcript = new Transcript();
@@ -79,12 +97,12 @@ if (which is "all" or "readiness")
 // runs, like `cue`, and `all` names what it skipped rather than skipping silently.
 if (which is "latency")
 {
-    results.Add(await LatencySuite.RunAsync(transcript, "http://localhost:5273").ConfigureAwait(false));
+    results.Add(await LatencySuite.RunAsync(transcript, barkeep).ConfigureAwait(false));
 }
 
 if (which is "lan")
 {
-    results.Add(await LanTransportSuite.RunAsync(transcript, "http://localhost:5273").ConfigureAwait(false));
+    results.Add(await LanTransportSuite.RunAsync(transcript, barkeep).ConfigureAwait(false));
 }
 
 if (which is "all")

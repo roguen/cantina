@@ -71,29 +71,35 @@ if (endpoints.Mode == BarkeepBinding.Lan)
             network.CertificatePath, network.CertificatePassword, network.CertificateKeyPath);
 }
 
+// The certificate is held behind a source that can swap it, because Kestrel reads its
+// certificate once at startup and a renewal delivered afterwards would otherwise change
+// nothing until someone restarted Barkeep - which is to say, until the old one expired
+// (D-029).
+var certificateSource = certificates is null
+    ? null
+    : new TheaterCertificateSource(
+        certificates,
+        network,
+        LoggerFactory.Create(logging => logging.AddConsole()).CreateLogger("Cantina.Barkeep.Network"));
+
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenLocalhost(endpoints.Port);
 
-    if (certificates is not null && endpoints.LanAddress is not null)
+    if (certificateSource is not null && endpoints.LanAddress is not null)
     {
         // Plain HTTP on the LAN carries the onboarding surface and a redirect, nothing
         // else; the control surface is on the TLS port alone.
         options.Listen(endpoints.LanAddress, endpoints.Port);
+        // The selection callback runs per connection and reads whatever the source holds
+        // now, so a renewal takes effect on the next handshake rather than the next restart.
+        // The certificate context carries the intermediates with the leaf: a client that
+        // does not already hold Let's Encrypt's intermediate cannot build a path to the
+        // root, and serving the leaf alone works on whichever machine you tested on.
         options.Listen(endpoints.LanAddress, endpoints.SecurePort, listener =>
-            listener.UseHttps(https =>
-            {
-                https.ServerCertificate = certificates.Server;
-
-                // The intermediates travel with the leaf. Without this a client that does
-                // not already hold Let's Encrypt's intermediate cannot build a path to the
-                // root - and it works on whichever machine you tested on, which is what
-                // makes the omission expensive to find.
-                if (certificates.Chain is { Count: > 0 } chain)
-                {
-                    https.ServerCertificateChain = chain;
-                }
-            }));
+            listener.UseHttps(
+                (_, _, state, _) => ValueTask.FromResult(((TheaterCertificateSource)state!).ServerOptions()),
+                certificateSource));
     }
 });
 
@@ -131,9 +137,10 @@ builder.Services.AddSingleton(DeviceRegistry.Open(credentialDirectory));
 builder.Services.AddSingleton<PairingWindow>();
 builder.Services.AddSingleton<LiveTicketStore>();
 
-if (certificates is not null)
+if (certificateSource is not null)
 {
-    builder.Services.AddSingleton(certificates);
+    builder.Services.AddSingleton(certificateSource);
+    builder.Services.AddHostedService<CertificateRenewalWatcher>();
 }
 
 // Rate limits exist for the two shapes of abuse this surface has: guessing a pairing code,
@@ -230,7 +237,7 @@ if (bundled)
 
 app.MapGet("/api/health", (IServiceProvider services, TimeProvider clock) =>
     {
-        var issued = services.GetService<TheaterCertificates>();
+        var issued = services.GetService<TheaterCertificateSource>()?.Current;
 
         if (issued is null)
         {
@@ -361,7 +368,7 @@ app.MapGet("/api/onboarding", (
         DeviceRegistry registry,
         IServiceProvider services) =>
     {
-        var issued = services.GetService<TheaterCertificates>();
+        var issued = services.GetService<TheaterCertificateSource>()?.Current;
 
         // The preferred name, not the address, when the binding has one: a real name is what
         // the certificate is issued for and what the operator typed into DNS (D-029).
@@ -388,7 +395,7 @@ app.MapGet("/api/onboarding", (
 
 app.MapGet($"/{TheaterCertificateAuthority.AuthorityPublicFileName}", (IServiceProvider services) =>
     {
-        var issued = services.GetService<TheaterCertificates>();
+        var issued = services.GetService<TheaterCertificateSource>()?.Current;
 
         return issued?.AuthorityFilePath is null
             ? Results.NotFound()
@@ -403,7 +410,7 @@ app.MapGet($"/{TheaterCertificateAuthority.AuthorityPublicFileName}", (IServiceP
 
 app.MapGet("/onboarding", (TheaterEndpoints theater, IServiceProvider services) =>
         Results.Content(
-            OnboardingPage.Render(theater, services.GetService<TheaterCertificates>()),
+            OnboardingPage.Render(theater, services.GetService<TheaterCertificateSource>()?.Current),
             "text/html; charset=utf-8"))
     .WithName("GetOnboardingPage");
 
