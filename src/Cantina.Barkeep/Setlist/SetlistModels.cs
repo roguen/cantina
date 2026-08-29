@@ -4,8 +4,13 @@ using System.Text.Json.Serialization;
 
 namespace Cantina.Barkeep.Setlist;
 
-/// <summary>One entry in the setlist: the identity Cantina cues by and displays.</summary>
-public sealed record SetlistEntry(string Hash, string Title, string Artist);
+/// <summary>
+/// One entry in the setlist: the identity Cantina cues by and displays. Location is the
+/// folder path (the durable join key, D-025); Hash is YARG's learned content hash and may
+/// be empty until first observed. Older journal lines carry no location and deserialize
+/// with null, which the cue matcher tolerates.
+/// </summary>
+public sealed record SetlistEntry(string Hash, string Title, string Artist, string? Location = null);
 
 /// <summary>
 /// The mutations the setlist accepts. Every intent carries the client-supplied command id

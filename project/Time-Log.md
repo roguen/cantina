@@ -521,3 +521,10 @@ start was not captured.
   from the 90.7 Hz wire to change-driven frames (scene, play state, song, freshness,
   fault) plus a 5 s heartbeat, per docs/live-state.md's decimation rule. Covered end to
   end by a deterministic test feeding the tracker and reading frames. 59 tests total.
+- **Recorded D-025 and closed issue #5.** The filesystem is the metadata source — the
+  same `SongFolders` YARG's settings name — with the folder path as the join key between
+  index and observation, and YARG's content hash learned from `currentSong.json` rather
+  than computed. `SongIndex` + `GET /api/songs` + `POST /api/library/rescan`; search is
+  plain substring, ranked, deliberately not fuzzy. Live result on this host: 447 of 447
+  folders indexed in 89 ms with zero skips, and the learned-hash join fired within a
+  minute of startup because YARG sat paused on The Unforgiven. 66 tests total.
