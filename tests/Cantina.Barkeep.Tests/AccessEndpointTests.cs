@@ -251,6 +251,35 @@ public sealed class AccessEndpointTests : IClassFixture<WebApplicationFactory<Pr
     }
 
     [Fact]
+    public async Task TheAppShellLoadsBeforePairingButItsDataDoesNot()
+    {
+        // An unpaired iPad has to load the client in order to have anywhere to type its
+        // pairing code. The bundle is markup and script and carries no theater state; the
+        // API behind it carries all of it.
+        using var shell = LanTestHost.FromLan(HttpMethod.Get, "/");
+        using var loaded = await _client.SendAsync(shell);
+
+        Assert.NotEqual(HttpStatusCode.Unauthorized, loaded.StatusCode);
+
+        using var data = LanTestHost.FromLan(HttpMethod.Get, "/api/songs?query=a");
+        using var refused = await _client.SendAsync(data);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, refused.StatusCode);
+    }
+
+    [Fact]
+    public async Task OnlyReadsOfTheAppShellArePublic()
+    {
+        // The exemption is for loading a page, not for reaching past the API with a verb.
+        using var request = LanTestHost.FromLan(HttpMethod.Post, "/anything");
+        request.Content = Json("{}");
+
+        using var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task TheCertificateIsServedAsAProfileIosWillOffer()
     {
         using var request = LanTestHost.FromLanPlain(HttpMethod.Get, "/cantina-theater-ca.cer");

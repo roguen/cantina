@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import './App.css'
 import {
+  NotPairedError,
   addToSetlist,
   cueSong,
   currentCue,
@@ -13,12 +14,32 @@ import {
   type IndexedSong,
   type SetlistView,
 } from './api'
+import { PairingScreen } from './PairingScreen'
 import { connectionCopy } from './connectionState'
 import { stageCopy } from './liveState'
+import { storedToken } from './pairing'
 import { useLiveSocket } from './useLiveSocket'
 
 function App() {
-  const { connection, live } = useLiveSocket()
+  // Pairing is a state of the app, not an error in it. Barkeep answering 401 anywhere
+  // means this device's credential is gone — revoked at the theater PC, most likely — and
+  // the only useful screen is the one asking for a new code (D-026).
+  const [paired, setPaired] = useState(() => storedToken() !== null)
+  const [pairingDetail, setPairingDetail] = useState<string | null>(null)
+
+  const unpair = useCallback((error: unknown) => {
+    if (error instanceof NotPairedError) {
+      setPaired(false)
+      setPairingDetail(error.message)
+      return true
+    }
+    return false
+  }, [])
+
+  const { connection, live } = useLiveSocket(
+    paired,
+    useCallback(() => setPaired(false), []),
+  )
   const [query, setQuery] = useState('')
   const [songs, setSongs] = useState<IndexedSong[]>([])
   const [totalIndexed, setTotalIndexed] = useState<number | null>(null)
@@ -30,15 +51,19 @@ function App() {
   const refreshSetlist = useCallback(() => {
     fetchSetlist()
       .then(setSetlist)
-      .catch(() => setSetlist(null))
-  }, [])
+      .catch((error: unknown) => {
+        if (!unpair(error)) setSetlist(null)
+      })
+  }, [unpair])
 
   useEffect(() => {
-    refreshSetlist()
-  }, [refreshSetlist])
+    if (paired) refreshSetlist()
+  }, [paired, refreshSetlist])
 
   // Debounced search against the index.
   useEffect(() => {
+    if (!paired) return
+
     const timer = window.setTimeout(() => {
       searchSongs(query)
         .then((response) => {
@@ -46,11 +71,13 @@ function App() {
           setTotalIndexed(response.totalIndexed)
           setSearchError(null)
         })
-        .catch(() => setSearchError('The library is unreachable.'))
+        .catch((error: unknown) => {
+          if (!unpair(error)) setSearchError('The library is unreachable.')
+        })
     }, 200)
 
     return () => window.clearTimeout(timer)
-  }, [query, connection])
+  }, [query, connection, paired, unpair])
 
   // Follow an in-flight cue until it resolves; resolution arrives by observation
   // (pending-players is a real state, not a spinner).
@@ -74,14 +101,30 @@ function App() {
     setActionError(null)
     cueSong(song)
       .then(setCue)
-      .catch(() => setActionError('The cue could not reach Barkeep.'))
+      .catch((error: unknown) => {
+        if (!unpair(error)) setActionError('The cue could not reach Barkeep.')
+      })
   }
 
   const onAdd = (song: IndexedSong) => {
     setActionError(null)
     addToSetlist(song)
       .then(refreshSetlist)
-      .catch(() => setActionError('The setlist change could not reach Barkeep.'))
+      .catch((error: unknown) => {
+        if (!unpair(error)) setActionError('The setlist change could not reach Barkeep.')
+      })
+  }
+
+  if (!paired) {
+    return (
+      <PairingScreen
+        detail={pairingDetail}
+        onPaired={() => {
+          setPairingDetail(null)
+          setPaired(true)
+        }}
+      />
+    )
   }
 
   const connectionState = connection

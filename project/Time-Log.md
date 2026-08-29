@@ -600,3 +600,35 @@ start was not captured.
   blind-menu state the observation skill warns about — and received no input all session.
 - Reachability from a second device remains unproven, and is stated as such rather than
   inferred from a same-host success.
+
+## 2026-08-28 · Client hosting and pairing session 014
+
+- Recorded: 2026-08-28 20:15 PDT
+- Duration: not captured
+- Closed the rest of #6: Barkeep now serves the iPad its own client from `wwwroot`, so the
+  theater PC is the only place the app comes from, and the client holds a device token,
+  shows a pairing screen when Barkeep says it has none, and buys a fresh single-use ticket
+  for every socket connection.
+- **One real deployment bug, found by running the published binary rather than reasoning
+  about it.** ASP.NET Core's default content root is the *working* directory, so a
+  published Barkeep started from the repository root answered 404 for its own front page.
+  The web root is now pinned to `AppContext.BaseDirectory`. A shortcut or a scheduled task
+  would have hit this on the theater PC and nowhere else.
+- Also found by building rather than assuming: including the client bundle as MSBuild
+  `Content` enrols it in the static web assets pipeline, which then writes a manifest
+  pointing at a source `wwwroot/` this project does not have and fails every test host at
+  startup. The bundle is plain `None` items now and that pipeline is off.
+- The access rule the client needed: the app shell is public, its data is not. A GET or
+  HEAD outside `/api` and `/ws` is the bundle, which an unpaired iPad must load to have
+  anywhere to type its code; anything else takes a credential.
+- Verified on the theater PC against the published binary bound to the LAN.
+  `Cantina.SelfTest run lan` passed **10 of 10**, and an independent client (Windows
+  `curl.exe`, so a different TLS stack entirely) confirmed the whole rule set unpaired:
+  `/` 200, `/setlist` 200, `/api/live` 401, `POST /anything` 401, a foreign `Origin` 403,
+  and a foreign `Host` 400.
+- **A measurement artifact worth naming so nobody re-derives it:** PowerShell 5.1's
+  `Invoke-WebRequest` cannot complete the handshake against this binding at all — every
+  verb fails with "an unexpected error occurred on a send" — while Windows `curl.exe` on
+  SChannel and .NET 10's client both succeed repeatedly. It is the legacy .NET Framework
+  TLS stack, not the certificate. Use `curl.exe` or the SelfTest suite for this.
+- Server tests 88 → 90, client tests 5 → 11.

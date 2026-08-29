@@ -40,6 +40,7 @@ not running. Do not assume it participates in any request.
 | Cue gate + actuation + verify | `Barkeep/Yarg/Control/` | D-015, D-017, D-024 |
 | Binding, certificate authority, firewall text | `Barkeep/Network/` | D-026 |
 | Pairing, device registry, socket tickets, access middleware | `Barkeep/Access/` | D-026 |
+| Device token, pairing screen, ticketed socket | `cantina-client/src/pairing.ts`, `PairingScreen.tsx` | D-026 |
 | Client honesty copy | `cantina-client/src/liveState.ts` | D-022, D-024 |
 
 The normative contracts these implement are `docs/live-state.md`,
@@ -73,7 +74,7 @@ dotnet run --project tools/Cantina.TestHarness --configuration Release --no-buil
 and in `src/cantina-client`: `npm ci` (on a fresh clone), then `npm run lint`,
 `npm run test`, `npm run build`.
 
-**The green baseline as of 2026-08-28: 88 server tests, 14 harness scenarios, 5 client
+**The green baseline as of 2026-08-28: 90 server tests, 14 harness scenarios, 11 client
 tests, zero warnings.** If a run reports fewer than that and you did not delete anything,
 find out why before continuing — a self-reported pass against no expected number is not a
 check.

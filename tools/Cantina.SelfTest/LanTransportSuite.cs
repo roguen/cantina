@@ -95,7 +95,20 @@ internal static class LanTransportSuite
                 unpaired.StatusCode == HttpStatusCode.Unauthorized && refusal.Contains("pairing-required", StringComparison.Ordinal),
                 $"status={(int)unpaired.StatusCode} body={refusal}"));
 
-            // 3. Pairing: the code is readable only over loopback, which is the theater PC.
+            // 3. The app shell is public and its data is not. An unpaired iPad has to load
+            //    the client to have anywhere to type its code; a 401 here would be a
+            //    deadlock rather than a defence.
+            using var shell = await lan.GetAsync("/").ConfigureAwait(false);
+            cases.Add(Case(transcript, "app-shell-loads-unpaired",
+                shell.StatusCode != HttpStatusCode.Unauthorized,
+                $"status={(int)shell.StatusCode} bundle_present={shell.StatusCode == HttpStatusCode.OK}"));
+
+            using var wrongVerb = await lan.PostAsync("/anything", Empty()).ConfigureAwait(false);
+            cases.Add(Case(transcript, "only-reads-of-the-shell-are-public",
+                wrongVerb.StatusCode == HttpStatusCode.Unauthorized,
+                $"status={(int)wrongVerb.StatusCode}"));
+
+            // 4. Pairing: the code is readable only over loopback, which is the theater PC.
             using var opened = await local.PostAsync("/api/pairing/window", Empty()).ConfigureAwait(false);
             var window = await opened.Content.ReadFromJsonAsync<WindowView>().ConfigureAwait(false);
 
@@ -126,16 +139,16 @@ internal static class LanTransportSuite
                 served.StatusCode == HttpStatusCode.OK,
                 $"status={(int)served.StatusCode}"));
 
-            // 4. The live socket, with the ticket that stands in for a header a browser
+            // 5. The live socket, with the ticket that stands in for a header a browser
             //    cannot send, and the reconnection an iPad performs every time it sleeps.
             cases.Add(await SocketCasesAsync(transcript, lan, secure, authority).ConfigureAwait(false));
 
-            // 5. A reconnect must not replay a command. The socket carries no commands at
+            // 6. A reconnect must not replay a command. The socket carries no commands at
             //    all, so the risk lives in the client's retry: the same command id twice
             //    must converge, not duplicate.
             cases.Add(await ReplayCaseAsync(transcript, lan).ConfigureAwait(false));
 
-            // 6. Revocation is the recovery path when the iPad is lost or replaced.
+            // 7. Revocation is the recovery path when the iPad is lost or replaced.
             using var revoked = await lan.DeleteAsync($"/api/devices/{deviceId}").ConfigureAwait(false);
             using var afterward = await lan.GetAsync("/api/live").ConfigureAwait(false);
             deviceId = null;

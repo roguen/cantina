@@ -14,7 +14,17 @@ using Cantina.YargSession;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
-var builder = WebApplication.CreateBuilder(args);
+// The web root is pinned to the binary's own directory, not the working directory.
+// ASP.NET Core's default content root is `Directory.GetCurrentDirectory()`, so a Barkeep
+// launched from a shortcut, a scheduled task, or any shell that happens to be somewhere
+// else would look for its client bundle in that somewhere else and serve nothing. Measured
+// on this host before it was believed: a published Barkeep started from the repository
+// root answered 404 for its own front page.
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot"),
+});
 
 // Where Barkeep listens is decided once, before anything is built, so the certificate's
 // subject names, the accepted Host headers, the accepted browser origins, and the firewall
@@ -163,6 +173,21 @@ if (certificates is not null && endpoints.LanAddress is not null)
         AccessLog.NoDevicePaired(log);
         AccessLog.PairingCode(log, opened.Code, opened.ExpiresAt);
     }
+}
+
+// Barkeep serves the iPad its own client, so the theater PC is the only place the app
+// comes from: no app store, no CDN, and nothing to install but a home-screen shortcut.
+// The bundle is public — an unpaired iPad has to load it to have somewhere to type its
+// pairing code — while every /api and /ws path behind it is not (D-026).
+// Guarded on the bundle actually being there: during development the client is on the
+// Vite dev server, and a server that throws at startup because a directory is missing is
+// worse than one that says the app is not published here.
+var bundled = !string.IsNullOrEmpty(app.Environment.WebRootPath) && Directory.Exists(app.Environment.WebRootPath);
+
+if (bundled)
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
 }
 
 app.MapGet("/api/health", () => new HealthResponse("ok", "Barkeep"))
@@ -400,6 +425,33 @@ app.MapPost("/api/live/ticket", (HttpContext context, LiveTicketStore tickets, T
     })
     .RequireRateLimiting("commands")
     .WithName("IssueLiveTicket");
+
+// A single-page client owns its own routing, so an unknown path is the app, not a 404.
+// API and socket paths are excluded: a mistyped endpoint must fail as an endpoint rather
+// than silently return HTML that the caller will try to parse as JSON.
+app.MapFallback(context =>
+{
+    var path = context.Request.Path.Value ?? string.Empty;
+
+    if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/ws/", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return Task.CompletedTask;
+    }
+
+    var index = Path.Combine(app.Environment.WebRootPath ?? string.Empty, "index.html");
+
+    if (!bundled || !File.Exists(index))
+    {
+        // No bundle published. Say so rather than serving a blank page: during
+        // development the client is on the Vite dev server, not here.
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return Task.CompletedTask;
+    }
+
+    return context.Response.SendFileAsync(index);
+});
 
 app.Run();
 

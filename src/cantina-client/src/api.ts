@@ -2,7 +2,34 @@
 
 // Thin fetch wrappers over Barkeep's surface. Every mutating call carries a
 // client-generated command id, so a retry after a lost response replays from the
-// journal instead of acting twice (D-023).
+// journal instead of acting twice (D-023), and every call carries the paired device's
+// bearer token when there is one (D-026).
+//
+// `crypto.randomUUID` needs a secure context, which is exactly what Barkeep's LAN binding
+// provides and why loopback HTTP still works: localhost is a secure context too.
+
+import { forgetToken, pairingRefusal, storedToken } from './pairing'
+
+/// Thrown when Barkeep says this device is not paired. The caller shows the pairing
+/// screen rather than an error, because "not paired" is a state, not a failure.
+export class NotPairedError extends Error {}
+
+async function call(path: string, init?: RequestInit): Promise<Response> {
+  const token = storedToken()
+  const headers = new Headers(init?.headers)
+
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+
+  const response = await fetch(path, { ...init, headers })
+
+  if (response.status === 401) {
+    const detail = pairingRefusal(response.status, await response.clone().text())
+    forgetToken()
+    throw new NotPairedError(detail ?? 'This iPad is not paired with the theater PC.')
+  }
+
+  return response
+}
 
 export type IndexedSong = {
   location: string
@@ -44,19 +71,19 @@ export type CueStatus = {
 }
 
 export async function searchSongs(query: string): Promise<SongSearchResponse> {
-  const response = await fetch(`/api/songs?query=${encodeURIComponent(query)}&limit=50`)
+  const response = await call(`/api/songs?query=${encodeURIComponent(query)}&limit=50`)
   if (!response.ok) throw new Error(`search failed: ${response.status}`)
   return response.json() as Promise<SongSearchResponse>
 }
 
 export async function fetchSetlist(): Promise<SetlistView> {
-  const response = await fetch('/api/setlist')
+  const response = await call('/api/setlist')
   if (!response.ok) throw new Error(`setlist failed: ${response.status}`)
   return response.json() as Promise<SetlistView>
 }
 
 export async function addToSetlist(song: IndexedSong): Promise<void> {
-  const response = await fetch('/api/setlist/commands', {
+  const response = await call('/api/setlist/commands', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -69,7 +96,7 @@ export async function addToSetlist(song: IndexedSong): Promise<void> {
 }
 
 export async function cueSong(song: IndexedSong): Promise<CueStatus> {
-  const response = await fetch('/api/cue', {
+  const response = await call('/api/cue', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -82,8 +109,21 @@ export async function cueSong(song: IndexedSong): Promise<CueStatus> {
   return response.json() as Promise<CueStatus>
 }
 
+// The socket cannot carry a header, so a paired device spends its token here for a
+// ticket good for one connection and thirty seconds (D-026).
+export async function liveTicket(): Promise<string> {
+  const response = await call('/api/live/ticket', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  })
+  if (!response.ok) throw new Error(`ticket failed: ${response.status}`)
+  const issued = (await response.json()) as { ticket: string }
+  return issued.ticket
+}
+
 export async function currentCue(): Promise<CueStatus | null> {
-  const response = await fetch('/api/cue/current')
+  const response = await call('/api/cue/current')
   if (response.status === 204) return null
   if (!response.ok) throw new Error(`cue status failed: ${response.status}`)
   return response.json() as Promise<CueStatus>

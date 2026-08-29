@@ -107,7 +107,12 @@ target-environment evidence.
   this host against a real LAN binding. Two things stay unproven and are named as such:
   whether iPadOS resolves this host by mDNS, and whether a second device can reach the
   ports without the firewall rule
-- [ ] Installable Home Screen experience and automatic reconnection
+- [x] Installable Home Screen experience and automatic reconnection — Barkeep serves the
+  built client from `wwwroot` over the D-026 TLS binding, so the iPad installs the app from
+  the theater PC itself and gets a secure context. The client holds its device token,
+  renders a pairing screen when Barkeep says it has none, and buys a fresh single-use
+  ticket for every socket connection, so waking from sleep reconnects without ceremony and
+  without replaying a command. Still needs an actual iPad for the Add to Home Screen tap
 - [x] One-handed browse and search with persistent connection state — the client renders
   the live stage banner from /ws/live with automatic reconnection and honest staleness
   copy, debounced search over /api/songs, per-song Cue and Add, the setlist with its

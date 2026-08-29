@@ -9,10 +9,35 @@
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
     <Version>0.1.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!--
+      Cantina has no Razor class libraries and no Blazor, so the static web assets pipeline
+      has nothing to contribute and one thing to break: it builds a manifest pointing at a
+      source wwwroot/ that this project does not have. The client bundle is copied into the
+      output as plain files and served from there.
+    -->
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="../Cantina.YargSession/Cantina.YargSession.csproj" />
+  </ItemGroup>
+
+  <!--
+    The built iPad client, served from wwwroot so the theater PC is the only place the app
+    comes from (D-026). The condition matters: CI builds the client in its own job, and the
+    server matrix must not fail because dist/ is not there. Run `npm run build` in
+    src/cantina-client before publishing, which is what the publish job does.
+  -->
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)../cantina-client/dist')">
+    <!--
+      None rather than Content on purpose: Content enrols these files in the static web
+      assets pipeline, which then builds a manifest pointing at a source wwwroot/ that does
+      not exist and fails every test host at startup. These are plain files to copy.
+    -->
+    <None Include="../cantina-client/dist/**/*"
+          LinkBase="wwwroot"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

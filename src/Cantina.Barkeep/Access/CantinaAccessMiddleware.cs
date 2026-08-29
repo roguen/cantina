@@ -22,6 +22,10 @@ namespace Cantina.Barkeep.Access;
 /// to TLS. The control surface exists on one port and it is encrypted.</item>
 /// <item>The live socket takes a single-use ticket, because a browser cannot send a header
 /// on a WebSocket.</item>
+/// <item>The app shell is public and its data is not. A GET outside <c>/api</c> and
+/// <c>/ws</c> is the client bundle, which an unpaired iPad has to load in order to have
+/// anywhere to type its pairing code. It is JavaScript and markup, it carries no theater
+/// state, and treating it as a secret would make pairing impossible.</item>
 /// <item>Everything else takes a paired device's bearer token.</item>
 /// </list>
 ///
@@ -87,7 +91,7 @@ public sealed class CantinaAccessMiddleware(
             return;
         }
 
-        if (onboarding || path.Equals("/api/pair", StringComparison.OrdinalIgnoreCase))
+        if (onboarding || path.Equals("/api/pair", StringComparison.OrdinalIgnoreCase) || IsAppShell(context, path))
         {
             await next(context);
             return;
@@ -123,6 +127,17 @@ public sealed class CantinaAccessMiddleware(
         context.Items[DeviceItemKey] = device.DeviceId;
         await next(context);
     }
+
+    /// <summary>
+    /// The client bundle: any GET that is not the API or the socket. Barkeep serves the
+    /// iPad its own app, so this has to be reachable before a device is paired. Only GET
+    /// and HEAD qualify — nothing outside <c>/api</c> mutates anything, and a POST to a
+    /// static path is not a request Barkeep should be answering at all.
+    /// </summary>
+    private static bool IsAppShell(HttpContext context, string path) =>
+        (HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method)) &&
+        !path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase) &&
+        !path.StartsWith("/ws/", StringComparison.OrdinalIgnoreCase);
 
     private static string? BearerToken(HttpContext context)
     {
