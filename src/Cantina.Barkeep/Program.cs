@@ -2,6 +2,7 @@
 
 using System.Text.Json.Serialization;
 using Cantina.Barkeep;
+using Cantina.Barkeep.Library;
 using Cantina.Barkeep.Setlist;
 using Cantina.Barkeep.Yarg;
 using Cantina.Barkeep.Yarg.Control;
@@ -23,6 +24,10 @@ builder.Services.Configure<YargSessionOptions>(
     builder.Configuration.GetSection(YargSessionOptions.SectionName));
 builder.Services.Configure<SetlistOptions>(
     builder.Configuration.GetSection(SetlistOptions.SectionName));
+builder.Services.Configure<LibraryOptions>(
+    builder.Configuration.GetSection(LibraryOptions.SectionName));
+builder.Services.AddSingleton<SongIndex>();
+builder.Services.AddHostedService<LibraryService>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<YargSessionTracker>();
 builder.Services.AddSingleton(provider => SetlistJournal.Open(
@@ -73,6 +78,24 @@ app.Map("/ws/live", async context =>
             json,
             context.RequestAborted);
     });
+
+// The library surface (D-025): plain-substring search over what the filesystem states,
+// ranked title > artist > album > charter, each result carrying the folder path the cue
+// pipeline joins on and the YARG hash once observation has taught it.
+app.MapGet("/api/songs", (string? query, int? limit, SongIndex index) =>
+        new SongSearchResponse(
+            index.Search(query ?? string.Empty, Math.Clamp(limit ?? 50, 1, 200)),
+            index.Count,
+            index.LastScan))
+    .WithName("SearchSongs");
+
+app.MapPost("/api/library/rescan", (
+        SongIndex index,
+        Microsoft.Extensions.Options.IOptions<LibraryOptions> library,
+        Microsoft.Extensions.Options.IOptions<YargSessionOptions> yarg,
+        TimeProvider clock) =>
+        index.Scan(library.Value.ResolveDirectories(yarg.Value.ResolveYargDirectory()), clock))
+    .WithName("RescanLibrary");
 
 app.MapGet("/api/setlist", (SetlistJournal journal) => new SetlistView(
         journal.State,

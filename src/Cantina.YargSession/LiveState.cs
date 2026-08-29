@@ -60,8 +60,12 @@ public enum SongSource
     CuedByBarkeep = 2,
 }
 
-/// <summary>Latched song identity. Carried through the score screen (D-010).</summary>
-public sealed record LatchedSong(string Title, string Artist, string Hash);
+/// <summary>
+/// Latched song identity. Carried through the score screen (D-010). The location is the
+/// folder path YARG states in currentSong.json — the join key between observation and
+/// Cantina's own index, because the hash algorithm is YARG's private detail (D-025).
+/// </summary>
+public sealed record LatchedSong(string Title, string Artist, string Hash, string Location);
 
 /// <summary>
 /// The live-state snapshot promised to the client, per <c>docs/live-state.md</c>.

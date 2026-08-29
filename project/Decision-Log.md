@@ -930,3 +930,45 @@ gains a measured input: a Barkeep-launched YARG would come up foreground, but an
 launch of anything else silently pauses gameplay, which strengthens the case for Barkeep
 *watching* foreground rather than managing it. The M2 cue pipeline implements the
 five-signal gate as its precondition check.
+
+## D-025 · The filesystem is the metadata source, and YARG's hash is learned, never computed
+
+- Date: 2026-08-28
+- Status: Accepted; closes issue [#5](https://github.com/roguen/cantina/issues/5)
+
+Context: Issue #5 asked which source is authoritative for song metadata. The candidates:
+YARG's `songcache.bin` (binary, undocumented, version-coupled — a private surface of the
+kind rule 6 exists to keep Cantina off), or the song folders themselves — `song.ini`
+beside the note files, which is what YARG itself reads. The theater library was measured
+before deciding: 447 folders, every one carrying `song.ini`, zero `.sng` archives yet,
+and YARG's settings name exactly one source directory.
+
+Decision:
+
+- **Index the filesystem** — the same `SongFolders` YARG's settings name, so search
+  results are always cueable. `song.ini` is parsed directly; a folder that cannot be
+  indexed is skipped with a named reason, never silently dropped.
+- **The folder path is the join key.** `currentSong.json` states `ActualLocation`, and
+  Cantina knows every indexed folder — so observation and index join on path.
+- **YARG's content hash is learned, never computed.** The algorithm is YARG's private
+  detail; computing it would couple Cantina to internals. The first time a song is
+  observed loaded, its stated hash is joined to the indexed folder and kept across
+  rescans. Cue verification matches on location first, learned hash second.
+- **Cantina's search is plain substring**, ranked title > artist > album > charter —
+  deliberately unlike YARG's fuzzy search, whose widening D-017 measured. Predictable
+  results are the point when a wrong selection costs a whole song.
+- **`.sng` metadata is deliberately unimplemented** until the first real archive lands
+  (D-007's handoff baseline): each one found is reported by name rather than parsed
+  against a guessed format.
+
+Rejected: Reading `songcache.bin`. A database (the D-023 argument at the same scale:
+447 songs, one host, in-memory wins). Computing YARG's hash. Fuzzy matching.
+
+Consequences: Issue #5 closes. Measured on this host at first run: **447 of 447 folders
+indexed in 89 ms with zero skips**, and the learned-hash join fired within a minute —
+YARG sat paused on *The Unforgiven* and the index acquired its hash from pure
+observation. Charter fields carry YARG's inline color tags raw; stripping is the
+client's display concern, not the index's. One open observation: YARG's library screen
+displays "652 SONGS" against 447 folders on disk from its single configured source —
+unexplained, recorded rather than reconciled, and worth revisiting if selection ever
+misses.

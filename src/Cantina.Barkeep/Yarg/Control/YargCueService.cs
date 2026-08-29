@@ -113,7 +113,12 @@ public sealed class YargCueService(
                 return;
             }
 
-            if (snapshot.Song.Hash == pending.Requested.Hash)
+            var matches =
+                (pending.Requested.Location is { Length: > 0 } location
+                    && string.Equals(location, snapshot.Song.Location, StringComparison.OrdinalIgnoreCase))
+                || (pending.Requested.Hash.Length > 0 && snapshot.Song.Hash == pending.Requested.Hash);
+
+            if (matches)
             {
                 journal.Resolve(pending.CommandId, SetlistOutcome.Done, clock);
                 _current = pending with

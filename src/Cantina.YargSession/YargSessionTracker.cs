@@ -118,7 +118,7 @@ public sealed class YargSessionTracker
             }
 
             _lastSongContentHash = document.Hash;
-            _song = new LatchedSong(document.Title, document.Artist, document.Hash);
+            _song = new LatchedSong(document.Title, document.Artist, document.Hash, document.Location);
             _songSource = SongSource.Observed;
         }
     }

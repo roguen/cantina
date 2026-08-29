@@ -79,12 +79,20 @@ target-environment evidence.
 
 ## M2 · Library
 
-- [ ] Choose the authoritative metadata source —
-  [#5](https://github.com/roguen/cantina/issues/5)
-- [ ] Resilient incremental indexing with explicit skip reasons
+- [x] Choose the authoritative metadata source —
+  [#5](https://github.com/roguen/cantina/issues/5), closed by D-025: the filesystem
+  (song.ini in the folders YARG itself reads), joined to observation by folder path, with
+  YARG hashes learned rather than computed. Measured: 447/447 indexed in 89 ms, zero skips
+- [x] Resilient indexing with explicit skip reasons — every unindexable folder reported
+  by name (ini-unreadable, ini-missing-name-or-artist, duplicate-location,
+  sng-metadata-not-yet-implemented, directory-missing); full rescan on demand at 89 ms
+  for the whole library, so incremental machinery is deliberately absent until scale
+  demands it
 - [ ] Reconcile stable Geomitron Bridge `.sng` arrivals exactly once and map provider
   identity to Cantina song identity — [#17](https://github.com/roguen/cantina/issues/17)
-- [ ] Full-text search across title, artist, album, and charter
+- [x] Search across title, artist, album, and charter — `GET /api/songs`, plain
+  substring ranked title > artist > album > charter (deliberately not fuzzy; D-017
+  measured what fuzzy costs)
 - [ ] Album-art selection, serving, and cache invalidation
 
 ## M3 · iPad client
