@@ -6,14 +6,29 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace Cantina.Barkeep.Network;
 
-/// <summary>The certificates a LAN binding needs, and whether this start produced them.</summary>
+/// <summary>
+/// The certificate a LAN binding serves, and where it came from.
+///
+/// <see cref="Authority"/> is null when the certificate was supplied from outside and is
+/// already publicly trusted. That null is the whole difference the iPad feels: an authority
+/// means a profile to install and a fingerprint to compare, and no authority means the
+/// device just connects (D-029).
+/// </summary>
 public sealed record TheaterCertificates(
-    X509Certificate2 Authority,
     X509Certificate2 Server,
+    X509Certificate2? Authority,
     bool AuthorityCreated,
     bool ServerIssued,
-    string AuthorityFingerprint,
-    string AuthorityFilePath);
+    string? AuthorityFingerprint,
+    string? AuthorityFilePath)
+{
+    /// <summary>True when the iPad has to be taught to trust this, false when the world already does.</summary>
+    public bool NeedsDeviceTrust => Authority is not null;
+
+    public DateTimeOffset NotAfter => Server.NotAfter.ToUniversalTime();
+
+    public int DaysUntilExpiry(DateTimeOffset now) => (int)Math.Floor((NotAfter - now).TotalDays);
+}
 
 /// <summary>
 /// A private certificate authority for one theater, and the server certificate it signs.
@@ -84,12 +99,52 @@ public static class TheaterCertificateAuthority
         }
 
         return new TheaterCertificates(
-            authority,
             server,
+            authority,
             authorityCreated,
             serverIssued,
             Fingerprint(authority),
             publicPath);
+    }
+
+    /// <summary>
+    /// Load a certificate somebody else issued — in practice a Let's Encrypt leaf delivered
+    /// by the site's existing ACME machinery. Barkeep does no ACME of its own on purpose:
+    /// issuing and renewing is a job the network already does for other services, and
+    /// duplicating it here would mean a second place holding a DNS credential.
+    ///
+    /// Failing to load is fatal rather than a silent fall back to the private authority. A
+    /// server that quietly serves a different certificate than the operator configured is a
+    /// server whose clients fail in a way nobody can explain.
+    /// </summary>
+    public static TheaterCertificates LoadSupplied(string path, string? password)
+    {
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException(
+                $"Network:CertificatePath names '{path}', which does not exist. " +
+                "Clear the setting to fall back to the theater authority, or fix the path.",
+                path);
+        }
+
+        var server = X509CertificateLoader.LoadPkcs12(
+            File.ReadAllBytes(path),
+            string.IsNullOrEmpty(password) ? null : password,
+            X509KeyStorageFlags.Exportable);
+
+        if (!server.HasPrivateKey)
+        {
+            throw new InvalidOperationException(
+                $"The certificate at '{path}' carries no private key, so it cannot serve TLS.");
+        }
+
+        return new TheaterCertificates(
+            server,
+            Authority: null,
+            AuthorityCreated: false,
+            ServerIssued: false,
+            AuthorityFingerprint: null,
+            AuthorityFilePath: null);
     }
 
     /// <summary>The SHA-256 fingerprint an operator compares on the iPad before trusting the profile.</summary>

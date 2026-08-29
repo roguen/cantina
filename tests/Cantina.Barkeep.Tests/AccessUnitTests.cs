@@ -180,6 +180,70 @@ public sealed class AccessUnitTests
     }
 
     [Fact]
+    public void ASuppliedCertificateReplacesTheTheaterAuthorityEntirely()
+    {
+        // Standing in for a Let's Encrypt leaf: the point is not who signed it, it is that
+        // Barkeep serves what it was handed and creates no authority of its own.
+        var source = TempDirectory();
+        var now = DateTimeOffset.Parse("2026-08-29T04:00:00Z", null);
+        var issued = TheaterCertificateAuthority.Ensure(
+            source, ["cantina.aero4ge.com"], [IPAddress.Parse("192.0.2.24")], 90, now);
+
+        var supplied = Path.Combine(source, "supplied.pfx");
+        File.WriteAllBytes(supplied, issued.Server.Export(X509ContentType.Pkcs12));
+
+        var directory = TempDirectory();
+        Directory.CreateDirectory(directory);
+        var loaded = TheaterCertificateAuthority.LoadSupplied(supplied, password: null);
+
+        Assert.Null(loaded.Authority);
+        Assert.False(loaded.NeedsDeviceTrust);
+        Assert.Null(loaded.AuthorityFilePath);
+        Assert.True(loaded.Server.HasPrivateKey);
+        Assert.Equal(issued.Server.Thumbprint, loaded.Server.Thumbprint);
+
+        // Nothing was written anywhere: no authority, no public .cer, no second private key.
+        Assert.Empty(Directory.GetFiles(directory));
+    }
+
+    [Fact]
+    public void AMissingOrKeylessSuppliedCertificateFailsLoudly()
+    {
+        var directory = TempDirectory();
+        Directory.CreateDirectory(directory);
+
+        // Silently falling back to the theater authority would serve a certificate the
+        // operator did not configure, and every client would fail unexplainably.
+        Assert.Throws<FileNotFoundException>(() =>
+            TheaterCertificateAuthority.LoadSupplied(Path.Combine(directory, "absent.pfx"), null));
+
+        var now = DateTimeOffset.Parse("2026-08-29T04:00:00Z", null);
+        var issued = TheaterCertificateAuthority.Ensure(directory, ["localhost"], [IPAddress.Loopback], 90, now);
+        var publicOnly = Path.Combine(directory, "public-only.pfx");
+        using var withoutKey = X509CertificateLoader.LoadCertificate(issued.Server.Export(X509ContentType.Cert));
+        File.WriteAllBytes(publicOnly, withoutKey.Export(X509ContentType.Pkcs12));
+
+        Assert.Throws<InvalidOperationException>(() =>
+            TheaterCertificateAuthority.LoadSupplied(publicOnly, null));
+    }
+
+    [Fact]
+    public void ExpiryIsCountedFromTheCertificateItself()
+    {
+        var directory = TempDirectory();
+        var now = DateTimeOffset.Parse("2026-08-29T04:00:00Z", null);
+        var issued = TheaterCertificateAuthority.Ensure(
+            directory, ["localhost"], [IPAddress.Loopback], 90, now);
+
+        Assert.Equal(90, issued.DaysUntilExpiry(now));
+        Assert.Equal(0, issued.DaysUntilExpiry(now.AddDays(90)));
+
+        // Past expiry counts negative rather than clamping at zero, so "expired" and
+        // "expires today" stay distinguishable.
+        Assert.True(issued.DaysUntilExpiry(now.AddDays(120)) < 0);
+    }
+
+    [Fact]
     public void TheServerCertificateChainsToTheTheaterAuthority()
     {
         var directory = TempDirectory();
@@ -189,7 +253,7 @@ public sealed class AccessUnitTests
 
         using var chain = new X509Chain();
         chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
-        chain.ChainPolicy.CustomTrustStore.Add(issued.Authority);
+        chain.ChainPolicy.CustomTrustStore.Add(issued.Authority!);
         chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
         chain.ChainPolicy.VerificationTime = now.UtcDateTime.AddDays(1);
 

@@ -57,12 +57,17 @@ if (endpoints.Mode == BarkeepBinding.Lan)
             "Network:Mode is Lan but no routed IPv4 interface was found. Set Network:Address explicitly.");
     }
 
-    certificates = TheaterCertificateAuthority.Ensure(
-        credentialDirectory,
-        endpoints.HostNames,
-        endpoints.CertificateAddresses,
-        network.LeafCertificateDays,
-        TimeProvider.System.GetUtcNow());
+    // A supplied certificate wins, and when one is configured no theater authority is
+    // created at all - not even as a spare. Two certificates on disk, one of them unused,
+    // is a private key nobody is watching (D-029).
+    certificates = string.IsNullOrWhiteSpace(network.CertificatePath)
+        ? TheaterCertificateAuthority.Ensure(
+            credentialDirectory,
+            endpoints.HostNames,
+            endpoints.CertificateAddresses,
+            network.LeafCertificateDays,
+            TimeProvider.System.GetUtcNow())
+        : TheaterCertificateAuthority.LoadSupplied(network.CertificatePath, network.CertificatePassword);
 }
 
 builder.WebHost.ConfigureKestrel(options =>
@@ -106,6 +111,8 @@ builder.Services.AddHostedService<CurrentSongPoller>();
 builder.Services.Configure<YargCueOptions>(
     builder.Configuration.GetSection(YargCueOptions.SectionName));
 
+builder.Services.Configure<NetworkOptions>(
+    builder.Configuration.GetSection(NetworkOptions.SectionName));
 builder.Services.AddSingleton(endpoints);
 builder.Services.AddSingleton(DeviceRegistry.Open(credentialDirectory));
 builder.Services.AddSingleton<PairingWindow>();
@@ -160,7 +167,25 @@ if (certificates is not null && endpoints.LanAddress is not null)
     var address = endpoints.LanAddress.ToString();
     AccessLog.LanBinding(log, address, endpoints.SecurePort);
     AccessLog.Onboarding(log, address, endpoints.Port);
-    AccessLog.AuthorityFingerprint(log, certificates.AuthorityFingerprint);
+    if (certificates.AuthorityFingerprint is { } fingerprint)
+    {
+        AccessLog.AuthorityFingerprint(log, fingerprint);
+    }
+    else
+    {
+        AccessLog.SuppliedCertificate(log, certificates.Server.Subject);
+    }
+
+    var daysLeft = certificates.DaysUntilExpiry(TimeProvider.System.GetUtcNow());
+
+    if (daysLeft <= network.CertificateWarnDays)
+    {
+        AccessLog.CertificateExpiring(log, daysLeft, certificates.NotAfter);
+    }
+    else
+    {
+        AccessLog.CertificateValid(log, daysLeft, certificates.NotAfter);
+    }
     var firewall = endpoints.FirewallCommand(Environment.ProcessPath ?? "Cantina.Barkeep.exe");
     AccessLog.FirewallRule(log, firewall);
 
@@ -190,7 +215,27 @@ if (bundled)
     app.UseStaticFiles();
 }
 
-app.MapGet("/api/health", () => new HealthResponse("ok", "Barkeep"))
+app.MapGet("/api/health", (IServiceProvider services, TimeProvider clock) =>
+    {
+        var issued = services.GetService<TheaterCertificates>();
+
+        if (issued is null)
+        {
+            // Loopback-only serves no TLS, so there is no certificate to report on. Null
+            // rather than a fabricated "ok": absent and healthy are different facts.
+            return new HealthResponse("ok", "Barkeep", null);
+        }
+
+        var days = issued.DaysUntilExpiry(clock.GetUtcNow());
+        var warnDays = services.GetRequiredService<IOptions<NetworkOptions>>().Value.CertificateWarnDays;
+
+        return new HealthResponse("ok", "Barkeep", new CertificateHealth(
+            issued.NeedsDeviceTrust ? "theater-authority" : "supplied",
+            issued.NeedsDeviceTrust,
+            issued.NotAfter,
+            days,
+            days < 0 ? "expired" : days <= warnDays ? "expiring" : "ok"));
+    })
     .WithName("GetHealth");
 
 app.MapGet("/api/live", (YargSessionTracker tracker, TimeProvider clock) =>
@@ -305,15 +350,25 @@ app.MapGet("/api/onboarding", (
     {
         var issued = services.GetService<TheaterCertificates>();
 
+        // The preferred name, not the address, when the binding has one: a real name is what
+        // the certificate is issued for and what the operator typed into DNS (D-029).
+        var host = theater.HostNames.FirstOrDefault(name =>
+                       name.Contains('.', StringComparison.Ordinal) &&
+                       !name.EndsWith(".local", StringComparison.Ordinal))
+                   ?? theater.LanAddress?.ToString();
+
+        var secure = host is null
+            ? $"http://localhost:{theater.Port}"
+            : theater.SecurePort == 443 ? $"https://{host}" : $"https://{host}:{theater.SecurePort}";
+
         return new OnboardingDescription(
             "Barkeep",
             Environment.MachineName,
-            theater.LanAddress is null
-                ? $"http://localhost:{theater.Port}"
-                : $"https://{theater.LanAddress}:{theater.SecurePort}",
+            secure,
             theater.HostNames,
             $"/{TheaterCertificateAuthority.AuthorityPublicFileName}",
             issued?.AuthorityFingerprint ?? string.Empty,
+            issued?.NeedsDeviceTrust ?? false,
             registry.AnyPaired);
     })
     .WithName("GetOnboarding");
@@ -322,12 +377,12 @@ app.MapGet($"/{TheaterCertificateAuthority.AuthorityPublicFileName}", (IServiceP
     {
         var issued = services.GetService<TheaterCertificates>();
 
-        return issued is null
+        return issued?.AuthorityFilePath is null
             ? Results.NotFound()
             // iPadOS offers to install a downloaded profile only for this content type;
             // served as anything else it renders as gibberish and the trust step dead-ends.
             : Results.File(
-                issued.AuthorityFilePath,
+                issued.AuthorityFilePath!,
                 "application/x-x509-ca-cert",
                 TheaterCertificateAuthority.AuthorityPublicFileName);
     })

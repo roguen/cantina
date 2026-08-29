@@ -21,6 +21,15 @@ public static partial class AccessLog
     [LoggerMessage(Level = LogLevel.Information, Message = "Theater authority fingerprint {Fingerprint}. Compare this on the iPad before trusting the profile.")]
     public static partial void AuthorityFingerprint(ILogger logger, string fingerprint);
 
+    [LoggerMessage(Level = LogLevel.Information, Message = "Serving a supplied certificate for {Subject}. Nothing to install on the iPad.")]
+    public static partial void SuppliedCertificate(ILogger logger, string subject);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Certificate valid for {Days} more days, until {NotAfter}.")]
+    public static partial void CertificateValid(ILogger logger, int days, DateTimeOffset notAfter);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Certificate expires in {Days} days, on {NotAfter}. Renewal has not landed; the theater stops working when it lapses.")]
+    public static partial void CertificateExpiring(ILogger logger, int days, DateTimeOffset notAfter);
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Inbound firewall rule, if the iPad cannot connect. Barkeep does not run it: {Command}")]
     public static partial void FirewallRule(ILogger logger, string command);
 

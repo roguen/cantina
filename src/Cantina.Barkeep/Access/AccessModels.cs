@@ -33,6 +33,7 @@ public sealed record OnboardingDescription(
     IReadOnlyList<string> HostNames,
     string CertificateUrl,
     string CertificateFingerprint,
+    bool NeedsDeviceTrust,
     bool Paired);
 
 /// <summary>What an unpaired device sends: the code the operator read off the theater PC.</summary>

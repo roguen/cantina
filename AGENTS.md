@@ -24,10 +24,12 @@ typed query, which needs a **pointer click** because the search field has no key
 focus route (D-017); and that **YARG's setlist does not auto-advance** — it waits on the
 score screen, which `CONTINUE` clears in one key (D-018).
 
-**LAN transport and pairing are implemented** (D-026, `docs/lan-transport.md`): one
-explicit interface, a theater certificate authority, loopback-only pairing windows, hashed
+**LAN transport and pairing are implemented** (D-026, amended by D-029,
+`docs/lan-transport.md`): one explicit interface, loopback-only pairing windows, hashed
 bearer tokens, single-use socket tickets, and a firewall rule Barkeep prints and never
-runs. **Barkeep serves the iPad its own client** from `wwwroot`, so the theater PC is the
+runs. **The theater is `cantina.aero4ge.com`**, and the certificate normally comes from
+outside — Barkeep serves a supplied one and runs no ACME client, with the private theater
+authority demoted to the fallback for a site with no name. **Barkeep serves the iPad its own client** from `wwwroot`, so the theater PC is the
 only place the app comes from; the app shell is public and every `/api` and `/ws` path
 behind it is not. `Cantina.SelfTest run lan` passed 10 of 10 here against a real binding.
 The default is still loopback and changing it is one deliberate setting.

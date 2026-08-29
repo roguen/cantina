@@ -57,4 +57,26 @@ public sealed class NetworkOptions
 
     /// <summary>Where the certificate authority and device registry live. Empty selects the setlist data directory.</summary>
     public string DataDirectory { get; set; } = string.Empty;
+
+    /// <summary>
+    /// A certificate supplied from outside — a PKCS#12 file holding the server certificate,
+    /// its key, and any intermediates. When this is set Barkeep serves it and **never
+    /// creates a theater authority at all**: there is nothing for the iPad to install,
+    /// because a publicly trusted certificate is already trusted (D-029).
+    ///
+    /// Empty falls back to the private theater authority, which is what a site with no
+    /// domain name, no internet, or no wish to run an ACME client still gets.
+    /// </summary>
+    public string CertificatePath { get; set; } = string.Empty;
+
+    /// <summary>Password for <see cref="CertificatePath"/>. Empty means the file has none.</summary>
+    public string CertificatePassword { get; set; } = string.Empty;
+
+    /// <summary>
+    /// How close to expiry the certificate has to be before Barkeep calls it a problem.
+    /// A publicly trusted certificate is renewed by machinery Barkeep does not own and
+    /// cannot see, so the failure mode is a renewal that quietly stopped and a theater that
+    /// breaks weeks later. This is the tripwire for that (D-029).
+    /// </summary>
+    public int CertificateWarnDays { get; set; } = 21;
 }

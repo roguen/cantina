@@ -44,22 +44,34 @@ internal static class LanTransportSuite
             return new SuiteResult(Name, Verdict.Inconclusive, "Barkeep was not answering on loopback.");
         }
 
-        if (onboarding is null || string.IsNullOrEmpty(onboarding.CertificateFingerprint))
+        // The test for "is this on the LAN" is the scheme, not the fingerprint. An earlier
+        // version keyed off a non-empty fingerprint, which stopped meaning anything the day
+        // a supplied certificate could be served: that has no theater authority and so no
+        // fingerprint, and the suite would have called a working LAN binding loopback-only.
+        if (onboarding is null || !onboarding.SecureUrl.StartsWith("https://", StringComparison.Ordinal))
         {
-            // Loopback-only is the default and is not a failure; it is the wrong host state
-            // for this suite, and saying which is the whole point of a named INCONCLUSIVE.
             transcript.Log("INCONCLUSIVE", $"{Name}: barkeep-is-loopback-only (start it with Network:Mode=Lan)");
             return new SuiteResult(Name, Verdict.Inconclusive, "Barkeep is bound to loopback, so there is no LAN transport to measure.");
         }
 
         var secure = new Uri(onboarding.SecureUrl);
         var plain = new UriBuilder("http", secure.Host, 5273).Uri;
-        transcript.Log("SETUP", $"{Name}: secure={secure} plain={plain} fingerprint={onboarding.CertificateFingerprint}");
+        transcript.Log("SETUP", $"{Name}: secure={secure} plain={plain} needs_device_trust={onboarding.NeedsDeviceTrust}");
 
-        using var authority = X509CertificateLoader.LoadCertificate(
-            await local.GetByteArrayAsync($"/{onboarding.CertificateUrl.TrimStart('/')}").ConfigureAwait(false));
+        // With a supplied certificate there is no theater authority to fetch, and trust is
+        // the machine's own root store rather than one certificate this suite pinned.
+        X509Certificate2? authority = null;
 
-        transcript.Log("SETUP", $"{Name}: authority_subject=\"{authority.Subject}\" not_after={authority.NotAfter:yyyy-MM-dd}");
+        if (onboarding.NeedsDeviceTrust)
+        {
+            authority = X509CertificateLoader.LoadCertificate(
+                await local.GetByteArrayAsync($"/{onboarding.CertificateUrl.TrimStart('/')}").ConfigureAwait(false));
+            transcript.Log("SETUP", $"{Name}: authority_subject=\"{authority.Subject}\" not_after={authority.NotAfter:yyyy-MM-dd}");
+        }
+        else
+        {
+            transcript.Log("SETUP", $"{Name}: publicly-trusted certificate, no authority to distribute");
+        }
 
         var cases = new List<bool>();
         string? deviceId = null;
@@ -168,14 +180,17 @@ internal static class LanTransportSuite
             }
         }
 
-        return Finish(transcript, cases, "Barkeep serves the LAN over TLS that chains to the theater authority, admits only paired devices, and revokes immediately.");
+        authority?.Dispose();
+
+        return Finish(transcript, cases,
+            "Barkeep serves the LAN over TLS the client validated by name and chain, admits only paired devices, and revokes immediately.");
     }
 
     private static async Task<bool> SocketCasesAsync(
         Transcript transcript,
         HttpClient lan,
         Uri secure,
-        X509Certificate2 authority)
+        X509Certificate2? authority)
     {
         using var issued = await lan.PostAsync("/api/live/ticket", Empty()).ConfigureAwait(false);
         var ticket = await issued.Content.ReadFromJsonAsync<TicketView>().ConfigureAwait(false);
@@ -205,7 +220,7 @@ internal static class LanTransportSuite
         return opened && spent && resumed;
     }
 
-    private static async Task<string?> ConnectAsync(Uri uri, X509Certificate2 authority)
+    private static async Task<string?> ConnectAsync(Uri uri, X509Certificate2? authority)
     {
         using var socket = new ClientWebSocket();
         socket.Options.RemoteCertificateValidationCallback = (_, certificate, _, errors) =>
@@ -262,13 +277,21 @@ internal static class LanTransportSuite
     /// and the chain must terminate in the certificate Barkeep served for onboarding. The
     /// machine's own root store takes no part in the decision.
     /// </summary>
-    private static bool Trusts(X509Certificate2 authority, X509Certificate? presented, SslPolicyErrors errors)
+    private static bool Trusts(X509Certificate2? authority, X509Certificate? presented, SslPolicyErrors errors)
     {
         if (presented is null ||
             errors.HasFlag(SslPolicyErrors.RemoteCertificateNotAvailable) ||
             errors.HasFlag(SslPolicyErrors.RemoteCertificateNameMismatch))
         {
             return false;
+        }
+
+        // No theater authority means the certificate should stand on its own against the
+        // machine's root store, which is exactly what the iPad will do. Demanding less here
+        // than the iPad demands would make this suite useless for the case it is testing.
+        if (authority is null)
+        {
+            return errors == SslPolicyErrors.None;
         }
 
         using var leaf = X509CertificateLoader.LoadCertificate(presented.GetRawCertData());
@@ -302,6 +325,7 @@ internal static class LanTransportSuite
         string SecureUrl,
         string CertificateUrl,
         string CertificateFingerprint,
+        bool NeedsDeviceTrust,
         bool Paired);
 
     private sealed record WindowView(string Code, DateTimeOffset ExpiresAt, int AttemptsRemaining);

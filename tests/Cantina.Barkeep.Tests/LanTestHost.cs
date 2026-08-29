@@ -50,7 +50,7 @@ internal static class LanTestHost
         return request;
     }
 
-    private sealed class RequestOriginFilter : IStartupFilter
+    internal sealed class RequestOriginFilter : IStartupFilter
     {
         public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) =>
             builder =>

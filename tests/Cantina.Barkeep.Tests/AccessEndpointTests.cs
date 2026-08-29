@@ -280,6 +280,22 @@ public sealed class AccessEndpointTests : IClassFixture<WebApplicationFactory<Pr
     }
 
     [Fact]
+    public async Task HealthReportsTheTheaterAuthorityAndThatTheDeviceMustTrustIt()
+    {
+        using var response = await _client.GetAsync("/api/health");
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var certificate = body.RootElement.GetProperty("certificate");
+
+        Assert.Equal("theater-authority", certificate.GetProperty("source").GetString());
+        Assert.True(certificate.GetProperty("needsDeviceTrust").GetBoolean());
+        Assert.Equal("ok", certificate.GetProperty("status").GetString());
+
+        // A 397-day leaf, so the remaining life should be most of a year rather than the
+        // 90 days a public certificate would carry.
+        Assert.InRange(certificate.GetProperty("daysRemaining").GetInt32(), 360, 397);
+    }
+
+    [Fact]
     public async Task TheCertificateIsServedAsAProfileIosWillOffer()
     {
         using var request = LanTestHost.FromLanPlain(HttpMethod.Get, "/cantina-theater-ca.cer");
