@@ -207,6 +207,76 @@ public sealed class AccessUnitTests
     }
 
     [Fact]
+    public void APemChainAndKeyLoadTheWayAnAcmeClientWritesThem()
+    {
+        // acme.sh writes fullchain.cer and a .key beside it. This is that shape: a leaf
+        // followed by its issuer in one PEM file, and the key in another.
+        var directory = TempDirectory();
+        var now = DateTimeOffset.Parse("2026-08-29T04:00:00Z", null);
+        var issued = TheaterCertificateAuthority.Ensure(
+            directory, ["cantina.aero4ge.com"], [IPAddress.Parse("192.0.2.24")], 90, now);
+
+        var fullChain = Path.Combine(directory, "fullchain.cer");
+        File.WriteAllText(fullChain,
+            issued.Server.ExportCertificatePem() + Environment.NewLine +
+            issued.Authority!.ExportCertificatePem() + Environment.NewLine);
+
+        var keyPath = Path.Combine(directory, "cantina.key");
+        File.WriteAllText(keyPath, issued.Server.GetECDsaPrivateKey()!.ExportPkcs8PrivateKeyPem());
+
+        var loaded = TheaterCertificateAuthority.LoadSupplied(fullChain, password: null, keyPath);
+
+        Assert.True(loaded.Server.HasPrivateKey);
+        Assert.Equal(issued.Server.Thumbprint, loaded.Server.Thumbprint);
+        Assert.False(loaded.NeedsDeviceTrust);
+
+        // The issuer travels with the leaf. Serving the leaf alone works on whichever
+        // machine already holds the intermediate and fails everywhere else.
+        Assert.NotNull(loaded.Chain);
+        var intermediate = Assert.Single(loaded.Chain);
+        Assert.Equal(issued.Authority.Thumbprint, intermediate.Thumbprint);
+    }
+
+    [Fact]
+    public void ALeafOnlyPemLoadsWithNoChainToSend()
+    {
+        var directory = TempDirectory();
+        var now = DateTimeOffset.Parse("2026-08-29T04:00:00Z", null);
+        var issued = TheaterCertificateAuthority.Ensure(
+            directory, ["localhost"], [IPAddress.Loopback], 90, now);
+
+        var leafOnly = Path.Combine(directory, "leaf.cer");
+        File.WriteAllText(leafOnly, issued.Server.ExportCertificatePem());
+        var keyPath = Path.Combine(directory, "leaf.key");
+        File.WriteAllText(keyPath, issued.Server.GetECDsaPrivateKey()!.ExportPkcs8PrivateKeyPem());
+
+        var loaded = TheaterCertificateAuthority.LoadSupplied(leafOnly, password: null, keyPath);
+
+        // Legal, and quietly worse. Null rather than an empty collection so the caller
+        // cannot mistake "no chain configured" for "chain of length zero".
+        Assert.True(loaded.Server.HasPrivateKey);
+        Assert.Null(loaded.Chain);
+    }
+
+    [Fact]
+    public void AMissingPemKeyFailsByNameRatherThanAtTheHandshake()
+    {
+        var directory = TempDirectory();
+        var now = DateTimeOffset.Parse("2026-08-29T04:00:00Z", null);
+        var issued = TheaterCertificateAuthority.Ensure(
+            directory, ["localhost"], [IPAddress.Loopback], 90, now);
+
+        var certPath = Path.Combine(directory, "leaf.cer");
+        File.WriteAllText(certPath, issued.Server.ExportCertificatePem());
+
+        var error = Assert.Throws<FileNotFoundException>(() =>
+            TheaterCertificateAuthority.LoadSupplied(
+                certPath, password: null, Path.Combine(directory, "absent.key")));
+
+        Assert.Contains("CertificateKeyPath", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AMissingOrKeylessSuppliedCertificateFailsLoudly()
     {
         var directory = TempDirectory();

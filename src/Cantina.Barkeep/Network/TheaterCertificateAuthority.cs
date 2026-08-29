@@ -20,7 +20,8 @@ public sealed record TheaterCertificates(
     bool AuthorityCreated,
     bool ServerIssued,
     string? AuthorityFingerprint,
-    string? AuthorityFilePath)
+    string? AuthorityFilePath,
+    X509Certificate2Collection? Chain = null)
 {
     /// <summary>True when the iPad has to be taught to trust this, false when the world already does.</summary>
     public bool NeedsDeviceTrust => Authority is not null;
@@ -104,7 +105,8 @@ public static class TheaterCertificateAuthority
             authorityCreated,
             serverIssued,
             Fingerprint(authority),
-            publicPath);
+            publicPath,
+            Chain: null);
     }
 
     /// <summary>
@@ -117,7 +119,7 @@ public static class TheaterCertificateAuthority
     /// server that quietly serves a different certificate than the operator configured is a
     /// server whose clients fail in a way nobody can explain.
     /// </summary>
-    public static TheaterCertificates LoadSupplied(string path, string? password)
+    public static TheaterCertificates LoadSupplied(string path, string? password, string? keyPath = null)
     {
         if (!File.Exists(path))
         {
@@ -127,11 +129,60 @@ public static class TheaterCertificateAuthority
                 path);
         }
 
+        return string.IsNullOrWhiteSpace(keyPath)
+            ? FromPkcs12(path, password)
+            : FromPem(path, keyPath);
+    }
+
+    private static TheaterCertificates FromPkcs12(string path, string? password)
+    {
         var server = X509CertificateLoader.LoadPkcs12(
             File.ReadAllBytes(path),
             string.IsNullOrEmpty(password) ? null : password,
             X509KeyStorageFlags.Exportable);
 
+        return Supplied(server, chain: null, path);
+    }
+
+    /// <summary>
+    /// The shape an ACME client actually writes: a PEM chain file and a PEM key beside it.
+    ///
+    /// Two things have to happen that are easy to miss. The **intermediates must be sent** —
+    /// a client that does not already hold Let's Encrypt's intermediate cannot build a path
+    /// to the root, and serving the leaf alone works on whichever machine you happened to
+    /// test on and fails elsewhere. And the key that <c>CreateFromPemFile</c> produces is
+    /// **ephemeral**, which Windows will not use for a TLS server at all, so it goes through
+    /// the same PKCS#12 round trip the generated certificates use.
+    /// </summary>
+    private static TheaterCertificates FromPem(string certificatePath, string keyPath)
+    {
+        if (!File.Exists(keyPath))
+        {
+            throw new FileNotFoundException(
+                $"Network:CertificateKeyPath names '{keyPath}', which does not exist.",
+                keyPath);
+        }
+
+        using var keyed = X509Certificate2.CreateFromPemFile(certificatePath, keyPath);
+
+        var pem = new X509Certificate2Collection();
+        pem.ImportFromPemFile(certificatePath);
+
+        var chain = new X509Certificate2Collection();
+
+        // Everything after the leaf is the chain to send. A file holding only the leaf is
+        // legal and leaves this empty, which is why the option's documentation says to point
+        // at the full chain.
+        for (var index = 1; index < pem.Count; index++)
+        {
+            chain.Add(pem[index]);
+        }
+
+        return Supplied(Persistable(keyed), chain.Count > 0 ? chain : null, certificatePath);
+    }
+
+    private static TheaterCertificates Supplied(X509Certificate2 server, X509Certificate2Collection? chain, string path)
+    {
         if (!server.HasPrivateKey)
         {
             throw new InvalidOperationException(
@@ -144,7 +195,8 @@ public static class TheaterCertificateAuthority
             AuthorityCreated: false,
             ServerIssued: false,
             AuthorityFingerprint: null,
-            AuthorityFilePath: null);
+            AuthorityFilePath: null,
+            chain);
     }
 
     /// <summary>The SHA-256 fingerprint an operator compares on the iPad before trusting the profile.</summary>

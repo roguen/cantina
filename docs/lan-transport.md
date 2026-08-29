@@ -77,9 +77,20 @@ the shape of the onboarding page.
 
 ### Supplied, and publicly trusted — the normal case (D-029)
 
-`Network:CertificatePath` names a PKCS#12 file holding the server certificate, its key, and
-any intermediates; `Network:CertificatePassword` is its password, empty when it has none.
-When that is set:
+`Network:CertificatePath` names the certificate. Two formats are accepted, because an ACME
+client writes one of them and Windows tooling tends to want the other:
+
+| Setting | Meaning |
+|---|---|
+| `CertificatePath` alone | A PKCS#12 file holding the certificate, its key, and any intermediates. `CertificatePassword` if it has one |
+| `CertificatePath` + `CertificateKeyPath` | **PEM**, the shape acme.sh writes. Point the first at `fullchain.cer` and the second at the `.key`. No conversion, no password to keep |
+
+**Point the PEM at the full chain, not the leaf.** Everything after the first certificate in
+the file is sent to the client alongside the leaf. A leaf-only file is legal and quietly
+worse: it works on any machine that already holds the intermediate and fails on every other,
+which is an expensive way to find out.
+
+When a certificate is supplied:
 
 - Barkeep serves it and **creates no theater authority at all** — not even as a spare,
   because an unused private key on disk is one nobody is watching.

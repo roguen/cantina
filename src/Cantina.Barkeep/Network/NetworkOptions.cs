@@ -73,6 +73,17 @@ public sealed class NetworkOptions
     public string CertificatePassword { get; set; } = string.Empty;
 
     /// <summary>
+    /// The PEM private key beside <see cref="CertificatePath"/>. Setting this says the
+    /// certificate file is PEM rather than PKCS#12, which is what an ACME client writes —
+    /// so the delivered files are served as they arrive, with no conversion step and no
+    /// password to keep anywhere (D-029).
+    ///
+    /// Point <see cref="CertificatePath"/> at the **full chain**. A leaf alone will serve,
+    /// and will fail on clients that do not already hold the intermediate.
+    /// </summary>
+    public string CertificateKeyPath { get; set; } = string.Empty;
+
+    /// <summary>
     /// How close to expiry the certificate has to be before Barkeep calls it a problem.
     /// A publicly trusted certificate is renewed by machinery Barkeep does not own and
     /// cannot see, so the failure mode is a renewal that quietly stopped and a theater that
