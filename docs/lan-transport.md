@@ -47,9 +47,14 @@ being unreachable.
 
 ## Discovery
 
-The QR code and the address are the route. mDNS is a convenience Cantina may add and must
-never depend on: whether iPadOS resolves this host's `.local` name has not been measured
-with two devices, and D-026 records why the single-host attempt was inconclusive.
+**The address is the route.** The operator types `http://<address>:5273/onboarding` on the
+iPad once. Nothing shipped generates a QR code yet; when one does, it carries that same
+address and is a convenience over typing, never a credential — the pairing code stays on
+the theater PC.
+
+mDNS is a convenience Cantina may add and must never depend on: whether iPadOS resolves
+this host's `.local` name has not been measured with two devices, and D-026 records why the
+single-host attempt was inconclusive.
 
 The bound address must be a **DHCP reservation** on the theater's router. Without one, the
 address can change; Barkeep survives that — it re-issues the server certificate as soon as
