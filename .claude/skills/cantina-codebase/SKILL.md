@@ -81,7 +81,7 @@ dotnet run --project tools/Cantina.TestHarness --configuration Release --no-buil
 and in `src/cantina-client`: `npm ci` (on a fresh clone), then `npm run lint`,
 `npm run test`, `npm run build`.
 
-**The green baseline as of 2026-08-29: 99 server tests, 14 harness scenarios, 16 client
+**The green baseline as of 2026-08-29: 122 server tests, 14 harness scenarios, 16 client
 tests, zero warnings.** If a run reports fewer than that and you did not delete anything,
 find out why before continuing — a self-reported pass against no expected number is not a
 check.

@@ -75,6 +75,13 @@ reproducible.
 
 ## Driving the menus
 
+**Scan Songs** (D-030): the Music Library's MORE OPTIONS control at (1340, 2064) on
+3840×2160 opens a popup whose third entry is SCAN SONGS at (1903, 939) — both pointer
+clicks, both coordinates evidence rather than constants. The scan has **no completion
+signal on any observable surface**; bound it by time and read the header's song count off
+a screenshot if you need proof it ran. A completed scan is also how the stale-cache
+652-vs-447 mystery died: the count reads what is on disk afterwards.
+
 Proven sequence, D-017 and D-018:
 
 1. **Launch** `C:\YARC\YARG Installs\<guid>\installation\YARG.exe` if it is not running. It
