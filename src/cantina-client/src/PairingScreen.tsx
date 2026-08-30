@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-import { useState } from 'react'
-import { pair } from './pairing'
+import { useEffect, useState } from 'react'
+import { pair, pairingEmailEnabled, requestPairingEmail } from './pairing'
 
 type Props = {
   detail: string | null
@@ -17,6 +17,26 @@ export function PairingScreen({ detail, onPaired }: Props) {
   const [label, setLabel] = useState('iPad')
   const [refusal, setRefusal] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [emailAvailable, setEmailAvailable] = useState(false)
+  const [emailStatus, setEmailStatus] = useState<string | null>(null)
+  const [emailBusy, setEmailBusy] = useState(false)
+
+  useEffect(() => {
+    pairingEmailEnabled().then(setEmailAvailable)
+  }, [])
+
+  const requestEmail = () => {
+    setEmailBusy(true)
+    setEmailStatus(null)
+    requestPairingEmail()
+      .then((outcome) =>
+        setEmailStatus(
+          outcome.state === 'sent' ? 'Sent — check the email account for the code.' : outcome.detail,
+        ),
+      )
+      .catch(() => setEmailStatus('The theater PC could not be reached.'))
+      .finally(() => setEmailBusy(false))
+  }
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault()
@@ -46,8 +66,17 @@ export function PairingScreen({ detail, onPaired }: Props) {
       <section className="pairing">
         <p>
           On the theater PC, open a pairing window. Barkeep prints an eight-character code
-          there — and only there.
+          there{emailAvailable ? ' — or have it emailed to the address configured on the theater PC.' : ' — and only there.'}
         </p>
+
+        {emailAvailable && (
+          <p>
+            <button type="button" onClick={requestEmail} disabled={emailBusy}>
+              {emailBusy ? 'Sending…' : 'Email me a code'}
+            </button>
+          </p>
+        )}
+        {emailStatus && <p>{emailStatus}</p>}
 
         <form onSubmit={submit}>
           <label htmlFor="pairing-code">Pairing code</label>

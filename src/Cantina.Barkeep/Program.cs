@@ -155,6 +155,10 @@ builder.Services.Configure<NetworkOptions>(
 builder.Services.AddSingleton(endpoints);
 builder.Services.AddSingleton(DeviceRegistry.Open(credentialDirectory));
 builder.Services.AddSingleton<PairingWindow>();
+builder.Services.Configure<PairingEmailOptions>(
+    builder.Configuration.GetSection(PairingEmailOptions.SectionName));
+builder.Services.AddSingleton<IPairingMailTransport, SmtpPairingMailTransport>();
+builder.Services.AddSingleton<PairingEmailService>();
 builder.Services.AddSingleton<LiveTicketStore>();
 
 if (certificateSource is not null)
@@ -633,6 +637,43 @@ app.MapGet("/api/pairing/window", (HttpContext context, PairingWindow window, Ti
         return current is null ? Results.NoContent() : Results.Ok(current);
     })
     .WithName("GetPairingWindow");
+
+// Emailed pairing codes (D-033). This is the one pre-auth mutation besides /api/pair
+// itself, and it widens the trust anchor deliberately: "can read the operator's inbox"
+// stands in for "is standing at the theater PC". The compensating controls: the
+// destination is operator configuration and never client input, the ceiling is small,
+// the requester is named in the message, and the console still prints every code.
+app.MapGet("/api/pairing/email", (IOptions<PairingEmailOptions> email) =>
+        email.Value.Enabled ? Results.Ok(new PairingEmailView(true)) : Results.NotFound())
+    .WithName("GetPairingEmailView");
+
+app.MapPost("/api/pairing/email", async (
+        HttpContext context,
+        PairingEmailService email,
+        IOptions<PairingEmailOptions> emailOptions,
+        PairingWindow window,
+        TimeProvider clock,
+        ILoggerFactory logs) =>
+    {
+        if (!emailOptions.Value.Enabled)
+        {
+            return Results.NotFound();
+        }
+
+        var requester = context.Connection.RemoteIpAddress?.ToString() ?? "unknown address";
+        var status = await email.RequestAsync(requester, context.RequestAborted);
+
+        if (status.State == "sent" && window.Current(clock.GetUtcNow()) is { } state)
+        {
+            // The console record stays authoritative: every live code is printed there.
+            var pairingLog = logs.CreateLogger("Cantina.Barkeep.Access");
+            AccessLog.PairingCode(pairingLog, state.Code, state.ExpiresAt);
+        }
+
+        return Results.Ok(status);
+    })
+    .RequireRateLimiting("pairing")
+    .WithName("RequestPairingEmail");
 
 app.MapDelete("/api/pairing/window", (HttpContext context, PairingWindow window) =>
     {

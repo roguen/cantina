@@ -69,6 +69,21 @@ const refusals: Record<string, string> = {
   TooManyAttempts: 'Too many wrong codes. The window closed — open a new one on the theater PC.',
 }
 
+export async function pairingEmailEnabled(): Promise<boolean> {
+  try {
+    const response = await fetch('/api/pairing/email')
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+export async function requestPairingEmail(): Promise<{ state: string; detail: string }> {
+  const response = await fetch('/api/pairing/email', { method: 'POST' })
+  if (!response.ok) throw new Error(`pairing email failed: ${response.status}`)
+  return response.json() as Promise<{ state: string; detail: string }>
+}
+
 export async function pair(code: string, label: string): Promise<PairingOutcome> {
   const response = await fetch('/api/pair', {
     method: 'POST',

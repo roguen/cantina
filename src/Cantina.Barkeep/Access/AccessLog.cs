@@ -33,7 +33,7 @@ public static partial class AccessLog
     [LoggerMessage(Level = LogLevel.Information, Message = "Inbound firewall rule, if the iPad cannot connect. Barkeep does not run it: {Command}")]
     public static partial void FirewallRule(ILogger logger, string command);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Pairing code {Code}, valid until {ExpiresAt}. It is shown here and nowhere else.")]
+    [LoggerMessage(Level = LogLevel.Information, Message = "Pairing code {Code}, valid until {ExpiresAt}. Shown here, and emailed to the operator's address when that is configured (D-033).")]
     public static partial void PairingCode(ILogger logger, string code, DateTimeOffset expiresAt);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "No device is paired yet.")]
