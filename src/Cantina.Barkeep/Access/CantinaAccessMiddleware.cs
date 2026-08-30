@@ -96,7 +96,14 @@ public sealed class CantinaAccessMiddleware(
             return;
         }
 
-        if (onboarding || path.Equals("/api/pair", StringComparison.OrdinalIgnoreCase) || IsAppShell(context, path))
+        // /api/pairing/email is pre-auth by design (D-033): the button exists precisely
+        // for a device that is not paired yet. It discloses only that the feature exists,
+        // mails only the operator-configured address, and sits behind the pairing rate
+        // limit. The live deploy test of 2026-08-30 caught it answering pairing-required.
+        if (onboarding
+            || path.Equals("/api/pair", StringComparison.OrdinalIgnoreCase)
+            || path.Equals("/api/pairing/email", StringComparison.OrdinalIgnoreCase)
+            || IsAppShell(context, path))
         {
             await next(context);
             return;
