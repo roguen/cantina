@@ -131,6 +131,22 @@ export async function fetchHealth(): Promise<{ certificate: CertificateHealth | 
   return response.json() as Promise<{ certificate: CertificateHealth | null }>
 }
 
+// The honest acquisition feed (D-030): what arrived through the Geomitron Bridge handoff
+// and what became of each item, from the pipeline's own journal of outcomes.
+export type AcquisitionRecord = {
+  fileName: string
+  idempotencyKey: string
+  outcome: 'Completed' | 'Failed' | 'Ambiguous' | 'Canceled' | 'InProgress' | 'Conflict'
+  failureCode: string | null
+  finishedAt: string
+}
+
+export async function recentAcquisitions(): Promise<AcquisitionRecord[]> {
+  const response = await call('/api/acquisition/recent')
+  if (!response.ok) throw new Error(`acquisitions failed: ${response.status}`)
+  return response.json() as Promise<AcquisitionRecord[]>
+}
+
 export async function currentCue(): Promise<CueStatus | null> {
   const response = await call('/api/cue/current')
   if (response.status === 204) return null
