@@ -1354,3 +1354,33 @@ Recorded in the same entry, three more owner decisions from the same conversatio
    *with its cost*: a requester-supplied destination lets any LAN device mail itself a
    code, so it must not ship without a compensating control (an allowlist, or
    operator approval per address).
+
+## D-032 · Cantina speaks to Chorus Encore directly, and the missing terms are answered with posture
+
+**2026-08-30.** The owner approved direct chart-provider integration, which the iPad's
+"look for and add a song" ask requires: Geomitron Bridge has no external interface
+(upstream #96/#97/#98), and D-007 keeps it un-automated. The provider is Chorus Encore
+(enchor.us) — the service Bridge itself is the desktop client of, same author, GPL-3.0.
+
+The terms review (docs/chart-provider.md) found **no published API terms anywhere** —
+not on the site, the repository, or the Patreon. D-030's bar asked for explicit
+permission; the honest finding is that no document can grant it. What stands in is
+recorded posture, held in code rather than intention: a self-identifying User-Agent so
+Encore's operator can see or block Cantina by name, person-initiated searches behind a
+server-side cooldown, one download at a time under a 30/hour ceiling, no crawling or
+mirroring ever, and a single `Encore:Enabled=false` kill switch honored the day the
+operator objects. The service is donation-funded with bandwidth as its stated top cost;
+Cantina behaves like a guest who knows that.
+
+Two structural choices worth keeping:
+
+- **There is no second import path.** The coordinator stages outside the watch
+  directory, validates the SNGPKG header (a byte stream from the network proves
+  nothing), and moves the finished file in under Bridge's own naming convention. From
+  there the proven D-030 pipeline owns it, and the arrivals feed reports the outcome.
+- **The md5 is identity, not checksum** — the `_novideo` variant serves different bytes
+  under the same md5, so bytes are never verified against it; the header parse is the
+  validation.
+
+Content use is unchanged in kind from Bridge: local personal play, never redistributed,
+never committed, charter attribution carried end to end.
