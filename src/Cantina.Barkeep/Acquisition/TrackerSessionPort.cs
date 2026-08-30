@@ -30,8 +30,13 @@ public sealed class TrackerSessionPort(
     IOptions<AcquisitionOptions> options,
     TimeProvider clock) : IYargSessionPort
 {
-    public ValueTask<YargSessionSnapshot> ObserveAsync(CancellationToken cancellationToken)
+    public async ValueTask<YargSessionSnapshot> ObserveAsync(CancellationToken cancellationToken)
     {
+        // A beat between observations, so the coordinator's retry loop actually spans
+        // time instead of reading the same instant N times - the port contract's
+        // "may wait for a snapshot newer than the previous call".
+        await Task.Delay(TimeSpan.FromMilliseconds(300), cancellationToken);
+
         var now = clock.GetUtcNow();
         var snapshot = tracker.Snapshot(now);
 
@@ -44,12 +49,23 @@ public sealed class TrackerSessionPort(
             snapshot.PlayState == YargPlayState.NoSong &&
             snapshot.Senders.Count <= 1;
 
-        var activity = !live ? YargActivity.Unknown : idle ? YargActivity.Idle : YargActivity.Active;
+        // The wire cannot see instrument setup - it reads Menu/NoSong, byte-identical to
+        // idle (D-015, D-018). But this process holds evidence the wire lacks: a cue in
+        // pending-players means players are between actuation and gameplay, almost
+        // certainly on the setup screen, and clicking Scan Songs coordinates into THAT
+        // would wreck their selection. In-process knowledge beats wire blindness here.
+        var cuePending = cue.Current is { State: "pending-players" };
 
-        return ValueTask.FromResult(new YargSessionSnapshot(
+        var activity = !live ? YargActivity.Unknown
+            : idle && !cuePending ? YargActivity.Idle
+            : YargActivity.Active;
+
+        return new YargSessionSnapshot(
             activity,
             snapshot.ReceivedAt ?? now,
-            CanRefreshLibrary: idle && actuator.YargProcessCount() == 1 && actuator.InputBlockedReason() is null));
+            CanRefreshLibrary: activity == YargActivity.Idle &&
+                actuator.YargProcessCount() == 1 &&
+                actuator.InputBlockedReason() is null);
     }
 
     public async ValueTask<ExternalCommandOutcome> RequestLibraryRefreshAsync(
@@ -94,7 +110,12 @@ public sealed class TrackerSessionPort(
 
             if (snapshot.Scene != YargScene.Menu)
             {
-                return ExternalCommandOutcome.Ambiguous;
+                // Someone started a song during the settle. Failed rather than Ambiguous,
+                // deliberately: Ambiguous receipts are held for eyes and nothing clears
+                // them, so a party starting a song would wedge the import forever. The
+                // scan is idempotent, the world changed, and a later sweep retrying when
+                // the room is quiet is exactly the right recovery.
+                return ExternalCommandOutcome.Failed;
             }
         }
 
@@ -112,7 +133,10 @@ public sealed class TrackerSessionPort(
         return ValueTask.FromResult(true);
     }
 
-    public ValueTask<ExternalCommandOutcome> CueAsync(SongIdentity song, CancellationToken cancellationToken)
+    public ValueTask<ExternalCommandOutcome> CueAsync(
+        SongIdentity song,
+        string idempotencyKey,
+        CancellationToken cancellationToken)
     {
         // The typed query is the indexed title, not the filename: YARG's search is fuzzy
         // (D-017) and "Everlong" reaches the song where "Foo Fighters - Everlong (Hoph2o)"
@@ -121,8 +145,11 @@ public sealed class TrackerSessionPort(
         var indexed = index.FindByLocation(song.Value);
         var title = indexed?.Title ?? Path.GetFileNameWithoutExtension(song.Value);
 
+        // The command id derives from the import's idempotency key, so a crash-retry
+        // replays through the cue journal instead of driving the search box a second
+        // time. A fresh Guid here would make every retry a fresh actuation.
         var status = cue.Cue(new CueRequest(
-            $"acquisition-{Guid.NewGuid():N}",
+            $"acquisition-{idempotencyKey}",
             new SetlistEntry(
                 indexed?.LearnedHash ?? string.Empty,
                 title,

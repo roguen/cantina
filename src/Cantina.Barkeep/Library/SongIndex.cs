@@ -106,7 +106,7 @@ public sealed class SongIndex
                 {
                     content = File.ReadAllText(iniPath);
                 }
-                catch (IOException)
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException)
                 {
                     skipped.Add(new SkippedFolder(folder, "ini-unreadable"));
                     continue;
@@ -165,10 +165,11 @@ public sealed class SongIndex
                         continue;
                     }
                 }
-                catch (IOException)
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException)
                 {
-                    // Mid-download, or locked by the writer. The acquisition watcher
-                    // retries these; a plain rescan just reports the fact.
+                    // Mid-download, locked by the writer, or ACL-denied - none of which
+                    // may stop the host: this scan runs inside a startup hosted service,
+                    // and UnauthorizedAccessException is not an IOException.
                     skipped.Add(new SkippedFolder(sngPath, "sng-unreadable"));
                     continue;
                 }

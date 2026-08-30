@@ -27,14 +27,15 @@ public sealed record AcquisitionRecord(
 /// re-download of the same file is a new import, and a re-notification of the same bytes
 /// is a replay.
 /// </summary>
-public sealed class AcquisitionWatcher(
+public sealed partial class AcquisitionWatcher(
     ImportPlayNextCoordinator coordinator,
     AcquisitionJournal journal,
     IOptions<AcquisitionOptions> options,
     TimeProvider clock,
     ILogger<AcquisitionWatcher> log) : BackgroundService
 {
-    private readonly Channel<string> _hints = Channel.CreateUnbounded<string>();
+    private readonly Channel<(string FileName, bool FromSweep)> _hints =
+        Channel.CreateUnbounded<(string, bool)>();
     private readonly object _recentGate = new();
     private readonly List<AcquisitionRecord> _recent = [];
 
@@ -58,12 +59,21 @@ public sealed class AcquisitionWatcher(
             return;
         }
 
-        if (!Directory.Exists(directory))
+        // Configured but absent is loud AND recoverable: the operator named a directory,
+        // so keep waiting for it - a NAS path mounting after boot, or Bridge creating its
+        // library folder on first run, must not cost a whole session of acquisition.
+        while (!Directory.Exists(directory))
         {
-            // Configured but absent is a loud condition, not a silent idle: the operator
-            // named a directory and it is not there.
             AcquisitionLog.WatchDirectoryMissing(log, directory);
-            return;
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
         }
 
         AcquisitionLog.Watching(log, directory);
@@ -75,29 +85,39 @@ public sealed class AcquisitionWatcher(
             EnableRaisingEvents = true,
         };
 
-        void Hint(string path) => _hints.Writer.TryWrite(Path.GetFileName(path));
+        void Hint(string path) => _hints.Writer.TryWrite((Path.GetFileName(path), false));
 
         watcher.Created += (_, e) => Hint(e.FullPath);
         watcher.Changed += (_, e) => Hint(e.FullPath);
         watcher.Renamed += (_, e) => Hint(e.FullPath);
 
         // Startup reconciliation covers everything that arrived while Barkeep was down,
-        // and the periodic sweep covers watcher events Windows dropped.
+        // and the periodic sweep covers watcher events Windows dropped. The task is
+        // observed: a sweep that dies takes the design's whole safety net with it, so its
+        // death must be named, not discarded.
         var sweepInterval = TimeSpan.FromMinutes(Math.Max(1, options.Value.ReconcileMinutes));
-        _ = SweepLoopAsync(directory, sweepInterval, stoppingToken);
+        var sweep = SweepLoopAsync(directory, sweepInterval, stoppingToken);
+        _ = sweep.ContinueWith(
+            t => AcquisitionLog.SweepDied(log, t.Exception?.GetBaseException().Message ?? "unknown"),
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
 
-        await foreach (var fileName in _hints.Reader.ReadAllAsync(stoppingToken))
+        await foreach (var (fileName, fromSweep) in _hints.Reader.ReadAllAsync(stoppingToken))
         {
             try
             {
-                await ImportAsync(directory, fileName, stoppingToken);
+                await ImportAsync(directory, fileName, fromSweep, stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
                 return;
             }
-            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            catch (Exception error) when (error is not OutOfMemoryException)
             {
+                // Broad on purpose: an unnamed escape here kills the consumer loop and
+                // acquisition dies silently, which is the one outcome worse than any
+                // single import failing.
                 AcquisitionLog.ImportFaulted(log, fileName, error.Message);
             }
         }
@@ -111,12 +131,15 @@ public sealed class AcquisitionWatcher(
             {
                 foreach (var path in Directory.EnumerateFiles(directory, "*.sng", SearchOption.TopDirectoryOnly))
                 {
-                    _hints.Writer.TryWrite(Path.GetFileName(path));
+                    _hints.Writer.TryWrite((Path.GetFileName(path), true));
                 }
             }
-            catch (IOException)
+            catch (Exception error) when (
+                error is IOException or UnauthorizedAccessException or System.Security.SecurityException)
             {
-                // The directory being briefly unreadable is a hint delayed, not a fault.
+                // Briefly unreadable - an ACL flap, antivirus holding the directory - is a
+                // sweep delayed, not a sweep dead. UnauthorizedAccessException is NOT an
+                // IOException, which is exactly how the first version would have died.
             }
 
             try
@@ -130,30 +153,55 @@ public sealed class AcquisitionWatcher(
         }
     }
 
-    private async Task ImportAsync(string directory, string fileName, CancellationToken stoppingToken)
+    private async Task ImportAsync(string directory, string fileName, bool fromSweep, CancellationToken stoppingToken)
     {
         var full = Path.Combine(directory, fileName);
-        var info = new FileInfo(full);
 
-        if (!info.Exists)
+        // The identity must come from the SETTLED file, not from whenever the hint was
+        // dequeued. The first hint for a cross-volume Bridge handoff is the Created event
+        // at the start of the copy; fingerprinting there mints a key over a partial
+        // length and an in-flight mtime, the coordinator's own probe loop then patiently
+        // waits out the real copy, and the whole import completes under the stale key -
+        // after which the sweep computes the settled fingerprint, finds no receipt, and
+        // runs the entire pipeline a second time: duplicate setlist entry, duplicate cue.
+        // Found by adversarial review before it shipped, confirmed by three independent
+        // lenses. So the watcher settles first, with the same two signals the arrival
+        // probe uses, and the pipeline's probe becomes the safety net rather than the
+        // thing that invalidates the key.
+        var settled = await SettleIdentityAsync(full, stoppingToken);
+
+        if (settled is not { } identity)
         {
             return;
         }
 
-        // Name + length + write time: a re-download of the same title is a new import, a
-        // duplicate notification of the same bytes replays from the journal.
         var fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
-            $"{fileName}|{info.Length}|{info.LastWriteTimeUtc.Ticks}")));
+            $"{fileName}|{identity.Length}|{identity.WriteTicks}")));
         var key = $"sng:{fingerprint}";
 
-        // A failed import of the same unchanged file gets one fresh chance per sweep:
-        // "failed" here usually means the world was wrong (YARG not observable, a lock
-        // held), not the file. Completed and ambiguous receipts are never forgotten.
-        journal.ForgetFailure(key);
+        // A failed import of the same unchanged file gets one fresh chance per SWEEP -
+        // not per hint, or the burst of Changed events one copy raises would retry
+        // back-to-back, re-driving the Scan Songs clicks each time. "Failed" usually
+        // means the world was wrong (YARG mid-song, a lock held), not the file.
+        // Completed and ambiguous receipts are never forgotten.
+        if (fromSweep)
+        {
+            journal.ForgetFailure(key);
+        }
 
         var result = await coordinator.RunAsync(
             new ImportPlayNextRequest(key, new SongArrivalCandidate("geomitron-bridge", fileName, fingerprint)),
             stoppingToken);
+
+        // If the file moved on while the pipeline ran, this import spoke for bytes that
+        // no longer exist; the settled file re-enters through the queue under its own key.
+        var after = new FileInfo(full);
+
+        if (after.Exists &&
+            (after.Length != identity.Length || after.LastWriteTimeUtc.Ticks != identity.WriteTicks))
+        {
+            _hints.Writer.TryWrite((fileName, false));
+        }
 
         if (result.Outcome == ImportPlayNextOutcome.InProgress)
         {
@@ -189,6 +237,59 @@ public sealed class AcquisitionWatcher(
     }
 }
 
+public sealed partial class AcquisitionWatcher
+{
+    /// <summary>
+    /// Waits until the file's length and write time hold still across one probe interval,
+    /// and no writer holds it. Bounded by the same budget as the pipeline's own probe.
+    /// Null when the file vanished or never settled.
+    /// </summary>
+    private async Task<(long Length, long WriteTicks)?> SettleIdentityAsync(
+        string full,
+        CancellationToken stoppingToken)
+    {
+        var interval = TimeSpan.FromMilliseconds(Math.Max(50, options.Value.StabilityProbeMilliseconds));
+
+        for (var attempt = 0; attempt < 40; attempt++)
+        {
+            var before = new FileInfo(full);
+
+            if (!before.Exists)
+            {
+                return null;
+            }
+
+            var snapshot = (before.Length, before.LastWriteTimeUtc.Ticks);
+            await Task.Delay(interval, stoppingToken);
+
+            var after = new FileInfo(full);
+
+            if (!after.Exists)
+            {
+                return null;
+            }
+
+            if ((after.Length, after.LastWriteTimeUtc.Ticks) != snapshot)
+            {
+                continue;
+            }
+
+            try
+            {
+                using var probe = new FileStream(full, FileMode.Open, FileAccess.Read, FileShare.Read);
+            }
+            catch (IOException)
+            {
+                continue;
+            }
+
+            return snapshot;
+        }
+
+        return null;
+    }
+}
+
 public static partial class AcquisitionLog
 {
     [LoggerMessage(Level = LogLevel.Information, Message = "Watching {Directory} for Geomitron Bridge arrivals.")]
@@ -202,4 +303,7 @@ public static partial class AcquisitionLog
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Import of {FileName} faulted: {Reason}. The next sweep retries.")]
     public static partial void ImportFaulted(ILogger logger, string fileName, string reason);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The reconciliation sweep died: {Reason}. Dropped watcher events are no longer recovered until restart.")]
+    public static partial void SweepDied(ILogger logger, string reason);
 }

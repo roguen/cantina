@@ -34,6 +34,7 @@ public interface IYargSessionPort
 
     ValueTask<ExternalCommandOutcome> CueAsync(
         SongIdentity song,
+        string idempotencyKey,
         CancellationToken cancellationToken);
 }
 

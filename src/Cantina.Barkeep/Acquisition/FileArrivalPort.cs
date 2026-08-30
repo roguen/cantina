@@ -23,7 +23,13 @@ public sealed class FileArrivalPort(IOptions<AcquisitionOptions> options) : ISon
         CancellationToken cancellationToken)
     {
         var settings = options.Value;
-        var root = Path.GetFullPath(settings.WatchDirectory);
+
+        // TrimEnd matters: Path.GetFullPath preserves a trailing separator, and a watch
+        // directory pasted as "C:\songs\" would then fail BOTH containment prongs for
+        // every legitimate file - acquisition entirely dead with the misleading reason
+        // "arrival-escapes-watch-root". Found by review, verified on this machine.
+        var root = Path.GetFullPath(settings.WatchDirectory)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var full = Path.GetFullPath(Path.Combine(root, candidate.RelativePath));
 
         // Containment: the candidate must resolve to a file directly inside the watch
@@ -45,16 +51,21 @@ public sealed class FileArrivalPort(IOptions<AcquisitionOptions> options) : ISon
 
         if (!info.Exists)
         {
+            _lastLength.Remove(full);
             return SongArrivalProbeResult.Rejected("arrival-vanished");
         }
 
         if ((info.Attributes & FileAttributes.ReparsePoint) != 0)
         {
+            _lastLength.Remove(full);
             return SongArrivalProbeResult.Rejected("arrival-is-reparse-point");
         }
 
         if (info.Length > settings.MaximumSngBytes)
         {
+            // Every terminal path clears the baseline, or a singleton port leaks one
+            // entry per path that ever failed to stabilize.
+            _lastLength.Remove(full);
             return SongArrivalProbeResult.Rejected("arrival-oversized");
         }
 

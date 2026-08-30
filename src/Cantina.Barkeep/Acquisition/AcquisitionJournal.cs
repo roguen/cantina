@@ -33,14 +33,26 @@ public sealed class AcquisitionJournal : IImportPlayNextJournal, IDisposable
     {
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, FileName);
-        var journal = new AcquisitionJournal(
-            new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read));
+        var stream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read);
 
-        if (File.Exists(path))
+        // A kill mid-append leaves a torn tail with no newline; without this, the next
+        // line written would concatenate onto the fragment and BOTH records would fail
+        // to parse on the following replay. One newline makes the torn line the only
+        // casualty, which is what D-023's torn-tail tolerance intends.
+        if (stream.Length > 0)
         {
-            journal.Replay(path);
+            using var tail = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            tail.Seek(-1, SeekOrigin.End);
+
+            if (tail.ReadByte() != '\n')
+            {
+                stream.Write("\n"u8);
+                stream.Flush(flushToDisk: true);
+            }
         }
 
+        var journal = new AcquisitionJournal(stream);
+        journal.Replay(path);
         return journal;
     }
 
@@ -71,8 +83,20 @@ public sealed class AcquisitionJournal : IImportPlayNextJournal, IDisposable
             }
 
             var leaseId = Guid.NewGuid().ToString("N");
+
+            try
+            {
+                Write(new JournalLine("lease", idempotencyKey, candidate.Fingerprint, leaseId, null, null));
+            }
+            catch
+            {
+                // The lease line never reached disk, so nothing may believe it exists in
+                // memory either - otherwise every retry answers InProgress until restart.
+                _activeLeases.Remove(idempotencyKey);
+                throw;
+            }
+
             _fingerprints[idempotencyKey] = candidate.Fingerprint;
-            Write(new JournalLine("lease", idempotencyKey, candidate.Fingerprint, leaseId, null, null));
 
             return ValueTask.FromResult(new ImportPlayNextClaim(
                 ImportPlayNextClaimState.Acquired,
@@ -89,15 +113,25 @@ public sealed class AcquisitionJournal : IImportPlayNextJournal, IDisposable
     {
         lock (_gate)
         {
-            Write(new JournalLine(
-                "receipt",
-                idempotencyKey,
-                candidate.Fingerprint,
-                leaseId,
-                receipt.Outcome.ToString(),
-                receipt.FailureCode));
-            _receipts[idempotencyKey] = receipt;
-            _activeLeases.Remove(idempotencyKey);
+            try
+            {
+                Write(new JournalLine(
+                    "receipt",
+                    idempotencyKey,
+                    candidate.Fingerprint,
+                    leaseId,
+                    receipt.Outcome.ToString(),
+                    receipt.FailureCode));
+                _receipts[idempotencyKey] = receipt;
+            }
+            finally
+            {
+                // Released even when the write throws: the receipt is not claimed to
+                // exist (the caller sees the exception), but wedging the key as
+                // InProgress until restart would make every retry silently no-op. A
+                // re-claim re-runs idempotent work, which is the designed recovery.
+                _activeLeases.Remove(idempotencyKey);
+            }
         }
 
         return ValueTask.CompletedTask;
@@ -162,9 +196,15 @@ public sealed class AcquisitionJournal : IImportPlayNextJournal, IDisposable
                     break;
 
                 case "receipt" when entry.Outcome is not null:
-                    _receipts[entry.Key] = new ImportPlayNextTerminalReceipt(
-                        Enum.Parse<ImportPlayNextOutcome>(entry.Outcome),
-                        entry.FailureCode);
+                    // TryParse, because this file outlives binaries: a receipt written by
+                    // a newer Barkeep must not prevent an older one from starting. An
+                    // unrecognized outcome is skipped - the key becomes claimable, and
+                    // re-running idempotent work beats refusing to boot.
+                    if (Enum.TryParse<ImportPlayNextOutcome>(entry.Outcome, out var outcome))
+                    {
+                        _receipts[entry.Key] = new ImportPlayNextTerminalReceipt(outcome, entry.FailureCode);
+                    }
+
                     break;
 
                 case "forget":

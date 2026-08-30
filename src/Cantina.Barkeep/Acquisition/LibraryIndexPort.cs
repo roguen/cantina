@@ -49,10 +49,7 @@ public sealed class LibraryIndexPort(
         // also picks up anything else that arrived while nobody was watching.
         index.Scan(library.Value.ResolveDirectories(yarg.Value.ResolveYargDirectory()), clock);
 
-        var indexed = index.Search(document.Title, limit: 200)
-            .Any(song => string.Equals(song.Location, full, StringComparison.OrdinalIgnoreCase));
-
-        return ValueTask.FromResult(indexed
+        return ValueTask.FromResult(index.FindByLocation(full) is not null
             ? SongIndexResult.Accepted(new SongIdentity(full))
             : SongIndexResult.Rejected("indexed-song-not-found-after-scan"));
     }

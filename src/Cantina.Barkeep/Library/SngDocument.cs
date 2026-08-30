@@ -156,7 +156,11 @@ public sealed record SngDocument
         var length = BinaryPrimitives.ReadInt32LittleEndian(buffer.AsSpan(offset, 4));
         offset += 4;
 
-        if (length < 0 || offset + length > buffer.Length)
+        // Long arithmetic, deliberately: a crafted length near int.MaxValue wraps
+        // `offset + length` negative in int math, sails past the guard, and turns a
+        // named rejection into a thrown exception - which would have stopped the host
+        // at startup through the library scan. Found by review.
+        if (length < 0 || offset + (long)length > buffer.Length)
         {
             return false;
         }
