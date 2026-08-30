@@ -32,10 +32,21 @@ public sealed class FileArrivalPort(IOptions<AcquisitionOptions> options) : ISon
             .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var full = Path.GetFullPath(Path.Combine(root, candidate.RelativePath));
 
-        // Containment: the candidate must resolve to a file directly inside the watch
-        // root. A relative path carrying traversal, a rooted name, or a separator resolves
-        // elsewhere and is refused by name — it cannot merely be ignored, because a
-        // rejected arrival must be visible (security-model.md).
+        // Containment, in two layers. First: a candidate is a FILE NAME, and anything
+        // carrying either separator flavor, traversal, or a root is refused before any
+        // path math — checked character-wise so the answer is identical on every OS (on
+        // Linux a backslash is a legal filename character and resolves INSIDE the root,
+        // which is how a Windows-only check would pass CI on one runner and fail on the
+        // other). Second: the resolved path must still land directly inside the watch
+        // root, as defense against anything the first layer did not imagine. Rejected by
+        // name either way, because a refused arrival must be visible (security-model.md).
+        if (candidate.RelativePath.IndexOfAny(['/', '\\']) >= 0 ||
+            candidate.RelativePath.Contains("..", StringComparison.Ordinal) ||
+            Path.IsPathRooted(candidate.RelativePath))
+        {
+            return SongArrivalProbeResult.Rejected("arrival-escapes-watch-root");
+        }
+
         if (!full.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(Path.GetDirectoryName(full), root, StringComparison.OrdinalIgnoreCase))
         {
