@@ -158,7 +158,11 @@ public sealed class EncoreProviderTests
 
         Assert.Equal("downloading", coordinator.Request(Chart("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")).State);
 
-        var second = coordinator.Request(Chart("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"));
+        // A different title, so the only refusal in play is the ceiling: the first
+        // download can deliver its file before this line runs, and two charts with the
+        // same name would then trip the already-in-the-watch-directory check instead.
+        var second = coordinator.Request(
+            Chart("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb") with { Name = "Atomic Punk" });
 
         Assert.Equal("refused", second.State);
         Assert.Contains("polite ceiling", second.Detail, StringComparison.Ordinal);
