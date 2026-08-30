@@ -136,7 +136,7 @@ public sealed class SongIndexTests : IDisposable
         // The operator picks between versions of a song by what is charted - guitar,
         // drums, and whether a vocals chart makes lyrics available. Both metadata
         // sources speak the same diff_ vocabulary and land in the same shape.
-        var root = TempDirectory();
+        var root = _root;
         Directory.CreateDirectory(Path.Combine(root, "folder-song"));
         File.WriteAllText(
             Path.Combine(root, "folder-song", "song.ini"),
