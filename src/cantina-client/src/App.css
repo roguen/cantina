@@ -104,7 +104,19 @@ main {
 
 .arrivals { display: grid; gap: 0.4rem; }
 
+.stage__continue { width: 100%; padding: 0.8rem; font-size: 1.05rem; }
+
+.arrivals__dismiss {
+  padding: 0.1rem 0.5rem;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
 .arrivals__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
   margin: 0;
   padding: 0.55rem 0.9rem;
   border-radius: 8px;

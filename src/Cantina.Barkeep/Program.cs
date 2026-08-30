@@ -196,6 +196,7 @@ if (OperatingSystem.IsWindows())
     builder.Services.AddSingleton<YargCueService>();
     builder.Services.AddSingleton<PlayerStandInService>();
     builder.Services.AddSingleton<ScoreAdvanceService>();
+    builder.Services.AddSingleton<ScoreContinueService>();
     builder.Services.AddHostedService<CueConfirmationPoller>();
     builder.Services.AddHostedService<ScoreAdvancePoller>();
 
@@ -474,6 +475,19 @@ app.MapPost("/api/advance", (AdvanceArmRequest request, IServiceProvider service
     })
     .RequireRateLimiting("commands")
     .WithName("SetAdvanceStatus");
+
+// The score screen's one key, from the iPad (#39's decision, manually). Gated on the
+// wire actually showing Score — one of the three scenes it can distinguish — so this
+// never presses blind.
+app.MapPost("/api/score/continue", (IServiceProvider services) =>
+    {
+        var continues = services.GetService<ScoreContinueService>();
+        return continues is null
+            ? Results.Ok(new StandInStatus("refused", "pressing CONTINUE requires the Windows theater host"))
+            : Results.Ok(continues.Continue());
+    })
+    .RequireRateLimiting("commands")
+    .WithName("PostScoreContinue");
 
 // ── The debug surface ───────────────────────────────────────────────────────────────────
 //

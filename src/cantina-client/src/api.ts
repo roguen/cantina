@@ -191,6 +191,14 @@ export async function setFavorite(location: string, favored: boolean): Promise<s
   return response.json() as Promise<string[]>
 }
 
+// The score screen's one key, pressed from the iPad. Refused unless the wire shows
+// the score screen, so it can never land blind.
+export async function scoreContinue(): Promise<{ state: string; detail: string }> {
+  const response = await call('/api/score/continue', { method: 'POST' })
+  if (!response.ok) throw new Error(`continue failed: ${response.status}`)
+  return response.json() as Promise<{ state: string; detail: string }>
+}
+
 // The score-screen advance (#39): armed from the iPad, off at startup, honest about
 // every episode in its detail sentence.
 export type AdvanceStatus = {
