@@ -1385,6 +1385,30 @@ Two structural choices worth keeping:
 Content use is unchanged in kind from Bridge: local personal play, never redistributed,
 never committed, charter attribution carried end to end.
 
+## D-033 · A pairing code may be emailed, and the widened trust anchor is named
+
+**2026-08-30.** The owner asked for pairing codes by email rather than a walk to the
+theater PC every time. D-026 made physical presence the credential; this entry widens it
+deliberately: **"can read the operator's inbox" now stands in for "is standing at the
+theater PC."** The widening is held narrow four ways:
+
+- **The destination is operator configuration (`PairingEmail:To`), never client input.**
+  The owner's original ask was a field where the requester types an address; that shape
+  lets any device on the LAN mail itself a code, so it was declined and the owner
+  accepted the configured-address form. His future wish — sending from
+  cantina@aero4ge.com to whatever address asks — is recorded as an enhancement that
+  must not ship without a compensating control (an allowlist or per-address operator
+  approval).
+- A small ceiling (3/hour) with the refusal pointing back at the console.
+- The requester's address is named in the message, and an unexpected email is itself
+  the alarm.
+- The console still prints every code; an open window is reused rather than replaced,
+  so a code the operator just read survives the tap.
+
+Theater configuration: To=admin@aero4ge.com, From=cantina@aero4ge.com, via
+mail.aero4ge.com:25 STARTTLS (the house host accepts local delivery credential-free and
+refuses relay, so non-local destinations will not deliver until forwarding exists).
+
 ## D-034 · The score-screen advance ships players-first, and the unknown menu is answered by the cue's own verification
 
 **2026-08-30.** Implements the owner's #39 decision (Cantina presses CONTINUE as well as
