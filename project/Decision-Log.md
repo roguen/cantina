@@ -1453,3 +1453,32 @@ cantina@aero4ge.com and the password lives at a file path
 (`PairingEmail:SmtpPasswordPath`) — the value in exactly one place, never in
 configuration dumps, transcripts, or argv. The mailbox itself is created on the NAS
 by the operator, interactively, per the house procedure.
+
+## D-036 · The operator-requested acceptance run: one defect, one measured assumption, one subtlety
+
+**2026-08-30, evening.** The owner asked for the full click-through — "go through and
+click on the buttons in this app, make sure that it is operating within the YARG
+application as it should" — driven over loopback against live YARG, screenshots before
+every blind step. Three findings:
+
+1. **A defect, fixed the same hour.** The first screenshot showed YARG's search box
+   holding two cue typings interleaved — a double-tapped Play now had raced two
+   keystroke sequences together, matched nothing, and stranded the cue at
+   pending-players. The cue service's lock covered bookkeeping, not keystrokes.
+   `ActuationGate` now serializes whole input sequences process-wide (cue, stand-in,
+   advance CONTINUE), with a regression test that reproduces the race.
+2. **D-034's owed assumption is now measured.** A full advance episode ran live: score
+   screen → players-first grace → one CONTINUE → **dismissed to the Music Library** →
+   menu settled → next setlist entry cued → stand-in confirms → playing → cursor moved
+   only after the verified load. The advance loop's own status sentences narrated every
+   step.
+3. **Duplicate titles resolve to whatever YARG ranks first.** The library holds two
+   "Ace of Spades"; the cue requested one, YARG loaded the other, and the cue failed
+   naming exactly what loaded — D-017's hazard demonstrated end to end, and the reason
+   verify-by-outcome is load-bearing. The instrument chips and charter display are the
+   operator's disambiguation tools.
+
+Also proven live in the same session: the D-035 requester-addressed email loop (gmail
+delivery via SMTP2GO, operator notification, hourly ceiling), the index-targeted
+setlist remove (used to restore the setlist after the test), and the score screen's
+"no input device assigned" banner NOT blocking a synthetic ready confirm.
