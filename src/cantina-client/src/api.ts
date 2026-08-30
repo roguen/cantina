@@ -272,6 +272,15 @@ export async function standInForPlayers(): Promise<StandInStatus> {
   return response.json() as Promise<StandInStatus>
 }
 
+// The name this device was registered under - "iPad Mini" on the iPad Mini - from
+// the server's registry, so the masthead says who this screen is.
+export async function deviceLabel(): Promise<string | null> {
+  const response = await call('/api/device')
+  if (!response.ok) return null
+  const view = (await response.json()) as { label: string }
+  return view.label
+}
+
 export async function currentCue(): Promise<CueStatus | null> {
   const response = await call('/api/cue/current')
   if (response.status === 204) return null

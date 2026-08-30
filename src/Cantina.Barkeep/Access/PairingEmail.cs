@@ -29,6 +29,10 @@ public sealed class PairingEmailOptions
 
     public bool UseStartTls { get; set; } = true;
 
+    /// <summary>IMAP port on the same host, for filing sent codes into the account's
+    /// Sent folder so the mailbox shows what the system sent.</summary>
+    public int ImapPort { get; set; } = 993;
+
     /// <summary>
     /// The name EHLO announces. The house mail host rejects a bare machine name by
     /// policy (need fully-qualified hostname), so empty resolves to the sender's domain,
@@ -82,10 +86,12 @@ public sealed record PairingEmailRequest(string? Email);
 /// <summary>What became of an email request.</summary>
 public sealed record PairingEmailStatus(string State, string Detail);
 
-/// <summary>The wire seam, so the composition and ceiling are testable without SMTP.</summary>
+/// <summary>The wire seam, so the composition and ceiling are testable without SMTP.
+/// Returns null when the message was sent and filed cleanly, or a warning sentence when
+/// it was sent but could not be copied to the account's Sent folder.</summary>
 public interface IPairingMailTransport
 {
-    Task SendAsync(string sender, string recipient, string subject, string body, CancellationToken cancellation);
+    Task<string?> SendAsync(string sender, string recipient, string subject, string body, CancellationToken cancellation);
 }
 
 /// <summary>
@@ -150,10 +156,12 @@ public sealed class PairingEmailService(
             + "If nobody you know asked for this, ignore it — the code expires on its own "
             + "and the window closes after five wrong attempts.";
 
+        string? filing;
+
         try
         {
             _recentSends.Enqueue(now);
-            await transport.SendAsync(
+            filing = await transport.SendAsync(
                 options.Value.From, destination ?? options.Value.To,
                 "Cantina pairing code", body, cancellation).ConfigureAwait(false);
         }
@@ -165,7 +173,8 @@ public sealed class PairingEmailService(
 
         if (destination is null)
         {
-            return new("sent", "a pairing code was emailed to the operator's configured address");
+            return new("sent", "a pairing code was emailed to the operator's configured address"
+                + (filing is null ? "" : $" ({filing})"));
         }
 
         // The compensating control (D-035): a requester-addressed grant is never silent.
@@ -190,6 +199,7 @@ public sealed class PairingEmailService(
                 + $"failed: {error.Message}");
         }
 
-        return new("sent", $"a pairing code was emailed to {destination}");
+        return new("sent", $"a pairing code was emailed to {destination}"
+            + (filing is null ? "" : $" ({filing})"));
     }
 }

@@ -3,6 +3,9 @@
 namespace Cantina.Barkeep.Access;
 
 /// <summary>A device the operator paired, as anyone but the device itself may see it.</summary>
+/// <summary>The requesting device's own registered label.</summary>
+public sealed record DeviceView(string Label);
+
 public sealed record PairedDevice(
     string DeviceId,
     string Label,

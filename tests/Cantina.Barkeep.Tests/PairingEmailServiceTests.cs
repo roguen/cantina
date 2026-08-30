@@ -17,7 +17,7 @@ public sealed class PairingEmailServiceTests
 
         public Exception? Throws { get; set; }
 
-        public Task SendAsync(string sender, string recipient, string subject, string body, CancellationToken cancellation)
+        public Task<string?> SendAsync(string sender, string recipient, string subject, string body, CancellationToken cancellation)
         {
             if (Throws is not null)
             {
@@ -25,7 +25,7 @@ public sealed class PairingEmailServiceTests
             }
 
             Sent.Add((recipient, body));
-            return Task.CompletedTask;
+            return Task.FromResult<string?>(null);
         }
     }
 
