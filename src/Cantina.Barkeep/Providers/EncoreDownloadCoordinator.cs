@@ -159,8 +159,12 @@ public sealed class EncoreDownloadCoordinator(
     public static string FileNameFor(EncoreChart chart)
     {
         var stem = $"{chart.Artist} - {chart.Name}" + (chart.Charter is { Length: > 0 } ? $" ({chart.Charter})" : "");
-        var invalid = Path.GetInvalidFileNameChars();
-        var cleaned = new string([.. stem.Where(character => !invalid.Contains(character))]).Trim();
+
+        // A fixed Windows-superset list, not Path.GetInvalidFileNameChars(): that API
+        // answers for the OS running Barkeep, and on Linux it is just '/' and NUL — but
+        // the file always lands on a Windows theater. Same name everywhere, by fiat.
+        var cleaned = new string([.. stem.Where(character =>
+            character >= ' ' && character is not ('<' or '>' or ':' or '"' or '/' or '\\' or '|' or '?' or '*'))]).Trim();
 
         if (cleaned.Length == 0)
         {
