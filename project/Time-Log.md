@@ -822,3 +822,29 @@ start was not captured.
   now holds Everlong at play-next.
 - Server tests 105 → 122. D-030 recorded; the geomitron doc's status updated; two roadmap
   items ticked.
+
+## 2026-08-29 · Review findings and the UI pass — session 021
+
+- Recorded: 2026-08-29 22:20 PDT
+- Duration: not captured
+- A 36-agent adversarial review ran over the acquisition branch before its PR and confirmed
+  22 findings — including a blocking double-import defect (fingerprint minted before the
+  file finished copying) that three lenses found independently and every deterministic test
+  had passed over. All code-worthy findings fixed, four pinned with regression tests, and
+  the fix verified live: restart against the real folder, settled key replays as Terminal,
+  exactly one Everlong.
+- One more found by CI rather than review: the hostile-path containment tests passed on
+  Windows and failed on Ubuntu, because a backslash is a legal filename character on Linux
+  and the "escaping" candidates resolved inside the root there. The port now refuses
+  separator-bearing names character-wise before any path math — a security check whose
+  verdict depends on which OS evaluates it is not a check.
+- Then the UI pass the owner queued: the five-rem hero shrank to one line with a
+  connection dot; Add/Cue became "Add to setlist"/"Play now" (the brief's own verbs); an
+  Add now confirms three ways at once (button flips to "Added ✓", the setlist count
+  badges, the entry appears in the strip); the setlist moved above the search results it
+  used to hide beneath; and the acquisition feed renders arrivals in plain words —
+  "Everlong arrived and is queued to play next."
+- Verified in a real browser against the live theater over `https://cantina.aero4ge.com`,
+  paired as a temporary device that was revoked afterward. One pre-existing API limit
+  noted for later: Remove targets a hash, and entries whose hash is still unlearned all
+  carry "" — so Remove cannot distinguish them. Not new, not fixed tonight.

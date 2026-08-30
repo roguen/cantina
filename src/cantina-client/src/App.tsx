@@ -10,7 +10,9 @@ import {
   fetchHealth,
   fetchSetlist,
   searchSongs,
+  recentAcquisitions,
   stripColorTags,
+  type AcquisitionRecord,
   type CueStatus,
   type IndexedSong,
   type SetlistView,
@@ -50,6 +52,8 @@ function App() {
   const [cue, setCue] = useState<CueStatus | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [certificate, setCertificate] = useState<CertificateHealth | null>(null)
+  const [justAdded, setJustAdded] = useState<string | null>(null)
+  const [arrivals, setArrivals] = useState<AcquisitionRecord[]>([])
 
   const refreshSetlist = useCallback(() => {
     fetchSetlist()
@@ -62,6 +66,23 @@ function App() {
   useEffect(() => {
     if (paired) refreshSetlist()
   }, [paired, refreshSetlist])
+
+  // New arrivals matter within a minute of downloading something in Geomitron Bridge;
+  // beyond that the feed is history, so a slow poll is enough.
+  useEffect(() => {
+    if (!paired) return
+
+    const read = () =>
+      recentAcquisitions()
+        .then(setArrivals)
+        .catch(() => {
+          // The connection banner already reports an unreachable Barkeep.
+        })
+
+    read()
+    const timer = window.setInterval(read, 30 * 1000)
+    return () => window.clearInterval(timer)
+  }, [paired])
 
   // Certificate life changes on the scale of days, so once an hour is plenty and anything
   // more often is noise on a device that spends most of its time asleep.
@@ -129,7 +150,15 @@ function App() {
   const onAdd = (song: IndexedSong) => {
     setActionError(null)
     addToSetlist(song)
-      .then(refreshSetlist)
+      .then(() => {
+        refreshSetlist()
+        // The tap that seems to do nothing was the complaint that drove this screen's
+        // redesign: the add worked every time, and nothing said so.
+        setJustAdded(song.location)
+        window.setTimeout(() => {
+          setJustAdded((current) => (current === song.location ? null : current))
+        }, 2000)
+      })
       .catch((error: unknown) => {
         if (!unpair(error)) setActionError('The setlist change could not reach Barkeep.')
       })
@@ -154,9 +183,13 @@ function App() {
 
   return (
     <main>
-      <header>
-        <p className="eyebrow">Cantina</p>
-        <h1>Your setlist, within reach.</h1>
+      <header className="masthead">
+        <span className="eyebrow">Cantina</span>
+        <span
+          className={`masthead__dot masthead__dot--${connectionState}`}
+          title={copy.title}
+          aria-label={copy.title}
+        />
       </header>
 
       <section className={`stage stage--${banner?.tone ?? 'down'}`} aria-live="polite">
@@ -195,6 +228,38 @@ function App() {
 
       {actionError && <p className="error">{actionError}</p>}
 
+      {arrivals.length > 0 && (
+        <section className="arrivals">
+          {arrivals.slice(0, 3).map((arrival) => (
+            <p key={arrival.idempotencyKey} className={`arrivals__item arrivals__item--${arrival.outcome}`}>
+              {arrivalCopy(arrival)}
+            </p>
+          ))}
+        </section>
+      )}
+
+      {setlist && setlist.state.entries.length > 0 && (
+        <section className="setlist">
+          <h2>
+            Setlist
+            <span className="setlist__count">{setlist.state.entries.length}</span>
+          </h2>
+          <ol>
+            {setlist.state.entries.map((entry, index) => (
+              <li
+                key={`${entry.location ?? entry.hash}-${index}`}
+                className={index === setlist.state.cursor ? 'setlist__current' : undefined}
+              >
+                {entry.title} — {entry.artist}
+              </li>
+            ))}
+          </ol>
+          {setlist.quarantinedFiles.length > 0 && (
+            <p className="error">Setlist state was recovered; a damaged file was set aside.</p>
+          )}
+        </section>
+      )}
+
       <section className="library">
         <input
           type="search"
@@ -218,10 +283,10 @@ function App() {
               </div>
               <div className="songs__actions">
                 <button type="button" onClick={() => onAdd(song)}>
-                  Add
+                  {justAdded === song.location ? 'Added ✓' : 'Add to setlist'}
                 </button>
                 <button type="button" className="primary" onClick={() => onCue(song)}>
-                  Cue
+                  Play now
                 </button>
               </div>
             </li>
@@ -229,26 +294,25 @@ function App() {
         </ul>
       </section>
 
-      {setlist && setlist.state.entries.length > 0 && (
-        <section className="setlist">
-          <h2>Setlist</h2>
-          <ol>
-            {setlist.state.entries.map((entry, index) => (
-              <li
-                key={`${entry.location ?? entry.hash}-${index}`}
-                className={index === setlist.state.cursor ? 'setlist__current' : undefined}
-              >
-                {entry.title} — {entry.artist}
-              </li>
-            ))}
-          </ol>
-          {setlist.quarantinedFiles.length > 0 && (
-            <p className="error">Setlist state was recovered; a damaged file was set aside.</p>
-          )}
-        </section>
-      )}
     </main>
   )
+}
+
+/// Plain words for an import outcome. The failure codes are the pipeline's own vocabulary;
+/// the iPad gets a sentence.
+function arrivalCopy(arrival: AcquisitionRecord): string {
+  const name = arrival.fileName.replace(/\.sng$/i, '')
+
+  switch (arrival.outcome) {
+    case 'Completed':
+      return `${name} arrived and is queued to play next.`
+    case 'Failed':
+      return `${name} arrived but could not be imported (${arrival.failureCode ?? 'unknown'}). It retries on its own.`
+    case 'Ambiguous':
+      return `${name} arrived; the import needs a look (${arrival.failureCode ?? 'unknown'}).`
+    default:
+      return `${name}: ${arrival.outcome}.`
+  }
 }
 
 export default App
