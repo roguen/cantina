@@ -133,6 +133,8 @@ builder.Services.Configure<YargCueOptions>(
     builder.Configuration.GetSection(YargCueOptions.SectionName));
 builder.Services.Configure<DebugOptions>(
     builder.Configuration.GetSection(DebugOptions.SectionName));
+builder.Services.Configure<AdvanceOptions>(
+    builder.Configuration.GetSection(AdvanceOptions.SectionName));
 builder.Services.Configure<EncoreOptions>(
     builder.Configuration.GetSection(EncoreOptions.SectionName));
 
@@ -186,7 +188,9 @@ if (OperatingSystem.IsWindows())
     builder.Services.AddSingleton<IYargActuator, Win32YargActuator>();
     builder.Services.AddSingleton<YargCueService>();
     builder.Services.AddSingleton<PlayerStandInService>();
+    builder.Services.AddSingleton<ScoreAdvanceService>();
     builder.Services.AddHostedService<CueConfirmationPoller>();
+    builder.Services.AddHostedService<ScoreAdvancePoller>();
 
     // Acquisition: the Geomitron Bridge filesystem handoff (D-007, D-030). Off unless a
     // watch directory is named, and Windows-only because the refresh drives YARG's menus.
@@ -421,6 +425,31 @@ app.MapGet("/api/cue/current", (IServiceProvider services) =>
         return service?.Current is { } status ? Results.Ok(status) : Results.NoContent();
     })
     .WithName("GetCurrentCue");
+
+// ── The score-screen advance (#39) ──────────────────────────────────────────────────────
+//
+// Armed from the iPad, off at startup. While armed, a score screen with a next setlist
+// entry gets a players-first grace period, then one CONTINUE, then the ordinary cue
+// pipeline for the next song — same gates, same journal, same verify-by-outcome.
+
+app.MapGet("/api/advance", (IServiceProvider services) =>
+    {
+        var advance = services.GetService<ScoreAdvanceService>();
+        return advance is null
+            ? Results.Ok(new AdvanceStatus(false, "Unavailable", "auto-advance requires the Windows theater host", DateTimeOffset.MinValue))
+            : Results.Ok(advance.Status);
+    })
+    .WithName("GetAdvanceStatus");
+
+app.MapPost("/api/advance", (AdvanceArmRequest request, IServiceProvider services) =>
+    {
+        var advance = services.GetService<ScoreAdvanceService>();
+        return advance is null
+            ? Results.Ok(new AdvanceStatus(false, "Unavailable", "auto-advance requires the Windows theater host", DateTimeOffset.MinValue))
+            : Results.Ok(advance.SetEnabled(request.Enabled));
+    })
+    .RequireRateLimiting("commands")
+    .WithName("SetAdvanceStatus");
 
 // ── The debug surface ───────────────────────────────────────────────────────────────────
 //

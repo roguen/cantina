@@ -169,6 +169,12 @@ target-environment evidence.
 
 ## M5 · Queue and state
 
+- [x] Score-screen auto-advance (#39, decided 2026-08-30: Cantina presses CONTINUE as
+  well as the players) — D-034: players-first grace, one bounded press, then the
+  ordinary cue pipeline for the next entry, cursor moved only on confirmed load. Armed
+  from the iPad, off at startup. Target-PC acceptance run still owed for the
+  which-menu-does-Score-dismiss-to assumption
+
 - [x] Decide setlist durability and restart recovery —
   [#7](https://github.com/roguen/cantina/issues/7), closed. Semantics decided (D-023),
   implemented as `SetlistJournal` in Barkeep with `/api/setlist`, and the crash matrix

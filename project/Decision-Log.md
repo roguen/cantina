@@ -1384,3 +1384,24 @@ Two structural choices worth keeping:
 
 Content use is unchanged in kind from Bridge: local personal play, never redistributed,
 never committed, charter attribution carried end to end.
+
+## D-034 · The score-screen advance ships players-first, and the unknown menu is answered by the cue's own verification
+
+**2026-08-30.** Implements the owner's #39 decision (Cantina presses CONTINUE as well as
+the players). The shape that survives the observation rules:
+
+- **Off at startup, armed from the iPad.** A show is armed deliberately.
+- **The grace period belongs to the players** (default 6 s). If they dismiss the score
+  screen themselves, Cantina never presses — it only cues what comes next.
+- **One CONTINUE, bounded attempts (2 per score screen), never a hammer.** Every gate a
+  cue runs — single instance, live wire, deliverable input, verified foreground — runs
+  before the press.
+- **The advance is the ordinary cue pipeline.** After the score screen dismisses to a
+  menu and it settles, the next setlist entry goes through YargCueService: same journal,
+  same pending-players (instrument setup still belongs to the players, D-015), same
+  verify-by-outcome. The cursor moves only after the cue confirms the right song loaded.
+- **The wire cannot say which menu the score screen dismisses to** (D-015/D-018). The
+  cue's verification is the honest answer: if YARG landed somewhere the search click
+  cannot reach, no song loads and the episode fails by name. The target-PC acceptance
+  run is the proof that the landing screen is the Music Library; until it runs, that is
+  recorded here as assumed-and-checked-by-outcome, not known.

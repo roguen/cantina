@@ -147,6 +147,31 @@ export async function recentAcquisitions(): Promise<AcquisitionRecord[]> {
   return response.json() as Promise<AcquisitionRecord[]>
 }
 
+// The score-screen advance (#39): armed from the iPad, off at startup, honest about
+// every episode in its detail sentence.
+export type AdvanceStatus = {
+  enabled: boolean
+  phase: string
+  detail: string
+  updatedAt: string
+}
+
+export async function advanceStatus(): Promise<AdvanceStatus> {
+  const response = await call('/api/advance')
+  if (!response.ok) throw new Error(`advance status failed: ${response.status}`)
+  return response.json() as Promise<AdvanceStatus>
+}
+
+export async function setAdvance(enabled: boolean): Promise<AdvanceStatus> {
+  const response = await call('/api/advance', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+  })
+  if (!response.ok) throw new Error(`advance toggle failed: ${response.status}`)
+  return response.json() as Promise<AdvanceStatus>
+}
+
 // The chart-provider surface (D-032): search Chorus Encore and hand a chosen chart to
 // the acquisition pipeline. 404 means the integration is off and the section is not drawn.
 export type EncoreChart = {
