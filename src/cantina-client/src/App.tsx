@@ -16,6 +16,7 @@ import {
   type AcquisitionRecord,
   type CueStatus,
   advanceStatus,
+  scoreContinue,
   setAdvance,
   type AdvanceStatus,
   type DebugView,
@@ -89,6 +90,14 @@ function App() {
   const [groupByArtist, setGroupByArtist] = useState(false)
   const [standIn, setStandIn] = useState<StandInStatus | null>(null)
   const [standInBusy, setStandInBusy] = useState(false)
+  const [continueBusy, setContinueBusy] = useState(false)
+  const [dismissedArrivals, setDismissedArrivals] = useState<Set<string>>(() => {
+    try {
+      return new Set(JSON.parse(window.localStorage.getItem('cantina.dismissed-arrivals') ?? '[]') as string[])
+    } catch {
+      return new Set()
+    }
+  })
 
   const refreshSetlist = useCallback(() => {
     fetchSetlist()
@@ -276,6 +285,31 @@ function App() {
       })
   }
 
+  const onContinue = () => {
+    setContinueBusy(true)
+    scoreContinue()
+      .then((status) => {
+        if (status.state !== 'sent' && !actionError) setActionError(status.detail)
+      })
+      .catch((error: unknown) => {
+        if (!unpair(error)) setActionError('The continue could not reach Barkeep.')
+      })
+      .finally(() => setContinueBusy(false))
+  }
+
+  const onDismissArrival = (key: string) => {
+    setDismissedArrivals((current) => {
+      const next = new Set(current)
+      next.add(key)
+      try {
+        window.localStorage.setItem('cantina.dismissed-arrivals', JSON.stringify([...next]))
+      } catch {
+        // Private browsing; dismissals just won't be remembered.
+      }
+      return next
+    })
+  }
+
   const onStandIn = () => {
     setStandInBusy(true)
     setStandIn(null)
@@ -319,6 +353,16 @@ function App() {
         if (!unpair(error)) setActionError('The setlist change could not reach Barkeep.')
       })
   }
+
+  // One arrival per file, newest wins: a retried import used to stack three identical
+  // notifications with no way to clear them (operator feedback, 2026-08-30). The ✕
+  // remembers per device.
+  const seenFiles = new Set<string>()
+  const visibleArrivals = arrivals.filter((arrival) => {
+    if (dismissedArrivals.has(arrival.idempotencyKey) || seenFiles.has(arrival.fileName)) return false
+    seenFiles.add(arrival.fileName)
+    return true
+  })
 
   // The library, as the toggles ask for it: optionally favorites-only, optionally
   // grouped under artist headers. Grouping preserves the search ranking within groups.
@@ -407,6 +451,12 @@ function App() {
         )}
       </section>
 
+      {live?.scene === 'Score' && (
+        <button type="button" className="primary stage__continue" onClick={onContinue} disabled={continueBusy}>
+          {continueBusy ? 'Continuing…' : 'Continue past the score screen'}
+        </button>
+      )}
+
       {expiry && (
         <section className="cue cue--failed" aria-live="polite">
           <h2>{expiry.headline}</h2>
@@ -431,11 +481,19 @@ function App() {
 
       {tab === 'stage' && (
         <>
-          {arrivals.length > 0 && (
+          {visibleArrivals.length > 0 && (
             <section className="arrivals">
-              {arrivals.slice(0, 3).map((arrival) => (
+              {visibleArrivals.slice(0, 3).map((arrival) => (
                 <p key={arrival.idempotencyKey} className={`arrivals__item arrivals__item--${arrival.outcome}`}>
-                  {arrivalCopy(arrival)}
+                  <span>{arrivalCopy(arrival)}</span>
+                  <button
+                    type="button"
+                    className="arrivals__dismiss"
+                    aria-label="Dismiss"
+                    onClick={() => onDismissArrival(arrival.idempotencyKey)}
+                  >
+                    ✕
+                  </button>
                 </p>
               ))}
             </section>
@@ -587,11 +645,19 @@ function App() {
             </ul>
           )}
 
-          {arrivals.length > 0 && (
+          {visibleArrivals.length > 0 && (
             <section className="arrivals">
-              {arrivals.slice(0, 3).map((arrival) => (
+              {visibleArrivals.slice(0, 3).map((arrival) => (
                 <p key={arrival.idempotencyKey} className={`arrivals__item arrivals__item--${arrival.outcome}`}>
-                  {arrivalCopy(arrival)}
+                  <span>{arrivalCopy(arrival)}</span>
+                  <button
+                    type="button"
+                    className="arrivals__dismiss"
+                    aria-label="Dismiss"
+                    onClick={() => onDismissArrival(arrival.idempotencyKey)}
+                  >
+                    ✕
+                  </button>
                 </p>
               ))}
             </section>
