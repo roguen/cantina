@@ -8,6 +8,7 @@ using Cantina.Barkeep.Access;
 using Cantina.Barkeep.Acquisition;
 using Cantina.Barkeep.Library;
 using Cantina.Barkeep.Network;
+using Cantina.Barkeep.Providers;
 using Cantina.Barkeep.Setlist;
 using Cantina.Barkeep.Yarg;
 using Cantina.Barkeep.Yarg.Control;
@@ -132,6 +133,20 @@ builder.Services.Configure<YargCueOptions>(
     builder.Configuration.GetSection(YargCueOptions.SectionName));
 builder.Services.Configure<DebugOptions>(
     builder.Configuration.GetSection(DebugOptions.SectionName));
+builder.Services.Configure<EncoreOptions>(
+    builder.Configuration.GetSection(EncoreOptions.SectionName));
+
+// The Chorus Encore integration (D-032). One named client, self-identifying: the
+// provider is donation-funded and publishes no API terms, so the User-Agent is how its
+// operator can see Cantina, reach out, or block it by name. The generous timeout is for
+// chart downloads, which are large; searches bound themselves with a shorter token.
+builder.Services.AddHttpClient(EncoreClient.HttpClientName, client =>
+{
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Cantina/1.0 (+https://github.com/roguen/cantina)");
+    client.Timeout = TimeSpan.FromMinutes(15);
+});
+builder.Services.AddSingleton<EncoreClient>();
+builder.Services.AddSingleton<EncoreDownloadCoordinator>();
 
 builder.Services.Configure<NetworkOptions>(
     builder.Configuration.GetSection(NetworkOptions.SectionName));
@@ -435,6 +450,73 @@ app.MapPost("/api/debug/players", (IServiceProvider services, IOptions<DebugOpti
     })
     .RequireRateLimiting("commands")
     .WithName("PostPlayerStandIn");
+
+// ── The chart-provider surface (D-032) ──────────────────────────────────────────────────
+//
+// Search and download against Chorus Encore, the same two endpoints its own desktop
+// client speaks. Off means invisible (404), and every refusal downstream is named. The
+// download hands the file to the D-030 acquisition pipeline — there is no second import
+// path, so everything after delivery is the proven one.
+
+app.MapGet("/api/provider", (IOptions<EncoreOptions> encore) =>
+        encore.Value.Enabled ? Results.Ok(new ProviderView(true)) : Results.NotFound())
+    .WithName("GetProviderView");
+
+app.MapGet("/api/provider/search", async (string? q, EncoreClient encore, IOptions<EncoreOptions> providerOptions) =>
+    {
+        if (!providerOptions.Value.Enabled)
+        {
+            return Results.NotFound();
+        }
+
+        if (string.IsNullOrWhiteSpace(q))
+        {
+            return Results.BadRequest(new CommandRejected("q is required"));
+        }
+
+        using var bound = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+
+        try
+        {
+            var result = await encore.SearchAsync(q.Trim(), bound.Token);
+            return Results.Ok(result);
+        }
+        catch (Exception error) when (error is HttpRequestException or OperationCanceledException or InvalidOperationException)
+        {
+            return Results.Ok(new EncoreSearchResult(0, [],
+                $"the search could not reach Chorus Encore: {error.Message}"));
+        }
+    })
+    .RequireRateLimiting("commands")
+    .WithName("GetProviderSearch");
+
+app.MapPost("/api/provider/download", (EncoreChart chart, EncoreDownloadCoordinator downloads, IOptions<EncoreOptions> providerOptions) =>
+    {
+        if (!providerOptions.Value.Enabled)
+        {
+            return Results.NotFound();
+        }
+
+        // The md5 becomes a URL segment and a file name; nothing but a literal chart
+        // hash may pass.
+        if (chart.Md5 is not { Length: 32 } || !chart.Md5.All(char.IsAsciiHexDigitLower))
+        {
+            return Results.BadRequest(new CommandRejected("md5 must be 32 lowercase hex characters"));
+        }
+
+        if (string.IsNullOrWhiteSpace(chart.Name))
+        {
+            return Results.BadRequest(new CommandRejected("name is required"));
+        }
+
+        return Results.Ok(downloads.Request(chart));
+    })
+    .RequireRateLimiting("commands")
+    .WithName("PostProviderDownload");
+
+app.MapGet("/api/provider/downloads", (EncoreDownloadCoordinator downloads, IOptions<EncoreOptions> providerOptions) =>
+        providerOptions.Value.Enabled ? Results.Ok(downloads.Recent) : Results.NotFound())
+    .WithName("GetProviderDownloads");
 
 // ── The access surface (D-026) ──────────────────────────────────────────────────────────
 //

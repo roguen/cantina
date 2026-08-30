@@ -15,8 +15,14 @@ import {
   type AcquisitionRecord,
   type CueStatus,
   type DebugView,
+  type EncoreChart,
+  type ProviderDownload,
   type StandInStatus,
   debugView,
+  providerDownload,
+  providerDownloads,
+  providerEnabled,
+  providerSearch,
   standInForPlayers,
   type IndexedSong,
   type SetlistView,
@@ -59,6 +65,12 @@ function App() {
   const [justAdded, setJustAdded] = useState<string | null>(null)
   const [arrivals, setArrivals] = useState<AcquisitionRecord[]>([])
   const [debug, setDebug] = useState<DebugView | null>(null)
+  const [provider, setProvider] = useState(false)
+  const [findQuery, setFindQuery] = useState('')
+  const [findBusy, setFindBusy] = useState(false)
+  const [findResults, setFindResults] = useState<EncoreChart[] | null>(null)
+  const [findError, setFindError] = useState<string | null>(null)
+  const [downloads, setDownloads] = useState<ProviderDownload[]>([])
   const [standIn, setStandIn] = useState<StandInStatus | null>(null)
   const [standInBusy, setStandInBusy] = useState(false)
 
@@ -81,7 +93,27 @@ function App() {
     debugView()
       .then(setDebug)
       .catch(() => setDebug(null))
+    providerEnabled()
+      .then(setProvider)
+      .catch(() => setProvider(false))
   }, [paired])
+
+  // While a download is running the picture changes by the second; otherwise it is
+  // history and the response that started it is enough.
+  const downloading = downloads.some((download) => download.state === 'downloading')
+  useEffect(() => {
+    if (!paired || !downloading) return
+
+    const timer = window.setInterval(() => {
+      providerDownloads()
+        .then(setDownloads)
+        .catch(() => {
+          // The connection banner already reports an unreachable Barkeep.
+        })
+    }, 3000)
+
+    return () => window.clearInterval(timer)
+  }, [paired, downloading])
 
   // New arrivals matter within a minute of downloading something in Geomitron Bridge;
   // beyond that the feed is history, so a slow poll is enough.
@@ -160,6 +192,36 @@ function App() {
       .then(setCue)
       .catch((error: unknown) => {
         if (!unpair(error)) setActionError('The cue could not reach Barkeep.')
+      })
+  }
+
+  const onFind = () => {
+    const wanted = findQuery.trim()
+    if (wanted.length === 0 || findBusy) return
+    setFindBusy(true)
+    setFindError(null)
+    providerSearch(wanted)
+      .then((result) => {
+        if (result.refusal) {
+          setFindResults(null)
+          setFindError(result.refusal)
+        } else {
+          setFindResults(result.charts)
+        }
+      })
+      .catch((error: unknown) => {
+        if (!unpair(error)) setFindError('The search could not reach Barkeep.')
+      })
+      .finally(() => setFindBusy(false))
+  }
+
+  const onDownload = (chart: EncoreChart) => {
+    providerDownload(chart)
+      .then((download) =>
+        setDownloads((current) => [download, ...current.filter((d) => d.md5 !== download.md5)]),
+      )
+      .catch((error: unknown) => {
+        if (!unpair(error)) setFindError('The download request could not reach Barkeep.')
       })
   }
 
@@ -321,6 +383,67 @@ function App() {
         </ul>
       </section>
 
+      {provider && (
+        <section className="finder">
+          <h2>Find new songs</h2>
+          <p className="finder__hint">
+            Searches Chorus Encore. A downloaded chart imports on its own and queues to
+            play next.
+          </p>
+          <form
+            className="finder__form"
+            onSubmit={(event) => {
+              event.preventDefault()
+              onFind()
+            }}
+          >
+            <input
+              type="search"
+              placeholder="Song or artist"
+              value={findQuery}
+              onChange={(event) => setFindQuery(event.target.value)}
+              aria-label="Search Chorus Encore"
+            />
+            <button type="submit" disabled={findBusy}>
+              {findBusy ? 'Searching…' : 'Search'}
+            </button>
+          </form>
+
+          {findError && <p className="error">{findError}</p>}
+
+          {downloads.length > 0 && (
+            <ul className="finder__downloads">
+              {downloads.slice(0, 4).map((download) => (
+                <li key={download.md5} className={`finder__download finder__download--${download.state}`}>
+                  {download.title} — {downloadCopy(download)}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {findResults && findResults.length === 0 && <p>Nothing matched on Chorus Encore.</p>}
+
+          {findResults && findResults.length > 0 && (
+            <ul className="finder__results">
+              {findResults.map((chart) => (
+                <li key={chart.md5}>
+                  <div>
+                    <strong>{chart.name}</strong> — {chart.artist}
+                    <span className="finder__meta">
+                      {chart.charter ? ` ${chart.charter} · ` : ' '}
+                      {lengthCopy(chart.songLengthMilliseconds)}
+                    </span>
+                  </div>
+                  <button type="button" onClick={() => onDownload(chart)}>
+                    Download &amp; queue
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
       {debug?.enabled && (
         <details className="debug">
           <summary>Debugging</summary>
@@ -342,6 +465,22 @@ function App() {
       )}
     </main>
   )
+}
+
+function lengthCopy(milliseconds: number): string {
+  const total = Math.round(milliseconds / 1000)
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+}
+
+function downloadCopy(download: ProviderDownload): string {
+  switch (download.state) {
+    case 'downloading':
+      return 'downloading…'
+    case 'delivered':
+      return 'downloaded; importing now'
+    default:
+      return download.detail
+  }
 }
 
 /// Plain words for an import outcome. The failure codes are the pipeline's own vocabulary;

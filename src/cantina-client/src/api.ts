@@ -147,6 +147,61 @@ export async function recentAcquisitions(): Promise<AcquisitionRecord[]> {
   return response.json() as Promise<AcquisitionRecord[]>
 }
 
+// The chart-provider surface (D-032): search Chorus Encore and hand a chosen chart to
+// the acquisition pipeline. 404 means the integration is off and the section is not drawn.
+export type EncoreChart = {
+  md5: string
+  name: string
+  artist: string
+  album: string | null
+  charter: string | null
+  year: string | null
+  songLengthMilliseconds: number
+  hasVideoBackground: boolean
+}
+
+export type EncoreSearchResult = {
+  found: number
+  charts: EncoreChart[]
+  refusal: string | null
+}
+
+export type ProviderDownload = {
+  md5: string
+  title: string
+  artist: string
+  state: 'downloading' | 'delivered' | 'failed' | 'refused'
+  detail: string
+  startedAt: string
+}
+
+export async function providerEnabled(): Promise<boolean> {
+  const response = await call('/api/provider')
+  return response.ok
+}
+
+export async function providerSearch(q: string): Promise<EncoreSearchResult> {
+  const response = await call(`/api/provider/search?q=${encodeURIComponent(q)}`)
+  if (!response.ok) throw new Error(`provider search failed: ${response.status}`)
+  return response.json() as Promise<EncoreSearchResult>
+}
+
+export async function providerDownload(chart: EncoreChart): Promise<ProviderDownload> {
+  const response = await call('/api/provider/download', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(chart),
+  })
+  if (!response.ok) throw new Error(`provider download failed: ${response.status}`)
+  return response.json() as Promise<ProviderDownload>
+}
+
+export async function providerDownloads(): Promise<ProviderDownload[]> {
+  const response = await call('/api/provider/downloads')
+  if (!response.ok) throw new Error(`provider downloads failed: ${response.status}`)
+  return response.json() as Promise<ProviderDownload[]>
+}
+
 // The debug surface (config-gated, Debug:Enabled). 404 means it is off, which the
 // client treats as "draw nothing" — the section only exists on a bench.
 export type DebugView = { enabled: boolean; playerConfirmations: number }
