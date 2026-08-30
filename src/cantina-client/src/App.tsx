@@ -24,6 +24,7 @@ import {
   type SongInstruments,
   type StandInStatus,
   debugView,
+  deviceLabel,
   providerDownload,
   providerDownloads,
   providerEnabled,
@@ -80,6 +81,7 @@ function App() {
   const [findError, setFindError] = useState<string | null>(null)
   const [downloads, setDownloads] = useState<ProviderDownload[]>([])
   const [advance, setAdvanceState] = useState<AdvanceStatus | null>(null)
+  const [ownLabel, setOwnLabel] = useState<string | null>(null)
   const [standIn, setStandIn] = useState<StandInStatus | null>(null)
   const [standInBusy, setStandInBusy] = useState(false)
 
@@ -108,6 +110,9 @@ function App() {
     advanceStatus()
       .then(setAdvanceState)
       .catch(() => setAdvanceState(null))
+    deviceLabel()
+      .then(setOwnLabel)
+      .catch(() => setOwnLabel(null))
   }, [paired])
 
   // While armed, the advance loop's sentence changes with each episode.
@@ -316,6 +321,7 @@ function App() {
     <main>
       <header className="masthead">
         <span className="eyebrow">Cantina</span>
+        {ownLabel && <span className="masthead__device">{ownLabel}</span>}
         <span
           className={`masthead__dot masthead__dot--${connection}`}
           title={copy.title}

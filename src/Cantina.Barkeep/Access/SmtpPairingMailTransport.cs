@@ -21,9 +21,10 @@ namespace Cantina.Barkeep.Access;
 /// </summary>
 public sealed class SmtpPairingMailTransport(IOptions<PairingEmailOptions> options) : IPairingMailTransport
 {
-    public async Task SendAsync(string sender, string recipient, string subject, string body, CancellationToken cancellation)
+    public async Task<string?> SendAsync(string sender, string recipient, string subject, string body, CancellationToken cancellation)
     {
         var config = options.Value;
+        var message = ComposeMessage(sender, recipient, subject, body);
 
         using var client = new TcpClient();
         using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
@@ -71,19 +72,15 @@ public sealed class SmtpPairingMailTransport(IOptions<PairingEmailOptions> optio
             await session.CommandAsync($"RCPT TO:<{recipient}>", "250", "RCPT TO").ConfigureAwait(false);
             await session.CommandAsync("DATA", "354", "DATA").ConfigureAwait(false);
 
-            var message = new StringBuilder()
-                .Append("From: ").Append(sender).Append("\r\n")
-                .Append("To: ").Append(recipient).Append("\r\n")
-                .Append("Subject: ").Append(subject.ReplaceLineEndings(" ")).Append("\r\n")
-                .Append("MIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n");
+            // Dot-stuffing, so a line of the message can never end the DATA section early.
+            var stuffed = new StringBuilder();
 
-            // Dot-stuffing, so a line of the body can never end the DATA section early.
-            foreach (var line in body.ReplaceLineEndings("\n").Split('\n'))
+            foreach (var line in message.ReplaceLineEndings("\n").Split('\n'))
             {
-                message.Append(line.StartsWith('.') ? "." + line : line).Append("\r\n");
+                stuffed.Append(line.StartsWith('.') ? "." + line : line).Append("\r\n");
             }
 
-            await session.CommandAsync(message + ".", "250", "message body").ConfigureAwait(false);
+            await session.CommandAsync(stuffed + ".", "250", "message body").ConfigureAwait(false);
             await session.CommandAsync("QUIT", "221", "QUIT").ConfigureAwait(false);
         }
         finally
@@ -95,6 +92,112 @@ public sealed class SmtpPairingMailTransport(IOptions<PairingEmailOptions> optio
                 await tls.DisposeAsync().ConfigureAwait(false);
             }
         }
+
+        // The mailbox should show what the system sent (operator request, 2026-08-30):
+        // servers submitting over SMTP file nothing into Sent on their own, so this
+        // client does it itself over IMAP. A failed filing never unsends the message —
+        // it comes back as a warning sentence instead. Without credentials there is no
+        // mailbox identity to file into, and nothing is owed.
+        if (config.SmtpUsername.Length == 0 || config.SmtpPasswordPath.Length == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            await FileToSentAsync(message, cancellation).ConfigureAwait(false);
+            return null;
+        }
+        catch (Exception error) when (error is IOException or SocketException
+            or System.Security.Authentication.AuthenticationException or InvalidOperationException or OperationCanceledException)
+        {
+            return $"the copy could not be filed to Sent: {error.Message}";
+        }
+    }
+
+    private static string ComposeMessage(string sender, string recipient, string subject, string body) =>
+        new StringBuilder()
+            .Append("From: ").Append(sender).Append("\r\n")
+            .Append("To: ").Append(recipient).Append("\r\n")
+            .Append("Subject: ").Append(subject.ReplaceLineEndings(" ")).Append("\r\n")
+            .Append("Date: ").Append(DateTimeOffset.Now.ToString("r", System.Globalization.CultureInfo.InvariantCulture)).Append("\r\n")
+            .Append("MIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n")
+            .Append(body.ReplaceLineEndings("\r\n"))
+            .ToString();
+
+    private async Task FileToSentAsync(string message, CancellationToken cancellation)
+    {
+        var config = options.Value;
+        var password = (await File.ReadAllTextAsync(config.SmtpPasswordPath, cancellation).ConfigureAwait(false)).Trim();
+
+        using var client = new TcpClient();
+        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+        lifetime.CancelAfter(TimeSpan.FromSeconds(20));
+
+        await client.ConnectAsync(config.SmtpHost, config.ImapPort, lifetime.Token).ConfigureAwait(false);
+
+        var tls = new SslStream(client.GetStream(), leaveInnerStreamOpen: false);
+        await tls.AuthenticateAsClientAsync(
+            new SslClientAuthenticationOptions { TargetHost = config.SmtpHost },
+            lifetime.Token).ConfigureAwait(false);
+
+        using var reader = new StreamReader(tls, Encoding.ASCII, false, 1024, leaveOpen: true);
+        var payload = Encoding.UTF8.GetBytes(message);
+
+        async Task<string> RoundTrip(string tag, string command)
+        {
+            var bytes = Encoding.ASCII.GetBytes($"{tag} {command}\r\n");
+            await tls.WriteAsync(bytes, lifetime.Token).ConfigureAwait(false);
+            string? line;
+
+            do
+            {
+                line = await reader.ReadLineAsync(lifetime.Token).ConfigureAwait(false)
+                    ?? throw new IOException($"the mail server hung up during {tag}");
+            }
+            while (!line.StartsWith(tag + " ", StringComparison.Ordinal));
+
+            return line;
+        }
+
+        _ = await reader.ReadLineAsync(lifetime.Token).ConfigureAwait(false);   // greeting
+
+        if (!(await RoundTrip("a1", $"LOGIN {config.SmtpUsername} {password}").ConfigureAwait(false)).Contains(" OK", StringComparison.Ordinal))
+        {
+            throw new IOException("IMAP login was refused");
+        }
+
+        // CREATE is idempotent enough here: an already-existing Sent answers NO, which
+        // is exactly the state APPEND needs.
+        _ = await RoundTrip("a2", "CREATE Sent").ConfigureAwait(false);
+
+        var appendBytes = Encoding.ASCII.GetBytes($"a3 APPEND Sent (\\Seen) {{{payload.Length}}}\r\n");
+        await tls.WriteAsync(appendBytes, lifetime.Token).ConfigureAwait(false);
+        var go = await reader.ReadLineAsync(lifetime.Token).ConfigureAwait(false) ?? "";
+
+        if (!go.StartsWith('+'))
+        {
+            throw new IOException($"APPEND was refused: {go}");
+        }
+
+        await tls.WriteAsync(payload, lifetime.Token).ConfigureAwait(false);
+        await tls.WriteAsync(Encoding.ASCII.GetBytes("\r\n"), lifetime.Token).ConfigureAwait(false);
+        string? done;
+
+        do
+        {
+            done = await reader.ReadLineAsync(lifetime.Token).ConfigureAwait(false)
+                ?? throw new IOException("the mail server hung up during APPEND");
+        }
+        while (!done.StartsWith("a3 ", StringComparison.Ordinal));
+
+        if (!done.Contains(" OK", StringComparison.Ordinal))
+        {
+            throw new IOException($"APPEND failed: {done}");
+        }
+
+        _ = await RoundTrip("a4", "LOGOUT").ConfigureAwait(false);
+        await tls.DisposeAsync().ConfigureAwait(false);
     }
 
     private sealed class Session(Stream stream, CancellationToken cancellation) : IDisposable

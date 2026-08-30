@@ -714,6 +714,16 @@ app.MapPost("/api/pair", (
     .RequireRateLimiting("pairing")
     .WithName("PairDevice");
 
+// The device's own registered name - "iPad Mini" on the iPad Mini - so the masthead
+// can say who this screen is, from the server's registry rather than a local guess.
+app.MapGet("/api/device", (HttpContext context, DeviceRegistry registry) =>
+    {
+        var deviceId = context.Items[CantinaAccessMiddleware.DeviceItemKey] as string;
+        var device = registry.Devices.FirstOrDefault(paired => paired.DeviceId == deviceId);
+        return Results.Ok(new DeviceView(device?.Label ?? "this screen"));
+    })
+    .WithName("GetOwnDevice");
+
 app.MapGet("/api/devices", (DeviceRegistry registry) => registry.Devices)
     .WithName("GetDevices");
 
