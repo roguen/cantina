@@ -76,6 +76,7 @@ public sealed class ScoreAdvanceServiceTests : IDisposable
 
     private readonly YargSessionTracker _tracker = new();
     private readonly FakeActuator _actuator = new();
+    private readonly ActuationGate _gate = new();
     private readonly SetlistJournal _journal;
     private readonly YargCueService _cue;
     private readonly ScoreAdvanceService _advance;
@@ -83,8 +84,8 @@ public sealed class ScoreAdvanceServiceTests : IDisposable
     public ScoreAdvanceServiceTests()
     {
         _journal = SetlistJournal.Open(_directory, TimeProvider.System);
-        _cue = new YargCueService(_tracker, _actuator, _journal, TimeProvider.System);
-        _advance = new ScoreAdvanceService(_actuator, _cue, _journal,
+        _cue = new YargCueService(_tracker, _actuator, _gate, _journal, TimeProvider.System);
+        _advance = new ScoreAdvanceService(_actuator, _gate, _cue, _journal,
             Options.Create(new AdvanceOptions
             {
                 GraceMilliseconds = 0,

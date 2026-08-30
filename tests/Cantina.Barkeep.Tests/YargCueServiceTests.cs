@@ -95,7 +95,7 @@ public sealed class YargCueServiceTests : IDisposable
     public YargCueServiceTests()
     {
         _journal = SetlistJournal.Open(_directory, TimeProvider.System);
-        _service = new YargCueService(_tracker, _actuator, _journal, TimeProvider.System);
+        _service = new YargCueService(_tracker, _actuator, new ActuationGate(), _journal, TimeProvider.System);
     }
 
     public void Dispose()
@@ -284,5 +284,92 @@ public sealed class YargCueServiceTests : IDisposable
 
         Assert.Equal("failed", status.State);
         Assert.Contains("refused by Windows", status.Detail, StringComparison.Ordinal);
+    }
+
+    private sealed class SlowThreadSafeActuator : IYargActuator
+    {
+        private readonly object _lock = new();
+        private readonly List<string> _actions = [];
+
+        public IReadOnlyList<string> Snapshot()
+        {
+            lock (_lock)
+            {
+                return [.. _actions];
+            }
+        }
+
+        private bool Record(string action)
+        {
+            lock (_lock)
+            {
+                _actions.Add(action);
+            }
+
+            return true;
+        }
+
+        public int YargProcessCount() => 1;
+
+        public string? InputBlockedReason() => null;
+
+        public bool TryFocusYarg() => Record("focus");
+
+        public (bool IsYargForeground, string Owner) ForegroundState() => (true, "YARG");
+
+        public bool ClickSearchBox() => Record("click");
+
+        public bool ClearSearch() => Record("clear");
+
+        public bool ClickAt(int x, int y) => Record($"click-at:{x},{y}");
+
+        public string TypeablePortion(string query) => query;
+
+        public bool TypeQuery(string query)
+        {
+            Record($"type:{query}");
+            Thread.Sleep(30);   // widen the window two unserialized typings would collide in
+            return true;
+        }
+
+        public bool PressEnter() => Record("enter");
+
+        public bool PressEscape() => Record("escape");
+    }
+
+    [Fact]
+    public async Task ConcurrentCuesNeverInterleaveTheirKeystrokes()
+    {
+        // Measured live 2026-08-30: a double-tapped Play now interleaved two typings
+        // into "head mbeatnagl yhoeuarl thhead metal hea", matched nothing, and
+        // stranded the cue at pending-players. The actuation gate serializes whole
+        // sequences, pauses included.
+        var actuator = new SlowThreadSafeActuator();
+        using var gate = new ActuationGate();
+        var service = new YargCueService(_tracker, actuator, gate, _journal, TimeProvider.System);
+        FeedMenu();
+
+        var first = Task.Run(() => service.Cue(
+            new CueRequest("c-1", new SetlistEntry("h1", "One", "A"), "one")));
+        var second = Task.Run(() => service.Cue(
+            new CueRequest("c-2", new SetlistEntry("h2", "Two", "A"), "two")));
+        await Task.WhenAll(first, second);
+
+        var actions = actuator.Snapshot();
+        var starts = actions.Select((action, index) => (action, index))
+            .Where(pair => pair.action == "focus")
+            .Select(pair => pair.index)
+            .ToList();
+
+        Assert.Equal(2, starts.Count);
+
+        foreach (var start in starts)
+        {
+            Assert.Equal("click", actions[start + 1]);
+            Assert.Equal("clear", actions[start + 2]);
+            Assert.StartsWith("type:", actions[start + 3], StringComparison.Ordinal);
+            Assert.Equal("enter", actions[start + 4]);
+            Assert.Equal("enter", actions[start + 5]);
+        }
     }
 }

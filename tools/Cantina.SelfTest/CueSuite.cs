@@ -48,7 +48,8 @@ internal static class CueSuite
         var journalDirectory = Path.Combine(Path.GetTempPath(), "cantina-selftest", Path.GetRandomFileName());
         using var journal = SetlistJournal.Open(journalDirectory, TimeProvider.System);
         var actuator = new Win32YargActuator(Options.Create(new YargCueOptions()));
-        var service = new YargCueService(tracker, actuator, journal, TimeProvider.System);
+        using var actuation = new ActuationGate();
+        var service = new YargCueService(tracker, actuator, actuation, journal, TimeProvider.System);
 
         try
         {

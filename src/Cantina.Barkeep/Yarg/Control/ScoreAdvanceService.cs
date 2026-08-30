@@ -49,6 +49,7 @@ public sealed record AdvanceArmRequest(bool Enabled);
 /// </summary>
 public sealed class ScoreAdvanceService(
     IYargActuator actuator,
+    ActuationGate actuation,
     YargCueService cue,
     SetlistJournal journal,
     IOptions<AdvanceOptions> options,
@@ -187,6 +188,8 @@ public sealed class ScoreAdvanceService(
         {
             return;
         }
+
+        using var held = actuation.Hold();
 
         if (Refusal(snapshot) is { } refused)
         {

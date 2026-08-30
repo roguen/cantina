@@ -20,6 +20,7 @@ public sealed record StandInStatus(string State, string Detail);
 public sealed class PlayerStandInService(
     YargSessionTracker tracker,
     IYargActuator actuator,
+    ActuationGate actuation,
     YargCueService cue,
     TimeProvider clock,
     IOptions<DebugOptions> options)
@@ -56,6 +57,8 @@ public sealed class PlayerStandInService(
         {
             return new("refused", $"the scene is {snapshot.Scene}, not a menu; instrument setup is no longer on screen");
         }
+
+        using var held = actuation.Hold();
 
         if (!actuator.TryFocusYarg())
         {
