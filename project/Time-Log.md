@@ -863,3 +863,21 @@ start was not captured.
   approved, Cantina may press CONTINUE (#39 closed), #3/#9/#6 closed, pairing email to
   admin@aero4ge.com with the requester-addressed variant recorded as a future
   enhancement with its risk named.
+
+## 2026-08-30 · Addendum: the live wire pushed back three times, and lost
+
+- The Encore provider, emailed pairing codes, and the score-screen advance (#70–#72,
+  D-032/D-033/D-034) all merged; the theater runs all of it from the published copy.
+- The live tests earned their keep three times over. The email button was blocked by
+  the very pairing it bootstraps (middleware exemption, #73). The published exe's new
+  path meant a declined Defender prompt wrote BLOCK rules over an allow rule still
+  aimed at the old repo path — the operator deleted both and re-scoped the allow to
+  C:\ProgramData\Cantina\app, where it now survives every deploy. And the house mail
+  host defeated System.Net.Mail.SmtpClient twice: a postscreen greeting test it
+  stalls on, then "need fully-qualified hostname" against an EHLO name it cannot
+  change — so Barkeep speaks the SMTP dialog itself now (#74), with both behaviors
+  pinned by a scripted in-process server.
+- End state, all operator-confirmed from the iPad itself: the page loads, "Email me a
+  code" delivers to admin@aero4ge.com over STARTTLS, and the full loop — find, download,
+  import, cue, kick off, auto-advance — is deployed. Owed: the target-PC acceptance run
+  for D-034's which-menu assumption, and a scheduled-task deployment for Barkeep.
