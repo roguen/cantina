@@ -78,8 +78,12 @@ export async function pairingEmailEnabled(): Promise<boolean> {
   }
 }
 
-export async function requestPairingEmail(): Promise<{ state: string; detail: string }> {
-  const response = await fetch('/api/pairing/email', { method: 'POST' })
+export async function requestPairingEmail(email: string | null): Promise<{ state: string; detail: string }> {
+  const response = await fetch('/api/pairing/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
   if (!response.ok) throw new Error(`pairing email failed: ${response.status}`)
   return response.json() as Promise<{ state: string; detail: string }>
 }

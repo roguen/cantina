@@ -348,6 +348,14 @@ h1 {
   color: inherit;
 }
 
+.pairing__email {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.pairing__email input { flex: 1; }
+
 .pairing__code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 1.6rem;

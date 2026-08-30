@@ -39,6 +39,25 @@ public sealed class PairingEmailOptions
     /// <summary>Emailed codes per rolling hour. Pairing is rare; asking often is a signal.</summary>
     public int RequestsPerHour { get; set; } = 3;
 
+    /// <summary>
+    /// Whether a requester may name the destination (D-035, the owner's explicit
+    /// widening of D-033). Off, codes go only to <see cref="To"/>. On, a code can be
+    /// mailed to the address typed on the pairing screen - and every such send also
+    /// mails the operator a notification naming the address and the requesting device,
+    /// which is the compensating control that keeps an unexpected grant visible.
+    /// </summary>
+    public bool AllowRequesterAddresses { get; set; }
+
+    /// <summary>SMTP AUTH identity, required by the house host for relayed (external)
+    /// destinations. Empty means unauthenticated local delivery only.</summary>
+    public string SmtpUsername { get; set; } = string.Empty;
+
+    /// <summary>
+    /// File holding the SMTP password - a path, never the value, so the secret can
+    /// never reach configuration dumps, logs, or transcripts.
+    /// </summary>
+    public string SmtpPasswordPath { get; set; } = string.Empty;
+
     public string ResolveHelloName()
     {
         if (HelloName.Length > 0)
@@ -56,7 +75,11 @@ public sealed class PairingEmailOptions
 /// <summary>What the client learns about the email surface: that it exists.</summary>
 public sealed record PairingEmailView(bool Enabled);
 
-/// <summary>What became of an email request. The address is deliberately not in it.</summary>
+/// <summary>What the pairing screen sends: nothing, or the address the requester wants
+/// the code at (honored only when the operator has allowed that, D-035).</summary>
+public sealed record PairingEmailRequest(string? Email);
+
+/// <summary>What became of an email request.</summary>
 public sealed record PairingEmailStatus(string State, string Detail);
 
 /// <summary>The wire seam, so the composition and ceiling are testable without SMTP.</summary>
@@ -78,11 +101,29 @@ public sealed class PairingEmailService(
 {
     private readonly ConcurrentQueue<DateTimeOffset> _recentSends = new();
 
-    public async Task<PairingEmailStatus> RequestAsync(string requester, CancellationToken cancellation)
+    public async Task<PairingEmailStatus> RequestAsync(
+        string requester, string? requestedAddress, CancellationToken cancellation)
     {
         if (!options.Value.Enabled)
         {
             return new("refused", "emailed pairing codes are not configured");
+        }
+
+        string? destination = null;
+
+        if (!string.IsNullOrWhiteSpace(requestedAddress))
+        {
+            if (!options.Value.AllowRequesterAddresses)
+            {
+                return new("refused", "codes are emailed only to the operator's configured address");
+            }
+
+            if (!System.Net.Mail.MailAddress.TryCreate(requestedAddress.Trim(), out var parsed))
+            {
+                return new("refused", "that does not look like an email address");
+            }
+
+            destination = parsed.Address;
         }
 
         var now = clock.GetUtcNow();
@@ -113,7 +154,7 @@ public sealed class PairingEmailService(
         {
             _recentSends.Enqueue(now);
             await transport.SendAsync(
-                options.Value.From, options.Value.To,
+                options.Value.From, destination ?? options.Value.To,
                 "Cantina pairing code", body, cancellation).ConfigureAwait(false);
         }
         catch (Exception error) when (error is IOException or System.Net.Sockets.SocketException
@@ -122,6 +163,33 @@ public sealed class PairingEmailService(
             return new("failed", $"the email could not be sent: {error.Message}");
         }
 
-        return new("sent", "a pairing code was emailed to the operator's configured address");
+        if (destination is null)
+        {
+            return new("sent", "a pairing code was emailed to the operator's configured address");
+        }
+
+        // The compensating control (D-035): a requester-addressed grant is never silent.
+        // The operator learns which address got a code and from which device, so an
+        // unexpected email is itself the alarm. A failed copy does not unsend the code -
+        // it is named instead.
+        try
+        {
+            await transport.SendAsync(
+                options.Value.From, options.Value.To,
+                "Cantina pairing code sent",
+                $"A pairing code was emailed to {destination}, requested by {requester}.\n\n"
+                + "If nobody you know asked for this, open Cantina on the theater PC and "
+                + "close the pairing window; the code also expires on its own.",
+                cancellation).ConfigureAwait(false);
+        }
+        catch (Exception error) when (error is IOException or System.Net.Sockets.SocketException
+            or System.Security.Authentication.AuthenticationException or InvalidOperationException or OperationCanceledException)
+        {
+            return new("sent",
+                $"the code was emailed to {destination}, but the operator's notification copy "
+                + $"failed: {error.Message}");
+        }
+
+        return new("sent", $"a pairing code was emailed to {destination}");
     }
 }

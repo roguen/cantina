@@ -44,7 +44,7 @@ public sealed class PairingEmailServiceTests
             new PairingWindow(), new ScriptedTransport(),
             Options.Create(new PairingEmailOptions()), TimeProvider.System);
 
-        var status = await service.RequestAsync("192.168.68.129", CancellationToken.None);
+        var status = await service.RequestAsync("192.168.68.129", null, CancellationToken.None);
 
         Assert.Equal("refused", status.State);
         Assert.Contains("not configured", status.Detail, StringComparison.Ordinal);
@@ -58,7 +58,7 @@ public sealed class PairingEmailServiceTests
         var service = new PairingEmailService(
             window, transport, Options.Create(Configured()), TimeProvider.System);
 
-        var status = await service.RequestAsync("192.168.68.129", CancellationToken.None);
+        var status = await service.RequestAsync("192.168.68.129", null, CancellationToken.None);
 
         Assert.Equal("sent", status.State);
         var (recipient, body) = Assert.Single(transport.Sent);
@@ -80,7 +80,7 @@ public sealed class PairingEmailServiceTests
         var service = new PairingEmailService(
             window, transport, Options.Create(Configured()), TimeProvider.System);
 
-        await service.RequestAsync("requester", CancellationToken.None);
+        await service.RequestAsync("requester", null, CancellationToken.None);
 
         Assert.Contains(existing.Code, Assert.Single(transport.Sent).Body, StringComparison.Ordinal);
     }
@@ -92,9 +92,9 @@ public sealed class PairingEmailServiceTests
             new PairingWindow(), new ScriptedTransport(),
             Options.Create(Configured(perHour: 1)), TimeProvider.System);
 
-        Assert.Equal("sent", (await service.RequestAsync("r", CancellationToken.None)).State);
+        Assert.Equal("sent", (await service.RequestAsync("r", null, CancellationToken.None)).State);
 
-        var second = await service.RequestAsync("r", CancellationToken.None);
+        var second = await service.RequestAsync("r", null, CancellationToken.None);
 
         Assert.Equal("refused", second.State);
         Assert.Contains("printed at the theater PC", second.Detail, StringComparison.Ordinal);
@@ -107,9 +107,62 @@ public sealed class PairingEmailServiceTests
         var service = new PairingEmailService(
             new PairingWindow(), transport, Options.Create(Configured()), TimeProvider.System);
 
-        var status = await service.RequestAsync("r", CancellationToken.None);
+        var status = await service.RequestAsync("r", null, CancellationToken.None);
 
         Assert.Equal("failed", status.State);
         Assert.Contains("connection reset", status.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ARequestedAddressIsRefusedUntilTheOperatorAllowsIt()
+    {
+        var service = new PairingEmailService(
+            new PairingWindow(), new ScriptedTransport(),
+            Options.Create(Configured()), TimeProvider.System);
+
+        var status = await service.RequestAsync("r", "someone@example.test", CancellationToken.None);
+
+        Assert.Equal("refused", status.State);
+        Assert.Contains("operator's configured address", status.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ARequestedAddressGetsTheCodeAndTheOperatorGetsTheNotification()
+    {
+        // D-035's compensating control: a requester-addressed grant is never silent.
+        var options = Configured();
+        options.AllowRequesterAddresses = true;
+        var window = new PairingWindow();
+        var transport = new ScriptedTransport();
+        var service = new PairingEmailService(window, transport, Options.Create(options), TimeProvider.System);
+
+        var status = await service.RequestAsync("192.168.68.129", "someone@example.test", CancellationToken.None);
+
+        Assert.Equal("sent", status.State);
+        Assert.Equal(2, transport.Sent.Count);
+
+        var code = window.Current(DateTimeOffset.UtcNow)!.Code;
+        Assert.Equal("someone@example.test", transport.Sent[0].Recipient);
+        Assert.Contains(code, transport.Sent[0].Body, StringComparison.Ordinal);
+
+        Assert.Equal("operator@example.test", transport.Sent[1].Recipient);
+        Assert.Contains("someone@example.test", transport.Sent[1].Body, StringComparison.Ordinal);
+        Assert.Contains("192.168.68.129", transport.Sent[1].Body, StringComparison.Ordinal);
+        Assert.DoesNotContain(code, transport.Sent[1].Body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AMalformedAddressIsRefusedByName()
+    {
+        var options = Configured();
+        options.AllowRequesterAddresses = true;
+        var service = new PairingEmailService(
+            new PairingWindow(), new ScriptedTransport(),
+            Options.Create(options), TimeProvider.System);
+
+        var status = await service.RequestAsync("r", "not-an-address", CancellationToken.None);
+
+        Assert.Equal("refused", status.State);
+        Assert.Contains("does not look like an email address", status.Detail, StringComparison.Ordinal);
     }
 }

@@ -1429,3 +1429,27 @@ the players). The shape that survives the observation rules:
   cannot reach, no song loads and the episode fails by name. The target-PC acceptance
   run is the proof that the landing screen is the Music Library; until it runs, that is
   recorded here as assumed-and-checked-by-outcome, not known.
+
+## D-035 · The requester names the destination, and the operator hears about every grant
+
+**2026-08-30.** The owner overrode D-033's deferral in plain words: "let's just go
+ahead with this end state and have a field that I can provide my email to," sender
+cantina@aero4ge.com. The risk D-033 named — any LAN device can mail itself a code —
+is accepted by the owner and held down with controls rather than a refusal:
+
+- **`PairingEmail:AllowRequesterAddresses` gates the whole path**, default off; the
+  operator turns it on knowingly.
+- **Every requester-addressed send mails the operator a notification** naming the
+  destination address and the requesting device — the grant is never silent, and an
+  unexpected notification is itself the alarm. The notification deliberately omits
+  the code.
+- The hourly ceiling, single-use codes, the 10-minute window, and five-wrong-attempts
+  closure all still apply, and the console still prints every code.
+
+Delivery to arbitrary destinations needs authenticated submission: the house
+docker-mailserver relays externally only for authenticated @aero4ge.com senders
+(SMTP2GO, per the echobase record). The transport gained AUTH PLAIN; the identity is
+cantina@aero4ge.com and the password lives at a file path
+(`PairingEmail:SmtpPasswordPath`) — the value in exactly one place, never in
+configuration dumps, transcripts, or argv. The mailbox itself is created on the NAS
+by the operator, interactively, per the house procedure.
