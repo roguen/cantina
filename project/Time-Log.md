@@ -848,3 +848,18 @@ start was not captured.
   paired as a temporary device that was revoked afterward. One pre-existing API limit
   noted for later: Remove targets a hash, and entries whose hash is still unlearned all
   carry "" — so Remove cannot distinguish them. Not new, not fixed tonight.
+
+## 2026-08-30 · The first live bug, the debug surface, and four decisions
+
+- Fixed the first bug the real iPad found: "(Bang Your Head) Metal Health" was refused
+  whole for two unmappable parentheses. The cue now types the typeable portion and lets
+  verify-by-outcome judge (#68). Twelve accompanying "cert failures" were stale
+  binaries — the running Barkeep had been silently blocking rebuilds, so the theater now
+  runs from a published copy at C:\ProgramData\Cantina\app, outside the build tree.
+- Merged #67 (pair inside the installed app first) after its gate went green.
+- Built the debug surface (D-031): config-gated stand-in for the players' ready
+  confirms, refusing by name, verified by outcome.
+- The owner decided four open questions in one message: direct provider integration
+  approved, Cantina may press CONTINUE (#39 closed), #3/#9/#6 closed, pairing email to
+  admin@aero4ge.com with the requester-addressed variant recorded as a future
+  enhancement with its risk named.

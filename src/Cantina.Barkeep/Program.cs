@@ -130,6 +130,8 @@ builder.Services.AddHostedService<YargUdpListener>();
 builder.Services.AddHostedService<CurrentSongPoller>();
 builder.Services.Configure<YargCueOptions>(
     builder.Configuration.GetSection(YargCueOptions.SectionName));
+builder.Services.Configure<DebugOptions>(
+    builder.Configuration.GetSection(DebugOptions.SectionName));
 
 builder.Services.Configure<NetworkOptions>(
     builder.Configuration.GetSection(NetworkOptions.SectionName));
@@ -168,6 +170,7 @@ if (OperatingSystem.IsWindows())
 {
     builder.Services.AddSingleton<IYargActuator, Win32YargActuator>();
     builder.Services.AddSingleton<YargCueService>();
+    builder.Services.AddSingleton<PlayerStandInService>();
     builder.Services.AddHostedService<CueConfirmationPoller>();
 
     // Acquisition: the Geomitron Bridge filesystem handoff (D-007, D-030). Off unless a
@@ -403,6 +406,35 @@ app.MapGet("/api/cue/current", (IServiceProvider services) =>
         return service?.Current is { } status ? Results.Ok(status) : Results.NoContent();
     })
     .WithName("GetCurrentCue");
+
+// ── The debug surface ───────────────────────────────────────────────────────────────────
+//
+// Bench testing without players: stand in for their ready confirms at instrument setup so
+// a cue can be driven to gameplay from the iPad alone. Config-gated (Debug:Enabled) and
+// invisible when off — both endpoints answer 404, and the client never draws the section.
+// Behind the same bearer auth as every other /api route.
+
+app.MapGet("/api/debug", (IOptions<DebugOptions> debug) =>
+        debug.Value.Enabled
+            ? Results.Ok(new DebugView(true, debug.Value.PlayerConfirmations))
+            : Results.NotFound())
+    .WithName("GetDebugView");
+
+app.MapPost("/api/debug/players", (IServiceProvider services, IOptions<DebugOptions> debug) =>
+    {
+        if (!debug.Value.Enabled)
+        {
+            return Results.NotFound();
+        }
+
+        var standIn = services.GetService<PlayerStandInService>();
+
+        return standIn is null
+            ? Results.Ok(new StandInStatus("refused", "standing in for players requires the Windows theater host"))
+            : Results.Ok(standIn.Confirm());
+    })
+    .RequireRateLimiting("commands")
+    .WithName("PostPlayerStandIn");
 
 // ── The access surface (D-026) ──────────────────────────────────────────────────────────
 //

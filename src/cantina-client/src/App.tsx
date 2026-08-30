@@ -14,6 +14,10 @@ import {
   stripColorTags,
   type AcquisitionRecord,
   type CueStatus,
+  type DebugView,
+  type StandInStatus,
+  debugView,
+  standInForPlayers,
   type IndexedSong,
   type SetlistView,
 } from './api'
@@ -54,6 +58,9 @@ function App() {
   const [certificate, setCertificate] = useState<CertificateHealth | null>(null)
   const [justAdded, setJustAdded] = useState<string | null>(null)
   const [arrivals, setArrivals] = useState<AcquisitionRecord[]>([])
+  const [debug, setDebug] = useState<DebugView | null>(null)
+  const [standIn, setStandIn] = useState<StandInStatus | null>(null)
+  const [standInBusy, setStandInBusy] = useState(false)
 
   const refreshSetlist = useCallback(() => {
     fetchSetlist()
@@ -66,6 +73,15 @@ function App() {
   useEffect(() => {
     if (paired) refreshSetlist()
   }, [paired, refreshSetlist])
+
+  // The debug surface is config-gated server-side and 404s when off, so one read at
+  // pairing decides whether the section exists at all.
+  useEffect(() => {
+    if (!paired) return
+    debugView()
+      .then(setDebug)
+      .catch(() => setDebug(null))
+  }, [paired])
 
   // New arrivals matter within a minute of downloading something in Geomitron Bridge;
   // beyond that the feed is history, so a slow poll is enough.
@@ -145,6 +161,17 @@ function App() {
       .catch((error: unknown) => {
         if (!unpair(error)) setActionError('The cue could not reach Barkeep.')
       })
+  }
+
+  const onStandIn = () => {
+    setStandInBusy(true)
+    setStandIn(null)
+    standInForPlayers()
+      .then(setStandIn)
+      .catch((error: unknown) => {
+        if (!unpair(error)) setStandIn({ state: 'failed', detail: 'The request could not reach Barkeep.' })
+      })
+      .finally(() => setStandInBusy(false))
   }
 
   const onAdd = (song: IndexedSong) => {
@@ -294,6 +321,25 @@ function App() {
         </ul>
       </section>
 
+      {debug?.enabled && (
+        <details className="debug">
+          <summary>Debugging</summary>
+          <p>
+            Bench testing only: stand in for the players&apos; ready confirms at instrument
+            setup ({debug.playerConfirmations} players). Cue a song first; this kicks it off.
+          </p>
+          <button
+            type="button"
+            onClick={onStandIn}
+            disabled={standInBusy || cue?.state !== 'pending-players'}
+          >
+            {standInBusy ? 'Confirming…' : 'Start the cued song'}
+          </button>
+          {standIn && (
+            <p className={`debug__result debug__result--${standIn.state}`}>{standIn.detail}</p>
+          )}
+        </details>
+      )}
     </main>
   )
 }
