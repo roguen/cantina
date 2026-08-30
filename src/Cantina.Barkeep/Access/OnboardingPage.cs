@@ -77,8 +77,14 @@ public static class OnboardingPage
         page.Append("<p><a class=\"button\" href=\"");
         page.Append(Escape(secure));
         page.Append("\">Open Cantina</a></p>");
-        page.Append("<p>Enter the pairing code shown on the theater PC, then Share &rsaquo; ");
-        page.Append("<strong>Add to Home Screen</strong>.</p>");
+        // Home Screen FIRST, then pair. iOS gives an installed web app its own storage,
+        // separate from Safari's - a pairing done in the browser does not carry into the
+        // app, so the old order made every device pair twice. Learned from the first
+        // real iPad, 2026-08-30.
+        page.Append("<p>Share &rsaquo; <strong>Add to Home Screen</strong> first, then open ");
+        page.Append("the installed app and enter the pairing code shown on the theater PC. ");
+        page.Append("Pairing inside the app is what persists &mdash; the installed app and ");
+        page.Append("Safari keep separate storage on iPadOS.</p>");
         page.Append("<p>The pairing code is never shown on this page. It appears only on the theater PC, ");
         page.Append("so being in the room is what authorises a new device.</p>");
     }
@@ -109,8 +115,10 @@ public static class OnboardingPage
         page.Append(Escape(secure));
         page.Append("\">");
         page.Append(Escape(secure));
-        page.Append("</a> and enter the pairing code shown on the theater PC.</li>");
-        page.Append("<li>Share &rsaquo; <strong>Add to Home Screen</strong>.</li>");
+        page.Append("</a> and Share &rsaquo; <strong>Add to Home Screen</strong>.</li>");
+        page.Append("<li>Open the installed app and enter the pairing code shown on the ");
+        page.Append("theater PC. Pair inside the app, not Safari &mdash; they keep separate ");
+        page.Append("storage on iPadOS, and only the app's pairing persists for the app.</li>");
         page.Append("</ol>");
         page.Append("<p>The pairing code is never shown on this page. It appears only on the theater PC, ");
         page.Append("so being in the room is what authorises a new device.</p>");
