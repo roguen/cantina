@@ -147,6 +147,25 @@ export async function recentAcquisitions(): Promise<AcquisitionRecord[]> {
   return response.json() as Promise<AcquisitionRecord[]>
 }
 
+// The debug surface (config-gated, Debug:Enabled). 404 means it is off, which the
+// client treats as "draw nothing" — the section only exists on a bench.
+export type DebugView = { enabled: boolean; playerConfirmations: number }
+
+export type StandInStatus = { state: string; detail: string }
+
+export async function debugView(): Promise<DebugView | null> {
+  const response = await call('/api/debug')
+  if (response.status === 404) return null
+  if (!response.ok) throw new Error(`debug view failed: ${response.status}`)
+  return response.json() as Promise<DebugView>
+}
+
+export async function standInForPlayers(): Promise<StandInStatus> {
+  const response = await call('/api/debug/players', { method: 'POST' })
+  if (!response.ok) throw new Error(`stand-in failed: ${response.status}`)
+  return response.json() as Promise<StandInStatus>
+}
+
 export async function currentCue(): Promise<CueStatus | null> {
   const response = await call('/api/cue/current')
   if (response.status === 204) return null

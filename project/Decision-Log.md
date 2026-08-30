@@ -1324,3 +1324,33 @@ itself. The 652-line in D-025's consequences is answered here. The cue pipeline 
 known gap worth naming: during instrument setup the wire reads Menu/NoSong — indistinguishable
 from idle — so a second cue dispatched then would type into the setup screen; pre-existing
 menu blindness (D-015), recorded rather than fixed.
+
+## D-031 · A config-gated debug surface may stand in for the players, and four owner decisions land at once
+
+**2026-08-30.** The owner asked for a way to kick off a cued song from the iPad with
+nobody holding an instrument — "for testing at least". That is a deliberate carve-out
+from D-015's rule that instrument setup belongs to the players, and it is built as one:
+
+- `Debug:Enabled` is **off by default**, and while off the surface is invisible — both
+  endpoints answer 404 and the client draws nothing. Enabling it is a bench
+  configuration, not a product feature.
+- The stand-in (`POST /api/debug/players`) refuses by name unless a cue is actually
+  `pending-players`, YARG is single-instance, observable, live, still on a menu, and the
+  input can arrive. It then sends one ready confirm per configured player at the cue
+  suite's measured cadence (2000 ms lead, 1500 ms between — the sequence the acceptance
+  run proved).
+- Sending is not success. The confirms prove nothing; the cue still resolves only when
+  the confirmation poller observes gameplay, exactly as for real players.
+
+Recorded in the same entry, three more owner decisions from the same conversation:
+
+1. **Direct chart-provider integration is approved** — the terms review and build for
+   in-app search/download against Chorus Encore, since Geomitron Bridge has no external
+   interface (upstream #96/#97/#98). Bridge remains un-automated (D-007).
+2. **#39 is decided: Cantina presses CONTINUE as well as the players.** The score screen
+   takes one key (D-018); M5 auto-advance may drive it under the usual gates.
+3. **Pairing-code email goes to `admin@aero4ge.com` to start.** The future enhancement —
+   sending from `cantina@aero4ge.com` to whatever address requests it — is recorded
+   *with its cost*: a requester-supplied destination lets any LAN device mail itself a
+   code, so it must not ship without a compensating control (an allowlist, or
+   operator approval per address).

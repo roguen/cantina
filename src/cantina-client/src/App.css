@@ -45,6 +45,23 @@ main {
 .arrivals__item--Failed,
 .arrivals__item--Ambiguous { background: #3a3212; }
 
+.debug {
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  font-size: 0.95rem;
+}
+
+.debug summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.debug p { margin: 0.6rem 0; }
+
+.debug__result--refused,
+.debug__result--failed { color: var(--warning); }
+
 .setlist__count {
   margin-left: 0.5rem;
   padding: 0.1rem 0.55rem;
