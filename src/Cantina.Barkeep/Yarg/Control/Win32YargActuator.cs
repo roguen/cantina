@@ -263,6 +263,32 @@ public sealed partial class Win32YargActuator(IOptions<YargCueOptions> options) 
         return true;
     }
 
+    public string TypeablePortion(string query)
+    {
+        var typeable = new System.Text.StringBuilder(query.Length);
+        var lastWasSpace = true;
+
+        foreach (var character in query)
+        {
+            if (!KeyMap.TryResolve(character, out _, out _))
+            {
+                continue;
+            }
+
+            // Dropped characters leave doubled spaces behind ("(Bang Your Head) X" ->
+            // " Bang Your Head  X"); collapse them so the filter text looks typed.
+            if (character == ' ' && lastWasSpace)
+            {
+                continue;
+            }
+
+            typeable.Append(character);
+            lastWasSpace = character == ' ';
+        }
+
+        return typeable.ToString().TrimEnd();
+    }
+
     public bool TypeQuery(string query)
     {
         // Resolve every character before sending anything: typing half a query and then
