@@ -14,7 +14,15 @@ type Props = {
 // standing in the room is what authorises a new device (D-026).
 export function PairingScreen({ detail, onPaired }: Props) {
   const [code, setCode] = useState('')
-  const [label, setLabel] = useState('iPad')
+  // The device remembers what it was last named here, so a re-pair after a revoke
+  // pre-fills "iPad Mini" on the iPad Mini instead of making the operator retype it.
+  const [label, setLabel] = useState(() => {
+    try {
+      return window.localStorage.getItem('cantina.device-label') ?? 'iPad'
+    } catch {
+      return 'iPad'
+    }
+  })
   const [refusal, setRefusal] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [emailAvailable, setEmailAvailable] = useState(false)
@@ -47,6 +55,11 @@ export function PairingScreen({ detail, onPaired }: Props) {
     pair(code.trim(), label.trim() || 'iPad')
       .then((outcome) => {
         if (outcome.ok) {
+          try {
+            window.localStorage.setItem('cantina.device-label', label.trim() || 'iPad')
+          } catch {
+            // Private browsing; the name just won't be remembered.
+          }
           onPaired()
           return
         }
