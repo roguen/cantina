@@ -12,6 +12,63 @@ main {
   box-sizing: border-box;
 }
 
+/* The tab bar keeps every section one tap away instead of a scroll away. */
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.5rem 0;
+  background: var(--background, #14100d);
+}
+
+.tabs button {
+  flex: 1;
+  padding: 0.55rem 0;
+  font-size: 0.95rem;
+}
+
+.tabs button.tabs__active {
+  border-color: #4caf7d;
+  color: #4caf7d;
+  font-weight: 600;
+}
+
+.chips {
+  display: inline-flex;
+  gap: 0.3rem;
+  margin-left: 0.4rem;
+  vertical-align: 0.05rem;
+}
+
+.chip {
+  padding: 0.05rem 0.4rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.chip--lyrics {
+  border-color: #4caf7d;
+  color: #4caf7d;
+}
+
+.setlist li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.setlist__remove {
+  padding: 0.15rem 0.6rem;
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
 /* One line of chrome. The old five-rem hero cost a screenful before any control. */
 .masthead {
   display: flex;

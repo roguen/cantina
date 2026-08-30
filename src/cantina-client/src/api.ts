@@ -32,6 +32,16 @@ async function call(path: string, init?: RequestInit): Promise<Response> {
   return response
 }
 
+// The instrument picture, in the diff_ vocabulary every source speaks: -1 is "not
+// charted"; a vocals chart is what makes lyrics available.
+export type SongInstruments = {
+  guitar: number
+  bass: number
+  drums: number
+  keys: number
+  vocals: number
+}
+
 export type IndexedSong = {
   location: string
   title: string
@@ -42,6 +52,7 @@ export type IndexedSong = {
   charter: string
   songLengthMilliseconds: number | null
   learnedHash: string | null
+  instruments: SongInstruments
 }
 
 export type SongSearchResponse = {
@@ -94,6 +105,20 @@ export async function addToSetlist(song: IndexedSong): Promise<void> {
     }),
   })
   if (!response.ok) throw new Error(`add failed: ${response.status}`)
+}
+
+export async function removeFromSetlist(index: number, location: string | null): Promise<void> {
+  const response = await call('/api/setlist/commands', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      commandId: crypto.randomUUID(),
+      kind: 'Remove',
+      cursor: index,
+      location,
+    }),
+  })
+  if (!response.ok) throw new Error(`remove failed: ${response.status}`)
 }
 
 export async function cueSong(song: IndexedSong): Promise<CueStatus> {
@@ -183,6 +208,7 @@ export type EncoreChart = {
   year: string | null
   songLengthMilliseconds: number
   hasVideoBackground: boolean
+  instruments: SongInstruments
 }
 
 export type EncoreSearchResult = {
