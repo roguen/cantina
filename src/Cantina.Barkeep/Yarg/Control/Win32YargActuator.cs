@@ -229,6 +229,24 @@ public sealed partial class Win32YargActuator(IOptions<YargCueOptions> options) 
         return true;
     }
 
+    public bool ClickAt(int x, int y)
+    {
+        // The one verifiable step is the cursor move; a false here means nothing was
+        // clicked anywhere. Whether the click LANDED on the intended control is not
+        // knowable from this layer - that is the composer's verify-by-outcome problem.
+        if (!SetCursorPos(x, y))
+        {
+            return false;
+        }
+
+        Thread.Sleep(300);
+        MouseEvent(MouseLeftDown);
+        Thread.Sleep(60);
+        MouseEvent(MouseLeftUp);
+        Thread.Sleep(600);
+        return true;
+    }
+
     public bool ClearSearch()
     {
         for (var i = 0; i < 40; i++)

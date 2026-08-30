@@ -259,7 +259,7 @@ public sealed class ImportPlayNextCoordinator
             if (cueSnapshot.Activity == YargActivity.Idle && IsFresh(cueSnapshot))
             {
                 uncertainDispatch = ExternalDispatch.Cue;
-                var cueOutcome = await _yarg.CueAsync(song, cancellationToken);
+                var cueOutcome = await _yarg.CueAsync(song, request.IdempotencyKey, cancellationToken);
                 uncertainDispatch = ExternalDispatch.None;
                 if (cueOutcome == ExternalCommandOutcome.Failed)
                 {

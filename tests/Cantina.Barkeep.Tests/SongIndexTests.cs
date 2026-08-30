@@ -76,6 +76,8 @@ public sealed class SongIndexTests : IDisposable
         AddSong("good", "Detonation", "Trivium");
         Directory.CreateDirectory(Path.Combine(_root, "broken"));
         File.WriteAllText(Path.Combine(_root, "broken", "song.ini"), "[song]\nname = No Artist\n");
+        // A garbage .sng is skipped with the parser's reason - D-025's placeholder
+        // ("sng-metadata-not-yet-implemented") retired when D-030 implemented the format.
         File.WriteAllText(Path.Combine(_root, "archive.sng"), "not parsed");
 
         var index = new SongIndex();
@@ -83,7 +85,7 @@ public sealed class SongIndexTests : IDisposable
 
         Assert.Equal(1, report.Indexed);
         Assert.Contains(report.Skipped, s => s.Reason == "ini-missing-name-or-artist");
-        Assert.Contains(report.Skipped, s => s.Reason == "sng-metadata-not-yet-implemented");
+        Assert.Contains(report.Skipped, s => s.Reason == "sng-truncated-header");
     }
 
     [Fact]

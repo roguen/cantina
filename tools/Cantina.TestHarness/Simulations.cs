@@ -202,6 +202,7 @@ internal sealed class ScriptedYargSessionPort : IYargSessionPort
 
     public ValueTask<ExternalCommandOutcome> CueAsync(
         SongIdentity song,
+        string idempotencyKey,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

@@ -1241,3 +1241,86 @@ the NAS issuer as a separate, approved change. And **nothing watches the renewal
 outside Barkeep**: the health signal is visible to whoever looks at the iPad, which is better
 than nothing and is not a monitor. The same gap the network's own records describe against
 its backup chain, and worth closing the same way.
+
+## D-030 · The Geomitron Bridge handoff is real: the first .sng landed, Scan Songs is drivable, and the 652 mystery is closed
+
+- Date: 2026-08-29
+- Status: Accepted; implements the core of issue [#17](https://github.com/roguen/cantina/issues/17)
+
+Context: the acquisition pipeline existed as policy code exercised only by semantic fakes
+(D-008), gated on evidence nobody had: no `.sng` file had ever existed on this host, no one
+had proven YARG's library could be refreshed without a restart, and D-025 deliberately
+refused to parse a format it had never seen. The owner delegated the one human step —
+driving Geomitron Bridge's UI as his stand-in, once — with "get this project done
+autonomously."
+
+What was measured, in order, all on 2026-08-29:
+
+- **Bridge's own UI was driven once, as the operator.** Its library path already pointed at
+  a dedicated subfolder of the YARG source (`Songs\Bridge`, 49 extracted folders — the
+  operator already uses it); the one change made was `.sng` retention on, through its
+  Settings screen, corroborated afterward by the settings file changing to `isSng: true`.
+  One song was downloaded: **Foo Fighters – Everlong (Hoph2o)**, 2,566,282 bytes, drums-only
+  chart. The product still automates none of this (D-007, rule 6); an agent standing in for
+  the operator is not a Cantina mechanism.
+- **The `.sng` version-1 layout was read off the real file**: `SNGPKG` magic, uint32
+  version, 16-byte seed, then length-prefixed UTF-8 metadata pairs carrying the same
+  vocabulary as `song.ini` (31 pairs on this file), then a file table Cantina does not
+  touch. `SngDocument` implements exactly that, and the index now treats an `.sng` as a
+  song whose location is the file path — the same D-025 join key, because
+  `currentSong.json` names the archive path for an archive-loaded song.
+- **Scan Songs is drivable and bounded.** The Music Library's MORE OPTIONS control opens a
+  popup whose third entry is SCAN SONGS; both are pointer-clickable — measured at
+  (1340,2064) and (1903,939) on 3840×2160, evidence not constants, same contract as
+  D-017's search box. The scan completed in seconds. **It has no completion signal on any
+  observable surface**, so the production sequence is open-loop and time-bounded, and the
+  cue's read-back is what proves visibility.
+- **The scan resolved D-025's open discrepancy.** The library count went **652 → 448**:
+  447 folders + the new archive. The unexplained 652 was a stale `songcache` surviving
+  from before this library's history; a fresh scan counts what is on disk. Cantina's index
+  and YARG's library now agree exactly — 448 = 448 — for the first time.
+- **The pipeline ran end to end against the real world**: Detected → Stabilizing →
+  Validating → Indexed → RefreshPending → YargVisible → Queued → **Cued**, outcome
+  **Completed**. Everlong sits next in the durable setlist, and YARG reached SELECT
+  INSTRUMENT for it with the cue honestly `pending-players` — instrument setup belongs to
+  the players (D-015), and a drums-only chart makes that boundary visible: the screen
+  offered exactly what the chart carries.
+
+Decision:
+
+- **The watcher treats events as hints.** Every hint funnels through one queue; a startup
+  sweep and a periodic sweep re-enqueue everything; the import journal makes duplicates
+  free. Arrival identity is name + length + write time, so a re-download imports again and
+  a re-notification replays.
+- **Stability is two signals, not one**: size unchanged across a probe interval *and* no
+  writer holding the file. Containment refuses anything that resolves outside the watch
+  root, by name.
+- **The import journal is D-023 discipline applied to acquisition**: lease flushed before
+  work, receipt flushed at outcome, torn tails tolerated. A crashed import is claimable
+  again — every step is idempotent, so re-running converges. A **completed** import never
+  reruns; an **ambiguous** one needs eyes, not retries; a **failed** one gets one fresh
+  chance per sweep, because failure usually means the world was wrong, not the file.
+- **`WaitForSongVisibleAsync` is a named no-op.** YARG's library is not observable — the
+  wire says nothing, the count is pixels, `songcache.bin` is off-limits (rule 6) — so
+  visibility is proven where it can be: the cue reads back `currentSong.json` and matches
+  the path. Claiming otherwise would be a claim with no mechanism behind it.
+- **Play-next is a first-class setlist intent** (`InsertNext`): after the cursor, cursor
+  unmoved, idempotent by command id through the same journal as every other mutation.
+- **Acquisition is off unless `Acquisition:WatchDirectory` is configured**, and Windows-only,
+  because the refresh drives menus. Barkeep never reads Bridge's settings to discover the
+  directory; the operator names it (docs/geomitron-bridge-integration.md, phase 1 step 3).
+
+Rejected: parsing `songcache.bin` to observe visibility (private surface). Deriving the
+watch directory from Bridge's `settings.json` (same coupling, other direction). A
+single-entry index insert instead of a rescan (a second copy of what-is-a-song). Extracted
+chart folders as an arrival shape (unproven; `.sng` only, per the contract). Trailing
+Escape after the scan clicks to "clean up" (from the library, Escape navigates to the
+start menu — tidying that can wrong-foot the next cue).
+
+Consequences: the README's acquisition sentence is now implemented end to end. What remains
+of #17 is the folder-arrival question (deliberately out of scope), a SelfTest acquisition
+suite so the proof reruns without an agent driving, and latency measurement of the handoff
+itself. The 652-line in D-025's consequences is answered here. The cue pipeline gains a
+known gap worth naming: during instrument setup the wire reads Menu/NoSong — indistinguishable
+from idle — so a second cue dispatched then would type into the setup screen; pre-existing
+menu blindness (D-015), recorded rather than fixed.

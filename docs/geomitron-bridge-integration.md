@@ -1,7 +1,8 @@
 # Geomitron Bridge integration
 
-Status: **contract accepted; target-PC proof and external automation remain open in
-issue [#17](https://github.com/roguen/cantina/issues/17).**
+Status: **phase 1 implemented and proven end to end on the theater PC (D-030,
+2026-08-29)**; folder arrivals, a repeatable acceptance suite, and external automation
+remain open in issue [#17](https://github.com/roguen/cantina/issues/17).
 
 ## About the upstream project
 
