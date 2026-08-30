@@ -2,6 +2,7 @@
 
 using System.Net;
 using Cantina.Barkeep.Acquisition;
+using Cantina.Barkeep.Library;
 using Cantina.Barkeep.Providers;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -40,7 +41,7 @@ public sealed class EncoreProviderTests
     }
 
     private static EncoreChart Chart(string md5 = "0123456789abcdef0123456789abcdef") =>
-        new(md5, "Everlong", "Foo Fighters", "The Colour and the Shape", "Hoph2o", "1997", 252673, false);
+        new(md5, "Everlong", "Foo Fighters", "The Colour and the Shape", "Hoph2o", "1997", 252673, false, SongInstruments.Unknown);
 
     private static EncoreOptions Politeness(string staging) => new()
     {
@@ -57,7 +58,8 @@ public sealed class EncoreProviderTests
             {"found":2,"out_of":2,"page":1,"data":[
               {"md5":"0123456789abcdef0123456789abcdef","name":"Everlong","artist":"Foo Fighters",
                "album":"The Colour and the Shape","charter":"Hoph2o","year":"1997",
-               "song_length":252673,"hasVideoBackground":false,"someFutureField":42},
+               "song_length":252673,"hasVideoBackground":false,"someFutureField":42,
+               "diff_guitar":3,"diff_drums":5,"diff_vocals":-1},
               {"md5":"not-a-hash","name":"Broken row is skipped"}
             ]}
             """;
@@ -77,6 +79,10 @@ public sealed class EncoreProviderTests
         Assert.Equal("Hoph2o", chart.Charter);
         Assert.Equal("1997", chart.Year);
         Assert.Equal(252673, chart.SongLengthMilliseconds);
+
+        // The instrument picture, in the same vocabulary the local library speaks:
+        // charted guitar and drums, no vocals chart, bass and keys absent from the row.
+        Assert.Equal(new Cantina.Barkeep.Library.SongInstruments(3, -1, 5, -1, -1), chart.Instruments);
         Assert.Contains("POST", Assert.Single(handler.Requests), StringComparison.Ordinal);
     }
 
@@ -86,7 +92,7 @@ public sealed class EncoreProviderTests
     public void TheFileNameDropsWhatTheFilesystemRefuses()
     {
         var chart = new EncoreChart(
-            "0123456789abcdef0123456789abcdef", "T.N.T.", "AC/DC", null, "some:charter", null, 1, false);
+            "0123456789abcdef0123456789abcdef", "T.N.T.", "AC/DC", null, "some:charter", null, 1, false, SongInstruments.Unknown);
 
         Assert.Equal("ACDC - T.N.T. (somecharter).sng", EncoreDownloadCoordinator.FileNameFor(chart));
     }

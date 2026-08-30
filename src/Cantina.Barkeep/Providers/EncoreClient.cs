@@ -15,7 +15,8 @@ public sealed record EncoreChart(
     string? Charter,
     string? Year,
     long SongLengthMilliseconds,
-    bool HasVideoBackground);
+    bool HasVideoBackground,
+    Cantina.Barkeep.Library.SongInstruments Instruments);
 
 public sealed record EncoreSearchResult(int Found, IReadOnlyList<EncoreChart> Charts, string? Refusal = null);
 
@@ -66,6 +67,21 @@ public sealed class EncoreClient(IHttpClientFactory httpFactory, IOptions<Encore
         public long SongLength { get; set; }
 
         public bool HasVideoBackground { get; set; }
+
+        [JsonPropertyName("diff_guitar")]
+        public int DiffGuitar { get; set; } = -1;
+
+        [JsonPropertyName("diff_bass")]
+        public int DiffBass { get; set; } = -1;
+
+        [JsonPropertyName("diff_drums")]
+        public int DiffDrums { get; set; } = -1;
+
+        [JsonPropertyName("diff_keys")]
+        public int DiffKeys { get; set; } = -1;
+
+        [JsonPropertyName("diff_vocals")]
+        public int DiffVocals { get; set; } = -1;
     }
 
     public async Task<EncoreSearchResult> SearchAsync(string query, CancellationToken cancellation)
@@ -114,7 +130,9 @@ public sealed class EncoreClient(IHttpClientFactory httpFactory, IOptions<Encore
                 record.Charter,
                 record.Year,
                 record.SongLength,
-                record.HasVideoBackground))
+                record.HasVideoBackground,
+                new Cantina.Barkeep.Library.SongInstruments(
+                    record.DiffGuitar, record.DiffBass, record.DiffDrums, record.DiffKeys, record.DiffVocals)))
             .ToList();
 
         return new EncoreSearchResult(parsed.Found, charts);
