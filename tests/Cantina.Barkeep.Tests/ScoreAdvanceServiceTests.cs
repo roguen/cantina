@@ -161,7 +161,7 @@ public sealed class ScoreAdvanceServiceTests : IDisposable
         _advance.Observe(Feed(YargScene.Menu, YargPlayState.NoSong));    // menu first seen
         _advance.Observe(Feed(YargScene.Menu, YargPlayState.NoSong));    // settled (0 ms): cues
 
-        Assert.Equal(["focus", "click", "clear", "type:Second", "enter", "enter"], _actuator.Actions);
+        Assert.Equal(["focus", "click", "clear", "type:Second Band", "enter", "enter"], _actuator.Actions);
         Assert.Equal("Cueing", _advance.Status.Phase);
         Assert.Contains("Second", _advance.Status.Detail, StringComparison.Ordinal);
     }

@@ -515,7 +515,7 @@ app.MapGet("/api/provider", (IOptions<EncoreOptions> encore) =>
         encore.Value.Enabled ? Results.Ok(new ProviderView(true)) : Results.NotFound())
     .WithName("GetProviderView");
 
-app.MapGet("/api/provider/search", async (string? q, EncoreClient encore, IOptions<EncoreOptions> providerOptions) =>
+app.MapGet("/api/provider/search", async (string? q, EncoreClient encore, SongIndex index, IOptions<EncoreOptions> providerOptions) =>
     {
         if (!providerOptions.Value.Enabled)
         {
@@ -532,7 +532,19 @@ app.MapGet("/api/provider/search", async (string? q, EncoreClient encore, IOptio
         try
         {
             var result = await encore.SearchAsync(q.Trim(), bound.Token);
-            return Results.Ok(result);
+
+            // Say "already in your library" on the result, not after a failed download
+            // (operator feedback, 2026-08-30). Same title and artist is the honest
+            // heuristic the operator themselves would use; a different charter's take
+            // on the same song still shows as present, and the download stays allowed.
+            var marked = result.Charts.Select(chart =>
+                index.Search(chart.Name, 25).Any(song =>
+                    string.Equals(song.Title, chart.Name, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(song.Artist, chart.Artist, StringComparison.OrdinalIgnoreCase))
+                    ? chart with { InLibrary = true }
+                    : chart).ToList();
+
+            return Results.Ok(result with { Charts = marked });
         }
         catch (Exception error) when (error is HttpRequestException or OperationCanceledException or InvalidOperationException)
         {

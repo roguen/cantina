@@ -41,7 +41,7 @@ public sealed class EncoreProviderTests
     }
 
     private static EncoreChart Chart(string md5 = "0123456789abcdef0123456789abcdef") =>
-        new(md5, "Everlong", "Foo Fighters", "The Colour and the Shape", "Hoph2o", "1997", 252673, false, SongInstruments.Unknown);
+        new(md5, "Everlong", "Foo Fighters", false, "The Colour and the Shape", "Hoph2o", "1997", 252673, false, SongInstruments.Unknown);
 
     private static EncoreOptions Politeness(string staging) => new()
     {
@@ -92,7 +92,7 @@ public sealed class EncoreProviderTests
     public void TheFileNameDropsWhatTheFilesystemRefuses()
     {
         var chart = new EncoreChart(
-            "0123456789abcdef0123456789abcdef", "T.N.T.", "AC/DC", null, "some:charter", null, 1, false, SongInstruments.Unknown);
+            "0123456789abcdef0123456789abcdef", "T.N.T.", "AC/DC", false, null, "some:charter", null, 1, false, SongInstruments.Unknown);
 
         Assert.Equal("ACDC - T.N.T. (somecharter).sng", EncoreDownloadCoordinator.FileNameFor(chart));
     }
@@ -158,7 +158,11 @@ public sealed class EncoreProviderTests
 
         Assert.Equal("downloading", coordinator.Request(Chart("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")).State);
 
-        var second = coordinator.Request(Chart("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"));
+        // A different title, so the only refusal in play is the ceiling: the first
+        // download can deliver its file before this line runs, and two charts with the
+        // same name would then trip the already-in-the-watch-directory check instead.
+        var second = coordinator.Request(
+            Chart("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb") with { Name = "Atomic Punk" });
 
         Assert.Equal("refused", second.State);
         Assert.Contains("polite ceiling", second.Detail, StringComparison.Ordinal);

@@ -237,7 +237,8 @@ public sealed class ScoreAdvanceService(
 
             _episode++;
             _cueCommandId = $"advance-{_episode}-{clock.GetUtcNow():yyyyMMddHHmmss}";
-            var status = cue.Cue(new CueRequest(_cueCommandId, next, next.Title));
+            var status = cue.Cue(new CueRequest(
+                _cueCommandId, next, $"{next.Title} {next.Artist}"));
 
             if (status.State is "pending-players" or "replayed")
             {
