@@ -881,3 +881,17 @@ start was not captured.
   code" delivers to admin@aero4ge.com over STARTTLS, and the full loop — find, download,
   import, cue, kick off, auto-advance — is deployed. Owed: the target-PC acceptance run
   for D-034's which-menu assumption, and a scheduled-task deployment for Barkeep.
+
+## 2026-08-30 · Evening: the requested acceptance run, and the interface grows up
+
+- The owner's decision batch shipped end to end: requester-addressed pairing email
+  (D-035, proven to gmail through SMTP2GO with the operator notification), tabs,
+  setlist removal, instrument/lyrics metadata everywhere, favorites with artist
+  grouping, the masthead naming its device, Sent-folder copies over IMAP, and the
+  cantina@aero4ge.com mailbox (operator-created; the one mismatch was a password not
+  taken from the generated file, caught by an AUTH probe loop).
+- The operator-requested acceptance run (D-036): three suites PASS, the full advance
+  episode measured live, one real defect found by the first screenshot and fixed the
+  same hour (ActuationGate, the interleaved-keystroke race), one subtlety demonstrated
+  (duplicate titles go to whoever YARG ranks first). The theater was parked paused and
+  the setlist restored through the product's own commands.
