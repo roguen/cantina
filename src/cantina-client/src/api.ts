@@ -172,6 +172,23 @@ export async function recentAcquisitions(): Promise<AcquisitionRecord[]> {
   return response.json() as Promise<AcquisitionRecord[]>
 }
 
+// Starred songs, stored on the theater so every paired device sees the same list.
+export async function fetchFavorites(): Promise<string[]> {
+  const response = await call('/api/favorites')
+  if (!response.ok) throw new Error(`favorites failed: ${response.status}`)
+  return response.json() as Promise<string[]>
+}
+
+export async function setFavorite(location: string, favored: boolean): Promise<string[]> {
+  const response = await call('/api/favorites', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ location, favored }),
+  })
+  if (!response.ok) throw new Error(`favorite failed: ${response.status}`)
+  return response.json() as Promise<string[]>
+}
+
 // The score-screen advance (#39): armed from the iPad, off at startup, honest about
 // every episode in its detail sentence.
 export type AdvanceStatus = {
