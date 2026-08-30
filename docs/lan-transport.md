@@ -140,7 +140,11 @@ None of this applies with a supplied certificate. It is what the private authori
    the theater PC before tapping Install. This is the step that makes tampering visible.
 4. Settings › General › VPN & Device Management → install the profile.
 5. Settings › General › About › Certificate Trust Settings → enable full trust.
-6. Open `https://<address>:5274`, pair, then Share › Add to Home Screen.
+6. Open `https://<address>:5274` and Share › **Add to Home Screen** — then open the
+   installed app and pair *there*. iPadOS gives a Home Screen web app its own storage,
+   separate from Safari's, so a pairing done in the browser does not carry into the app;
+   the app's own pairing is the one that persists (and Home Screen apps are exempt from
+   Safari's seven-day storage eviction). Learned from the first real iPad, 2026-08-30.
 
 ## Pairing
 
