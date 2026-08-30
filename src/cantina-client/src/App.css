@@ -100,6 +100,23 @@ main {
 .debug__result--refused,
 .debug__result--failed { color: var(--warning); }
 
+.setlist__advance {
+  float: right;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.7rem;
+}
+
+.setlist__advance--armed {
+  border-color: #4caf7d;
+  color: #4caf7d;
+}
+
+.setlist__advance-detail {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
 .setlist__count {
   margin-left: 0.5rem;
   padding: 0.1rem 0.55rem;

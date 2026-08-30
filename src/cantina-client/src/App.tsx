@@ -14,6 +14,9 @@ import {
   stripColorTags,
   type AcquisitionRecord,
   type CueStatus,
+  advanceStatus,
+  setAdvance,
+  type AdvanceStatus,
   type DebugView,
   type EncoreChart,
   type ProviderDownload,
@@ -71,6 +74,7 @@ function App() {
   const [findResults, setFindResults] = useState<EncoreChart[] | null>(null)
   const [findError, setFindError] = useState<string | null>(null)
   const [downloads, setDownloads] = useState<ProviderDownload[]>([])
+  const [advance, setAdvanceState] = useState<AdvanceStatus | null>(null)
   const [standIn, setStandIn] = useState<StandInStatus | null>(null)
   const [standInBusy, setStandInBusy] = useState(false)
 
@@ -96,7 +100,25 @@ function App() {
     providerEnabled()
       .then(setProvider)
       .catch(() => setProvider(false))
+    advanceStatus()
+      .then(setAdvanceState)
+      .catch(() => setAdvanceState(null))
   }, [paired])
+
+  // While armed, the advance loop's sentence changes with each episode.
+  useEffect(() => {
+    if (!paired || !advance?.enabled) return
+
+    const timer = window.setInterval(() => {
+      advanceStatus()
+        .then(setAdvanceState)
+        .catch(() => {
+          // The connection banner already reports an unreachable Barkeep.
+        })
+    }, 5000)
+
+    return () => window.clearInterval(timer)
+  }, [paired, advance?.enabled])
 
   // While a download is running the picture changes by the second; otherwise it is
   // history and the response that started it is enough.
@@ -192,6 +214,15 @@ function App() {
       .then(setCue)
       .catch((error: unknown) => {
         if (!unpair(error)) setActionError('The cue could not reach Barkeep.')
+      })
+  }
+
+  const onToggleAdvance = () => {
+    if (!advance) return
+    setAdvance(!advance.enabled)
+      .then(setAdvanceState)
+      .catch((error: unknown) => {
+        if (!unpair(error)) setActionError('The auto-advance toggle could not reach Barkeep.')
       })
   }
 
@@ -332,7 +363,17 @@ function App() {
           <h2>
             Setlist
             <span className="setlist__count">{setlist.state.entries.length}</span>
+            {advance && advance.phase !== 'Unavailable' && (
+              <button
+                type="button"
+                className={`setlist__advance${advance.enabled ? ' setlist__advance--armed' : ''}`}
+                onClick={onToggleAdvance}
+              >
+                {advance.enabled ? 'Auto-advance: on' : 'Auto-advance: off'}
+              </button>
+            )}
           </h2>
+          {advance?.enabled && <p className="setlist__advance-detail">{advance.detail}</p>}
           <ol>
             {setlist.state.entries.map((entry, index) => (
               <li
