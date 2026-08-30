@@ -56,7 +56,18 @@ public sealed class SmtpPairingMailTransport(IOptions<PairingEmailOptions> optio
                 await session.CommandAsync($"EHLO {config.ResolveHelloName()}", "250", "EHLO after STARTTLS").ConfigureAwait(false);
             }
 
-            await session.CommandAsync($"MAIL FROM:<{sender}>", "250", "MAIL FROM").ConfigureAwait(false);
+            // The house host relays external destinations only for authenticated senders
+        // (D-035); local delivery needs no identity. The password comes from a file at
+        // send time, so the secret lives in exactly one place.
+        if (config.SmtpUsername.Length > 0 && config.SmtpPasswordPath.Length > 0)
+        {
+            var password = (await File.ReadAllTextAsync(config.SmtpPasswordPath, lifetime.Token).ConfigureAwait(false)).Trim();
+            var identity = Convert.ToBase64String(
+                Encoding.UTF8.GetBytes($"\0{config.SmtpUsername}\0{password}"));
+            await session.CommandAsync($"AUTH PLAIN {identity}", "235", "AUTH").ConfigureAwait(false);
+        }
+
+        await session.CommandAsync($"MAIL FROM:<{sender}>", "250", "MAIL FROM").ConfigureAwait(false);
             await session.CommandAsync($"RCPT TO:<{recipient}>", "250", "RCPT TO").ConfigureAwait(false);
             await session.CommandAsync("DATA", "354", "DATA").ConfigureAwait(false);
 

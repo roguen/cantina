@@ -18,6 +18,7 @@ export function PairingScreen({ detail, onPaired }: Props) {
   const [refusal, setRefusal] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [emailAvailable, setEmailAvailable] = useState(false)
+  const [emailAddress, setEmailAddress] = useState('')
   const [emailStatus, setEmailStatus] = useState<string | null>(null)
   const [emailBusy, setEmailBusy] = useState(false)
 
@@ -28,7 +29,7 @@ export function PairingScreen({ detail, onPaired }: Props) {
   const requestEmail = () => {
     setEmailBusy(true)
     setEmailStatus(null)
-    requestPairingEmail()
+    requestPairingEmail(emailAddress.trim() || null)
       .then((outcome) =>
         setEmailStatus(
           outcome.state === 'sent' ? 'Sent — check the email account for the code.' : outcome.detail,
@@ -70,11 +71,19 @@ export function PairingScreen({ detail, onPaired }: Props) {
         </p>
 
         {emailAvailable && (
-          <p>
+          <div className="pairing__email">
+            <input
+              type="email"
+              value={emailAddress}
+              onChange={(event) => setEmailAddress(event.target.value)}
+              placeholder="you@example.com (optional)"
+              aria-label="Email address for the code"
+              autoComplete="email"
+            />
             <button type="button" onClick={requestEmail} disabled={emailBusy}>
               {emailBusy ? 'Sending…' : 'Email me a code'}
             </button>
-          </p>
+          </div>
         )}
         {emailStatus && <p>{emailStatus}</p>}
 

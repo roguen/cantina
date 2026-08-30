@@ -649,6 +649,7 @@ app.MapGet("/api/pairing/email", (IOptions<PairingEmailOptions> email) =>
 
 app.MapPost("/api/pairing/email", async (
         HttpContext context,
+        PairingEmailRequest request,
         PairingEmailService email,
         IOptions<PairingEmailOptions> emailOptions,
         PairingWindow window,
@@ -661,7 +662,7 @@ app.MapPost("/api/pairing/email", async (
         }
 
         var requester = context.Connection.RemoteIpAddress?.ToString() ?? "unknown address";
-        var status = await email.RequestAsync(requester, context.RequestAborted);
+        var status = await email.RequestAsync(requester, request.Email, context.RequestAborted);
 
         if (status.State == "sent" && window.Current(clock.GetUtcNow()) is { } state)
         {

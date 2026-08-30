@@ -66,7 +66,11 @@ public sealed class SmtpTransportTests
             {
                 Received.Add(line);
 
-                if (line.StartsWith("MAIL FROM", StringComparison.Ordinal)
+                if (line.StartsWith("AUTH PLAIN ", StringComparison.Ordinal))
+                {
+                    await writer.WriteLineAsync("235 2.7.0 Authentication successful");
+                }
+                else if (line.StartsWith("MAIL FROM", StringComparison.Ordinal)
                     || line.StartsWith("RCPT TO", StringComparison.Ordinal))
                 {
                     await writer.WriteLineAsync("250 Ok");
@@ -136,5 +140,38 @@ public sealed class SmtpTransportTests
             "cantina@aero4ge.test", "operator@example.test", "s", "b", CancellationToken.None));
 
         Assert.Contains("need fully-qualified hostname", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AConfiguredIdentityAuthenticatesBeforeSending()
+    {
+        // External destinations relay only for authenticated senders (D-035). The
+        // password comes from a file, so the secret lives in exactly one place.
+        using var server = new ScriptedSmtpServer();
+        var passwordPath = Path.Combine(Path.GetTempPath(), "cantina-tests", Path.GetRandomFileName());
+        Directory.CreateDirectory(Path.GetDirectoryName(passwordPath)!);
+        await File.WriteAllTextAsync(passwordPath, "hunter2-but-random\n");
+
+        var transport = new SmtpPairingMailTransport(Options.Create(new PairingEmailOptions
+        {
+            To = "operator@example.test",
+            From = "cantina@aero4ge.test",
+            SmtpHost = "127.0.0.1",
+            SmtpPort = server.Port,
+            UseStartTls = false,
+            SmtpUsername = "cantina@aero4ge.test",
+            SmtpPasswordPath = passwordPath,
+        }));
+
+        await transport.SendAsync(
+            "cantina@aero4ge.test", "someone@gmail.test", "s", "b", CancellationToken.None);
+
+        server.AssertServed();
+        var auth = Assert.Single(server.Received, line => line.StartsWith("AUTH PLAIN ", StringComparison.Ordinal));
+        var decoded = System.Text.Encoding.UTF8.GetString(
+            Convert.FromBase64String(auth["AUTH PLAIN ".Length..]));
+        Assert.Equal("\0cantina@aero4ge.test\0hunter2-but-random", decoded);
+
+        File.Delete(passwordPath);
     }
 }
