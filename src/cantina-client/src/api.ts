@@ -128,7 +128,9 @@ export async function cueSong(song: IndexedSong): Promise<CueStatus> {
     body: JSON.stringify({
       commandId: crypto.randomUUID(),
       entry: entryFor(song),
-      query: song.title,
+      // Title alone sent YARG's fuzzy search to the wrong song when titles collide
+      // or rank oddly; the artist disambiguates, and the load read-back still judges.
+      query: `${song.title} ${song.artist}`,
     }),
   })
   if (!response.ok) throw new Error(`cue failed: ${response.status}`)
@@ -220,6 +222,7 @@ export type EncoreChart = {
   md5: string
   name: string
   artist: string
+  inLibrary: boolean
   album: string | null
   charter: string | null
   year: string | null

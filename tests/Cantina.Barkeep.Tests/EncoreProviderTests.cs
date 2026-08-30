@@ -41,7 +41,7 @@ public sealed class EncoreProviderTests
     }
 
     private static EncoreChart Chart(string md5 = "0123456789abcdef0123456789abcdef") =>
-        new(md5, "Everlong", "Foo Fighters", "The Colour and the Shape", "Hoph2o", "1997", 252673, false, SongInstruments.Unknown);
+        new(md5, "Everlong", "Foo Fighters", false, "The Colour and the Shape", "Hoph2o", "1997", 252673, false, SongInstruments.Unknown);
 
     private static EncoreOptions Politeness(string staging) => new()
     {
@@ -92,7 +92,7 @@ public sealed class EncoreProviderTests
     public void TheFileNameDropsWhatTheFilesystemRefuses()
     {
         var chart = new EncoreChart(
-            "0123456789abcdef0123456789abcdef", "T.N.T.", "AC/DC", null, "some:charter", null, 1, false, SongInstruments.Unknown);
+            "0123456789abcdef0123456789abcdef", "T.N.T.", "AC/DC", false, null, "some:charter", null, 1, false, SongInstruments.Unknown);
 
         Assert.Equal("ACDC - T.N.T. (somecharter).sng", EncoreDownloadCoordinator.FileNameFor(chart));
     }

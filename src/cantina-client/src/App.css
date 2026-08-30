@@ -51,6 +51,12 @@ main {
   white-space: nowrap;
 }
 
+.chip--present {
+  border-color: #7a9fd4;
+  color: #7a9fd4;
+  margin-left: 0.4rem;
+}
+
 .chip--lyrics {
   border-color: #4caf7d;
   color: #4caf7d;

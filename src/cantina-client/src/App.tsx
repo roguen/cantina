@@ -609,10 +609,11 @@ function App() {
                       {chart.charter ? ` ${chart.charter} · ` : ' '}
                       {lengthCopy(chart.songLengthMilliseconds)}
                     </span>
+                    {chart.inLibrary && <span className="chip chip--present">In your library</span>}
                     <InstrumentChips instruments={chart.instruments} />
                   </div>
                   <button type="button" onClick={() => onDownload(chart)}>
-                    Download &amp; queue
+                    {chart.inLibrary ? 'Download anyway' : 'Download & queue'}
                   </button>
                 </li>
               ))}
@@ -695,6 +696,19 @@ function downloadCopy(download: ProviderDownload): string {
   }
 }
 
+/// The pipeline's failure codes, as sentences. "refresh-unsafe" read as a scary mystery
+/// on the iPad when it simply meant "not during a song" (operator feedback, 2026-08-30).
+function failureCopy(code: string | null): string {
+  switch (code) {
+    case 'refresh-unsafe':
+      return 'the library cannot re-sync while a song is playing. It imports on its own once the stage is idle.'
+    case 'refresh-failed':
+      return 'the library re-sync did not complete. It retries on its own.'
+    default:
+      return `could not be imported (${code ?? 'unknown'}). It retries on its own.`
+  }
+}
+
 /// Plain words for an import outcome. The failure codes are the pipeline's own vocabulary;
 /// the iPad gets a sentence.
 function arrivalCopy(arrival: AcquisitionRecord): string {
@@ -704,7 +718,7 @@ function arrivalCopy(arrival: AcquisitionRecord): string {
     case 'Completed':
       return `${name} arrived and is queued to play next.`
     case 'Failed':
-      return `${name} arrived but could not be imported (${arrival.failureCode ?? 'unknown'}). It retries on its own.`
+      return `${name} arrived but ${failureCopy(arrival.failureCode)}`
     case 'Ambiguous':
       return `${name} arrived; the import needs a look (${arrival.failureCode ?? 'unknown'}).`
     default:
