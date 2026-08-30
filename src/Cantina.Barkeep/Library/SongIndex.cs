@@ -17,6 +17,8 @@ public sealed record IndexedSong
 
     public required string Year { get; init; }
 
+    public SongInstruments Instruments { get; init; } = SongInstruments.Unknown;
+
     public required string Charter { get; init; }
 
     public int? SongLengthMilliseconds { get; init; }
@@ -134,6 +136,7 @@ public sealed class SongIndex
                     Year = ini.Year,
                     Charter = ini.Charter,
                     SongLengthMilliseconds = ini.SongLengthMilliseconds,
+                    Instruments = ini.Instruments,
                 };
             }
 
@@ -184,6 +187,7 @@ public sealed class SongIndex
                     Year = sng.Year,
                     Charter = sng.Charter,
                     SongLengthMilliseconds = sng.SongLengthMilliseconds,
+                    Instruments = sng.Instruments,
                 };
             }
         }

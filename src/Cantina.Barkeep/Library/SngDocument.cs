@@ -52,6 +52,8 @@ public sealed record SngDocument
 
     public int? SongLengthMilliseconds { get; init; }
 
+    public SongInstruments Instruments { get; init; } = SongInstruments.Unknown;
+
     /// <summary>
     /// Reads the metadata from the head of a <c>.sng</c> stream. A named reason comes back
     /// for every rejection, because an arrival that cannot be indexed must fail visibly
@@ -139,6 +141,7 @@ public sealed record SngDocument
                 int.TryParse(length, out var milliseconds) && milliseconds > 0
                     ? milliseconds
                     : null,
+            Instruments = SongInstruments.FromValues(values),
         };
         reason = string.Empty;
         return true;

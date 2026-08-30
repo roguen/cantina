@@ -25,6 +25,8 @@ public sealed record SongIniDocument
 
     public int? SongLengthMilliseconds { get; init; }
 
+    public SongInstruments Instruments { get; init; } = SongInstruments.Unknown;
+
     public static bool TryParse(string content, out SongIniDocument? document)
     {
         document = null;
@@ -87,6 +89,7 @@ public sealed record SongIniDocument
                 && parsed > 0
                     ? parsed
                     : null,
+            Instruments = SongInstruments.FromValues(values),
         };
 
         return true;

@@ -129,4 +129,36 @@ public sealed class SongIndexTests : IDisposable
         var song = Assert.Single(index.Search("Detonation"));
         Assert.Equal("learned-hash", song.LearnedHash);
     }
+
+    [Fact]
+    public void TheScanCarriesTheInstrumentPictureFromBothSourceKinds()
+    {
+        // The operator picks between versions of a song by what is charted - guitar,
+        // drums, and whether a vocals chart makes lyrics available. Both metadata
+        // sources speak the same diff_ vocabulary and land in the same shape.
+        var root = TempDirectory();
+        Directory.CreateDirectory(Path.Combine(root, "folder-song"));
+        File.WriteAllText(
+            Path.Combine(root, "folder-song", "song.ini"),
+            """
+            [song]
+            name = With Vocals
+            artist = Band
+            diff_guitar = 4
+            diff_vocals = 6
+            diff_drums = -1
+            """);
+        File.WriteAllBytes(
+            Path.Combine(root, "archived.sng"),
+            SngDocumentTests.Build([("name", "No Vocals"), ("artist", "Band"), ("diff_drums", "2")]));
+
+        var index = new SongIndex();
+        index.Scan([root], TimeProvider.System);
+
+        var withVocals = Assert.Single(index.Search("with vocals"));
+        Assert.Equal(new SongInstruments(4, -1, -1, -1, 6), withVocals.Instruments);
+
+        var noVocals = Assert.Single(index.Search("no vocals"));
+        Assert.Equal(new SongInstruments(-1, -1, 2, -1, -1), noVocals.Instruments);
+    }
 }
