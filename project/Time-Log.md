@@ -895,3 +895,20 @@ start was not captured.
   same hour (ActuationGate, the interleaved-keystroke race), one subtlety demonstrated
   (duplicate titles go to whoever YARG ranks first). The theater was parked paused and
   the setlist restored through the product's own commands.
+
+## 2026-08-30 · Night: the operator's live session, answered in kind
+
+- The operator ran the theater hard and every report became a fix the same hour:
+  cues type title+artist after "Bang Your Head" landed on "Tuesday's Gone" (#84);
+  Encore results say "In your library" before a download, not after (#84);
+  refresh-unsafe speaks plainly (#84); the score screen's one key is now an iPad
+  button, gated on the wire actually showing Score (#85); arrivals dedupe to one per
+  file and carry a dismiss (#85). The Windows-CI flake was cornered and pinned - the
+  ceiling test's two charts shared a filename.
+- The no-audio mystery was the Windows default device: Steam Streaming Speakers had
+  taken it. Named for the operator; the switch back is theirs.
+- The "stuck closure screen" was quickplay's score screen - it waits forever and the
+  cue gate rightly refuses while it is up. Walked the theater out live (pause menu,
+  cursor screenshot-verified onto BACK TO LIBRARY), after which both waiting imports
+  (Wanted Dead or Alive, the Matchbox cover) completed on their own - the retry
+  design working exactly as promised.
