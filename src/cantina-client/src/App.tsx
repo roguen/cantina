@@ -9,6 +9,7 @@ import {
   currentCue,
   fetchHealth,
   fetchSetlist,
+  removeFromSetlist,
   searchSongs,
   recentAcquisitions,
   stripColorTags,
@@ -20,6 +21,7 @@ import {
   type DebugView,
   type EncoreChart,
   type ProviderDownload,
+  type SongInstruments,
   type StandInStatus,
   debugView,
   providerDownload,
@@ -36,6 +38,8 @@ import { connectionCopy } from './connectionState'
 import { stageCopy } from './liveState'
 import { storedToken } from './pairing'
 import { useLiveSocket } from './useLiveSocket'
+
+type Tab = 'stage' | 'find' | 'debug'
 
 function App() {
   // Pairing is a state of the app, not an error in it. Barkeep answering 401 anywhere
@@ -57,6 +61,7 @@ function App() {
     paired,
     useCallback(() => setPaired(false), []),
   )
+  const [tab, setTab] = useState<Tab>('stage')
   const [query, setQuery] = useState('')
   const [songs, setSongs] = useState<IndexedSong[]>([])
   const [totalIndexed, setTotalIndexed] = useState<number | null>(null)
@@ -90,8 +95,8 @@ function App() {
     if (paired) refreshSetlist()
   }, [paired, refreshSetlist])
 
-  // The debug surface is config-gated server-side and 404s when off, so one read at
-  // pairing decides whether the section exists at all.
+  // The debug and provider surfaces are config-gated server-side and 404 when off, so
+  // one read at pairing decides which tabs exist at all.
   useEffect(() => {
     if (!paired) return
     debugView()
@@ -137,8 +142,8 @@ function App() {
     return () => window.clearInterval(timer)
   }, [paired, downloading])
 
-  // New arrivals matter within a minute of downloading something in Geomitron Bridge;
-  // beyond that the feed is history, so a slow poll is enough.
+  // New arrivals matter within a minute of downloading something; beyond that the feed
+  // is history, so a slow poll is enough.
   useEffect(() => {
     if (!paired) return
 
@@ -272,13 +277,20 @@ function App() {
     addToSetlist(song)
       .then(() => {
         refreshSetlist()
-        // The tap that seems to do nothing was the complaint that drove this screen's
-        // redesign: the add worked every time, and nothing said so.
         setJustAdded(song.location)
         window.setTimeout(() => {
           setJustAdded((current) => (current === song.location ? null : current))
         }, 2000)
       })
+      .catch((error: unknown) => {
+        if (!unpair(error)) setActionError('The setlist change could not reach Barkeep.')
+      })
+  }
+
+  const onRemove = (index: number, location: string | null) => {
+    setActionError(null)
+    removeFromSetlist(index, location)
+      .then(refreshSetlist)
       .catch((error: unknown) => {
         if (!unpair(error)) setActionError('The setlist change could not reach Barkeep.')
       })
@@ -296,9 +308,8 @@ function App() {
     )
   }
 
-  const connectionState = connection
   const banner = live ? stageCopy(live) : null
-  const copy = connectionCopy(connectionState)
+  const copy = connectionCopy(connection)
   const expiry = certificateNotice(certificate)
 
   return (
@@ -306,12 +317,44 @@ function App() {
       <header className="masthead">
         <span className="eyebrow">Cantina</span>
         <span
-          className={`masthead__dot masthead__dot--${connectionState}`}
+          className={`masthead__dot masthead__dot--${connection}`}
           title={copy.title}
           aria-label={copy.title}
         />
       </header>
 
+      {(provider || debug?.enabled) && (
+        <nav className="tabs" aria-label="Sections">
+          <button
+            type="button"
+            className={tab === 'stage' ? 'tabs__active' : undefined}
+            onClick={() => setTab('stage')}
+          >
+            Stage
+          </button>
+          {provider && (
+            <button
+              type="button"
+              className={tab === 'find' ? 'tabs__active' : undefined}
+              onClick={() => setTab('find')}
+            >
+              Find songs
+            </button>
+          )}
+          {debug?.enabled && (
+            <button
+              type="button"
+              className={tab === 'debug' ? 'tabs__active' : undefined}
+              onClick={() => setTab('debug')}
+            >
+              Debug
+            </button>
+          )}
+        </nav>
+      )}
+
+      {/* The live picture stays visible on every tab: it is the one thing the operator
+          must never lose track of while a song could be running. */}
       <section className={`stage stage--${banner?.tone ?? 'down'}`} aria-live="polite">
         {banner ? (
           <div>
@@ -348,85 +391,99 @@ function App() {
 
       {actionError && <p className="error">{actionError}</p>}
 
-      {arrivals.length > 0 && (
-        <section className="arrivals">
-          {arrivals.slice(0, 3).map((arrival) => (
-            <p key={arrival.idempotencyKey} className={`arrivals__item arrivals__item--${arrival.outcome}`}>
-              {arrivalCopy(arrival)}
-            </p>
-          ))}
-        </section>
-      )}
-
-      {setlist && setlist.state.entries.length > 0 && (
-        <section className="setlist">
-          <h2>
-            Setlist
-            <span className="setlist__count">{setlist.state.entries.length}</span>
-            {advance && advance.phase !== 'Unavailable' && (
-              <button
-                type="button"
-                className={`setlist__advance${advance.enabled ? ' setlist__advance--armed' : ''}`}
-                onClick={onToggleAdvance}
-              >
-                {advance.enabled ? 'Auto-advance: on' : 'Auto-advance: off'}
-              </button>
-            )}
-          </h2>
-          {advance?.enabled && <p className="setlist__advance-detail">{advance.detail}</p>}
-          <ol>
-            {setlist.state.entries.map((entry, index) => (
-              <li
-                key={`${entry.location ?? entry.hash}-${index}`}
-                className={index === setlist.state.cursor ? 'setlist__current' : undefined}
-              >
-                {entry.title} — {entry.artist}
-              </li>
-            ))}
-          </ol>
-          {setlist.quarantinedFiles.length > 0 && (
-            <p className="error">Setlist state was recovered; a damaged file was set aside.</p>
+      {tab === 'stage' && (
+        <>
+          {arrivals.length > 0 && (
+            <section className="arrivals">
+              {arrivals.slice(0, 3).map((arrival) => (
+                <p key={arrival.idempotencyKey} className={`arrivals__item arrivals__item--${arrival.outcome}`}>
+                  {arrivalCopy(arrival)}
+                </p>
+              ))}
+            </section>
           )}
-        </section>
+
+          {setlist && setlist.state.entries.length > 0 && (
+            <section className="setlist">
+              <h2>
+                Setlist
+                <span className="setlist__count">{setlist.state.entries.length}</span>
+                {advance && advance.phase !== 'Unavailable' && (
+                  <button
+                    type="button"
+                    className={`setlist__advance${advance.enabled ? ' setlist__advance--armed' : ''}`}
+                    onClick={onToggleAdvance}
+                  >
+                    {advance.enabled ? 'Auto-advance: on' : 'Auto-advance: off'}
+                  </button>
+                )}
+              </h2>
+              {advance?.enabled && <p className="setlist__advance-detail">{advance.detail}</p>}
+              <ol>
+                {setlist.state.entries.map((entry, index) => (
+                  <li
+                    key={`${entry.location ?? entry.hash}-${index}`}
+                    className={index === setlist.state.cursor ? 'setlist__current' : undefined}
+                  >
+                    <span>
+                      {entry.title} — {entry.artist}
+                    </span>
+                    <button
+                      type="button"
+                      className="setlist__remove"
+                      aria-label={`Remove ${entry.title}`}
+                      onClick={() => onRemove(index, entry.location ?? null)}
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ol>
+              {setlist.quarantinedFiles.length > 0 && (
+                <p className="error">Setlist state was recovered; a damaged file was set aside.</p>
+              )}
+            </section>
+          )}
+
+          <section className="library">
+            <input
+              type="search"
+              placeholder={totalIndexed === null ? 'Search the library' : `Search ${totalIndexed} songs`}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              aria-label="Search the library"
+            />
+
+            {searchError && <p className="error">{searchError}</p>}
+
+            <ul className="songs">
+              {songs.map((song) => (
+                <li key={song.location}>
+                  <div className="songs__meta">
+                    <strong>{song.title}</strong>
+                    <span>
+                      {song.artist}
+                      {song.charter && ` · ${stripColorTags(song.charter)}`}
+                    </span>
+                    <InstrumentChips instruments={song.instruments} />
+                  </div>
+                  <div className="songs__actions">
+                    <button type="button" onClick={() => onAdd(song)}>
+                      {justAdded === song.location ? 'Added ✓' : 'Add to setlist'}
+                    </button>
+                    <button type="button" className="primary" onClick={() => onCue(song)}>
+                      Play now
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </>
       )}
 
-      <section className="library">
-        <input
-          type="search"
-          placeholder={totalIndexed === null ? 'Search the library' : `Search ${totalIndexed} songs`}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          aria-label="Search the library"
-        />
-
-        {searchError && <p className="error">{searchError}</p>}
-
-        <ul className="songs">
-          {songs.map((song) => (
-            <li key={song.location}>
-              <div className="songs__meta">
-                <strong>{song.title}</strong>
-                <span>
-                  {song.artist}
-                  {song.charter && ` · ${stripColorTags(song.charter)}`}
-                </span>
-              </div>
-              <div className="songs__actions">
-                <button type="button" onClick={() => onAdd(song)}>
-                  {justAdded === song.location ? 'Added ✓' : 'Add to setlist'}
-                </button>
-                <button type="button" className="primary" onClick={() => onCue(song)}>
-                  Play now
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {provider && (
+      {tab === 'find' && provider && (
         <section className="finder">
-          <h2>Find new songs</h2>
           <p className="finder__hint">
             Searches Chorus Encore. A downloaded chart imports on its own and queues to
             play next.
@@ -462,6 +519,16 @@ function App() {
             </ul>
           )}
 
+          {arrivals.length > 0 && (
+            <section className="arrivals">
+              {arrivals.slice(0, 3).map((arrival) => (
+                <p key={arrival.idempotencyKey} className={`arrivals__item arrivals__item--${arrival.outcome}`}>
+                  {arrivalCopy(arrival)}
+                </p>
+              ))}
+            </section>
+          )}
+
           {findResults && findResults.length === 0 && <p>Nothing matched on Chorus Encore.</p>}
 
           {findResults && findResults.length > 0 && (
@@ -474,6 +541,7 @@ function App() {
                       {chart.charter ? ` ${chart.charter} · ` : ' '}
                       {lengthCopy(chart.songLengthMilliseconds)}
                     </span>
+                    <InstrumentChips instruments={chart.instruments} />
                   </div>
                   <button type="button" onClick={() => onDownload(chart)}>
                     Download &amp; queue
@@ -485,9 +553,8 @@ function App() {
         </section>
       )}
 
-      {debug?.enabled && (
-        <details className="debug">
-          <summary>Debugging</summary>
+      {tab === 'debug' && debug?.enabled && (
+        <section className="debug">
           <p>
             Bench testing only: stand in for the players&apos; ready confirms at instrument
             setup ({debug.playerConfirmations} players). Cue a song first; this kicks it off.
@@ -502,10 +569,46 @@ function App() {
           {standIn && (
             <p className={`debug__result debug__result--${standIn.state}`}>{standIn.detail}</p>
           )}
-        </details>
+        </section>
       )}
     </main>
   )
+}
+
+/// Which instruments a chart supports, compact enough to sit on one row. A vocals chart
+/// is what makes lyrics available — the criterion for picking between versions — so it
+/// gets a named pill rather than a letter.
+function InstrumentChips({ instruments }: { instruments: SongInstruments | undefined }) {
+  if (!instruments) return null
+
+  const charted: Array<{ label: string; diff: number }> = []
+  if (instruments.guitar >= 0) charted.push({ label: 'G', diff: instruments.guitar })
+  if (instruments.bass >= 0) charted.push({ label: 'B', diff: instruments.bass })
+  if (instruments.drums >= 0) charted.push({ label: 'D', diff: instruments.drums })
+  if (instruments.keys >= 0) charted.push({ label: 'K', diff: instruments.keys })
+
+  if (charted.length === 0 && instruments.vocals < 0) return null
+
+  return (
+    <span className="chips">
+      {charted.map((chip) => (
+        <span key={chip.label} className="chip" title={chipTitle(chip.label, chip.diff)}>
+          {chip.label}
+          {chip.diff}
+        </span>
+      ))}
+      {instruments.vocals >= 0 && (
+        <span className="chip chip--lyrics" title={`Vocals ${instruments.vocals} — lyrics available`}>
+          Lyrics
+        </span>
+      )}
+    </span>
+  )
+}
+
+function chipTitle(label: string, diff: number): string {
+  const names: Record<string, string> = { G: 'Guitar', B: 'Bass', D: 'Drums', K: 'Keys' }
+  return `${names[label]} difficulty ${diff}`
 }
 
 function lengthCopy(milliseconds: number): string {

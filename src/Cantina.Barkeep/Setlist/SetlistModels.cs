@@ -29,8 +29,16 @@ public sealed record SetlistIntent
     /// <summary>The target hash for Remove; null otherwise.</summary>
     public string? Hash { get; init; }
 
-    /// <summary>The target cursor for MoveCursor; null otherwise.</summary>
+    /// <summary>The target cursor for MoveCursor; for Remove, the index to remove at.</summary>
     public int? Cursor { get; init; }
+
+    /// <summary>
+    /// For Remove: the location the entry at <see cref="Cursor"/> is expected to hold.
+    /// Hash-targeted removal cannot tell apart entries whose hash is still unlearned
+    /// (they all carry ""), so the iPad removes by index instead - and the expected
+    /// location makes a stale view remove nothing rather than the wrong song.
+    /// </summary>
+    public string? Location { get; init; }
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter<SetlistIntentKind>))]
@@ -96,11 +104,34 @@ public sealed record SetlistState
                     return this with { Entries = entries };
                 }
 
-            case SetlistIntentKind.Remove when intent.Hash is not null:
+            case SetlistIntentKind.Remove:
                 {
-                    var index = IndexOf(intent.Hash);
+                    // Index-targeted with an expected location (the iPad's shape), or
+                    // hash-targeted (the original shape). Either way an unknown target
+                    // is a no-op, because a replayed remove must converge, not throw.
+                    int index;
 
-                    if (index < 0)
+                    if (intent.Cursor is { } at)
+                    {
+                        if (at < 0 || at >= Entries.Count
+                            || (intent.Location is { Length: > 0 } expected
+                                && !string.Equals(Entries[at].Location, expected, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            return this;
+                        }
+
+                        index = at;
+                    }
+                    else if (intent.Hash is not null)
+                    {
+                        index = IndexOf(intent.Hash);
+
+                        if (index < 0)
+                        {
+                            return this;
+                        }
+                    }
+                    else
                     {
                         return this;
                     }

@@ -141,4 +141,35 @@ public sealed class SetlistJournalTests : IDisposable
         Assert.Equal(1, state.Cursor);
         Assert.Equal("h3", state.Entries[state.Cursor].Hash);
     }
+
+    [Fact]
+    public void RemoveByIndexTakesTheEntryOnlyWhenTheLocationStillMatches()
+    {
+        // Hash-targeted removal cannot tell apart entries whose hash is unlearned (all
+        // ""), so the iPad removes by index with the location it believes is there. A
+        // stale view must remove nothing rather than the wrong song.
+        var state = SetlistState.Empty
+            .Apply(new SetlistIntent { CommandId = "1", Kind = SetlistIntentKind.Add, Entry = new("", "First", "A", @"C:\songs\first") })
+            .Apply(new SetlistIntent { CommandId = "2", Kind = SetlistIntentKind.Add, Entry = new("", "Second", "A", @"C:\songs\second") });
+
+        var removed = state.Apply(new SetlistIntent
+        {
+            CommandId = "3",
+            Kind = SetlistIntentKind.Remove,
+            Cursor = 1,
+            Location = @"C:\songs\second",
+        });
+
+        Assert.Equal(["First"], removed.Entries.Select(entry => entry.Title));
+
+        var stale = state.Apply(new SetlistIntent
+        {
+            CommandId = "4",
+            Kind = SetlistIntentKind.Remove,
+            Cursor = 0,
+            Location = @"C:\songs\second",
+        });
+
+        Assert.Equal(2, stale.Entries.Count);
+    }
 }
