@@ -64,10 +64,16 @@ public sealed record TheaterEndpoints(
 
         var origins = new List<string>();
 
+        // A serialised origin omits the port when it is the scheme's default (RFC 6454), so
+        // a browser on https://name:443 sends Origin: https://name. Listing the explicit
+        // form only is how the origin check refused Vite's own bundle: it marks the script
+        // and stylesheet `crossorigin`, which makes them CORS requests that carry an Origin
+        // header even same-origin, and they were the only two requests on the page that did.
+        // The page loaded, the assets 403'd, and the app rendered blank.
         foreach (var host in hosts)
         {
-            origins.Add($"http://{host}:{options.Port}");
-            origins.Add($"https://{host}:{options.SecurePort}");
+            origins.Add(options.Port == 80 ? $"http://{host}" : $"http://{host}:{options.Port}");
+            origins.Add(options.SecurePort == 443 ? $"https://{host}" : $"https://{host}:{options.SecurePort}");
         }
 
         foreach (var origin in options.AdditionalOrigins)

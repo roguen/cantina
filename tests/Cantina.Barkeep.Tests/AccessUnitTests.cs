@@ -115,6 +115,29 @@ public sealed class AccessUnitTests
     }
 
     [Fact]
+    public void DefaultPortsAreElidedFromTheOriginsBecauseBrowsersElideThem()
+    {
+        // RFC 6454: a serialised origin omits the port when it is the scheme's default. A
+        // browser on https://name:443 sends `Origin: https://name`, so listing only the
+        // explicit form refuses it. This is not hypothetical - it refused Vite's own bundle,
+        // which is marked `crossorigin` and therefore sends an Origin header even
+        // same-origin, and the app rendered blank while the HTML around it loaded fine.
+        var portless = TheaterEndpoints.Resolve(
+            new NetworkOptions { Mode = BarkeepBinding.Lan, Address = "192.0.2.24", Port = 80, SecurePort = 443 },
+            "THEATER-PC",
+            development: false);
+
+        Assert.Contains("https://192.0.2.24", portless.AllowedOrigins);
+        Assert.Contains("http://192.0.2.24", portless.AllowedOrigins);
+        Assert.DoesNotContain("https://192.0.2.24:443", portless.AllowedOrigins);
+        Assert.DoesNotContain("http://192.0.2.24:80", portless.AllowedOrigins);
+
+        // A non-default port is still named, because there the browser names it too.
+        var ported = TheaterEndpoints.Resolve(LanOptions("192.0.2.24"), "THEATER-PC", development: false);
+        Assert.Contains("https://192.0.2.24:5274", ported.AllowedOrigins);
+    }
+
+    [Fact]
     public void TheFirewallRuleIsScopedToTheSubnetAndThePorts()
     {
         var endpoints = TheaterEndpoints.Resolve(LanOptions("192.0.2.24"), "THEATER-PC", development: false);
