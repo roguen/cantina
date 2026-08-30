@@ -30,6 +30,7 @@ public sealed record CueStatus(
 public sealed class YargCueService(
     YargSessionTracker tracker,
     IYargActuator actuator,
+    ActuationGate actuation,
     SetlistJournal journal,
     TimeProvider clock)
 {
@@ -80,12 +81,17 @@ public sealed class YargCueService(
             return Status(request, "replayed", "this command id was already journaled; not re-executed", loaded: null);
         }
 
-        var actuation = Actuate(request);
+        string? misstep;
 
-        if (actuation is not null)
+        using (actuation.Hold())
+        {
+            misstep = Actuate(request);
+        }
+
+        if (misstep is not null)
         {
             journal.Resolve(request.CommandId, SetlistOutcome.Failed, clock);
-            return Status(request, "failed", actuation, loaded: null);
+            return Status(request, "failed", misstep, loaded: null);
         }
 
         return Status(request, "pending-players",

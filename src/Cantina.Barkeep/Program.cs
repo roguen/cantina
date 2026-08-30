@@ -190,6 +190,7 @@ builder.Services.AddRateLimiter(limiter =>
 if (OperatingSystem.IsWindows())
 {
     builder.Services.AddSingleton<IYargActuator, Win32YargActuator>();
+    builder.Services.AddSingleton<ActuationGate>();
     builder.Services.AddSingleton<YargCueService>();
     builder.Services.AddSingleton<PlayerStandInService>();
     builder.Services.AddSingleton<ScoreAdvanceService>();

@@ -84,6 +84,7 @@ public sealed class PlayerStandInServiceTests : IDisposable
 
     private readonly YargSessionTracker _tracker = new();
     private readonly FakeActuator _actuator = new();
+    private readonly ActuationGate _gate = new();
     private readonly SetlistJournal _journal;
     private readonly YargCueService _cue;
     private readonly PlayerStandInService _standIn;
@@ -91,8 +92,8 @@ public sealed class PlayerStandInServiceTests : IDisposable
     public PlayerStandInServiceTests()
     {
         _journal = SetlistJournal.Open(_directory, TimeProvider.System);
-        _cue = new YargCueService(_tracker, _actuator, _journal, TimeProvider.System);
-        _standIn = new PlayerStandInService(_tracker, _actuator, _cue, TimeProvider.System,
+        _cue = new YargCueService(_tracker, _actuator, _gate, _journal, TimeProvider.System);
+        _standIn = new PlayerStandInService(_tracker, _actuator, _gate, _cue, TimeProvider.System,
             Options.Create(new DebugOptions
             {
                 Enabled = true,
