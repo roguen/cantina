@@ -137,13 +137,53 @@ public sealed class SongIndex
                 };
             }
 
-            // .sng archives are the Geomitron Bridge handoff baseline (D-007) but none
-            // exists in this library yet, so their metadata parse is deliberately
-            // unimplemented rather than written against a guessed format. Each one found
-            // is reported by name so the gap is visible the day the first one lands.
+            // .sng archives are the Geomitron Bridge handoff shape (D-007). Their parse
+            // waited for a real file rather than a guessed format (D-025); the first one
+            // landed 2026-08-29 and SngDocument was written against it (D-030). The
+            // location an .sng is indexed under is the file path itself, which is what
+            // currentSong.json states for an archive-loaded song, so the cue pipeline's
+            // path join works unchanged.
             foreach (var sngPath in Directory.EnumerateFiles(directory, "*.sng", SearchOption.AllDirectories))
             {
-                skipped.Add(new SkippedFolder(sngPath, "sng-metadata-not-yet-implemented"));
+                if (found.ContainsKey(sngPath))
+                {
+                    skipped.Add(new SkippedFolder(sngPath, "duplicate-location"));
+                    continue;
+                }
+
+                SngDocument? sng;
+                string reason;
+
+                try
+                {
+                    using var stream = new FileStream(
+                        sngPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+                    if (!SngDocument.TryRead(stream, out sng, out reason) || sng is null)
+                    {
+                        skipped.Add(new SkippedFolder(sngPath, reason));
+                        continue;
+                    }
+                }
+                catch (IOException)
+                {
+                    // Mid-download, or locked by the writer. The acquisition watcher
+                    // retries these; a plain rescan just reports the fact.
+                    skipped.Add(new SkippedFolder(sngPath, "sng-unreadable"));
+                    continue;
+                }
+
+                found[sngPath] = new IndexedSong
+                {
+                    Location = sngPath,
+                    Title = sng.Title,
+                    Artist = sng.Artist,
+                    Album = sng.Album,
+                    Genre = sng.Genre,
+                    Year = sng.Year,
+                    Charter = sng.Charter,
+                    SongLengthMilliseconds = sng.SongLengthMilliseconds,
+                };
             }
         }
 
@@ -175,6 +215,15 @@ public sealed class SongIndex
         }
 
         return report;
+    }
+
+    /// <summary>The song indexed at exactly this location, if any — the D-025 join key as a lookup.</summary>
+    public IndexedSong? FindByLocation(string location)
+    {
+        lock (_gate)
+        {
+            return _songs.GetValueOrDefault(location);
+        }
     }
 
     /// <summary>

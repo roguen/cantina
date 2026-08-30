@@ -788,3 +788,37 @@ start was not captured.
   `cantina.aero4ge.com`** — still on the private authority, since the public certificate is
   not issued yet — with the client validating **by name** as well as by chain, and the
   plain-HTTP redirect now targeting the name. Server tests 91 → 99, client 11 → 16.
+
+## 2026-08-29 · The Geomitron Bridge handoff, end to end — session 020
+
+- Recorded: 2026-08-29 20:30 PDT
+- Duration: not captured
+- The owner widened the standing authorization — "get this project done autonomously and
+  with as little hands on from me as you can" — said directly after being asked to drive
+  Bridge's GUI once. That task was therefore taken as delegated and done as his stand-in:
+  one settings toggle (`.sng` retention on, corroborated outside the UI), one download.
+  The product automates none of it.
+- First the theater was made safe to work in. The paused Quickplay session's pause menu
+  had its cursor on RESUME — the earlier capture showed BACK TO LIBRARY, someone had
+  touched it — which is exactly why the skill demands a screenshot before any Enter on a
+  blind menu. Five verified Downs, one Enter, `Gameplay/Paused → Menu/NoSong` in 195 ms.
+- Everything gated on evidence produced its evidence in one evening: the first real `.sng`
+  (Everlong, drums-only, 2.5 MB), its version-1 layout read off the actual bytes, SCAN
+  SONGS found in the library's MORE OPTIONS popup and driven by pointer click, and the
+  scan resolving D-025's 652-versus-447 mystery — **652 → 448**, a stale songcache all
+  along. Cantina's index and YARG's library now agree exactly.
+- Then the pipeline ran against the real world, not fakes: Detected through Cued,
+  Completed, Everlong next in the durable setlist, YARG at SELECT INSTRUMENT, cue
+  `pending-players`. The screen backed out to the library afterward and the state was
+  verified by screenshot both ways.
+- Implementation honesty worth keeping: `WaitForSongVisibleAsync` is a named no-op because
+  YARG's library is unobservable and pretending otherwise would be a claim with no
+  mechanism; the refresh clicks are open-loop with the cue read-back as the real verifier;
+  and instrument setup reads Menu/NoSong on the wire — indistinguishable from idle — so a
+  cue dispatched during setup would type into the wrong screen. Pre-existing D-015
+  blindness, now written down in D-030.
+- One user-visible note: the morning's Add taps went into the scratch data directory this
+  session's test servers were using, so they are not in the real setlist. The real journal
+  now holds Everlong at play-next.
+- Server tests 105 → 122. D-030 recorded; the geomitron doc's status updated; two roadmap
+  items ticked.

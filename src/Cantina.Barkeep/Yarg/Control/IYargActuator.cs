@@ -46,6 +46,14 @@ public interface IYargActuator
     bool ClearSearch();
 
     /// <summary>
+    /// Clicks an arbitrary configured coordinate. Same contract as the search-box click:
+    /// the coordinate is evidence from a measurement, a miss cannot be detected here, and
+    /// whatever composed the click owns verifying the outcome. Added for the Scan Songs
+    /// sequence the 2026-08-29 measurement proved reachable by pointer (D-030).
+    /// </summary>
+    bool ClickAt(int x, int y);
+
+    /// <summary>
     /// Types the query with virtual key + scan code — the shape a real keyboard produces.
     /// Returns false without typing anything when a character has no mapping, because a
     /// query that types differently from what was requested invalidates the selection.

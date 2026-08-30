@@ -52,6 +52,12 @@ public sealed class YargCueServiceTests : IDisposable
             return true;
         }
 
+        public bool ClickAt(int x, int y)
+        {
+            Actions.Add($"click-at:{x},{y}");
+            return true;
+        }
+
         public bool TypeQuery(string query)
         {
             Actions.Add($"type:{query}");

@@ -48,6 +48,12 @@ public enum SetlistIntentKind
     /// setlist state.
     /// </summary>
     Cue = 4,
+
+    /// <summary>
+    /// Insert the entry immediately after the cursor — the play-next slot the acquisition
+    /// pipeline promises for a song that just arrived (docs/geomitron-bridge-integration.md).
+    /// </summary>
+    InsertNext = 5,
 }
 
 /// <summary>
@@ -103,6 +109,16 @@ public sealed record SetlistState
                     entries.RemoveAt(index);
                     var cursor = index < Cursor ? Cursor - 1 : Cursor;
                     return new SetlistState { Entries = entries, Cursor = Clamp(cursor, entries.Count) };
+                }
+
+            case SetlistIntentKind.InsertNext when intent.Entry is not null:
+                {
+                    // After the cursor, or first into an empty list. The cursor does not
+                    // move: the current song stays current, and the arrival plays next.
+                    var entries = new List<SetlistEntry>(Entries);
+                    var slot = entries.Count == 0 ? 0 : Math.Min(Cursor + 1, entries.Count);
+                    entries.Insert(slot, intent.Entry);
+                    return this with { Entries = entries };
                 }
 
             case SetlistIntentKind.MoveCursor when intent.Cursor is { } target:

@@ -137,9 +137,14 @@ target-environment evidence.
   (D-023) and resolved only when gameplay is observed with the requested hash. Proven
   unattended on this host by the SelfTest `cue` suite: staged, cued, players stood in,
   verified by outcome in 15 s
-- [ ] Refresh stock YARG, prove the exact imported song is visible, and fulfill
+- [x] Refresh stock YARG, prove the exact imported song is visible, and fulfill
   play-next without interrupting an active song —
-  [#17](https://github.com/roguen/cantina/issues/17)
+  [#17](https://github.com/roguen/cantina/issues/17), proven end to end on this host on
+  2026-08-29 (D-030): a real Geomitron Bridge `.sng` download stabilized, validated against
+  the real format, indexed (448 = YARG's own count, resolving D-025's 652 mystery as a
+  stale cache), Scan Songs driven by pointer click, inserted next in the durable setlist,
+  and cued to SELECT INSTRUMENT with the cue honestly `pending-players`. Folder arrivals
+  and a repeatable SelfTest suite remain open on the issue
 - [x] Report bounded success and honest failure on the iPad — the observation half is
   served two ways, `GET /api/live` and the decimated, change-driven `/ws/live` push feed per
   docs/live-state.md, and the command half (`/api/cue`, `/api/setlist`) answers with named
@@ -200,8 +205,12 @@ target-environment evidence.
   [#39](https://github.com/roguen/cantina/issues/39) settles whether Cantina presses that
   key or the players do; D-015 rejected it as "multi-step", which the measurement shows it
   is not
-- [ ] Recover acquisition and play intent without duplicate install, setlist insertion,
-  refresh, or late cue — [#17](https://github.com/roguen/cantina/issues/17)
+- [x] Recover acquisition and play intent without duplicate install, setlist insertion,
+  refresh, or late cue — the acquisition journal (D-030): lease before work, receipt at
+  outcome, completed imports never rerun, crashed imports re-claimable because every step
+  is idempotent, failed imports retried once per sweep, ambiguous ones held for eyes.
+  Deterministic coverage in `AcquisitionTests`; the crash matrix with real kills remains
+  future work on [#17](https://github.com/roguen/cantina/issues/17)
 - [x] Record measured end-to-end latency — `Cantina.SelfTest run latency`, on the theater
   PC with YARG broadcasting. Steady state, first request reported separately because it
   carries JIT and connection setup: **search over 447 songs p50 0.5 ms / p95 4.1 ms**

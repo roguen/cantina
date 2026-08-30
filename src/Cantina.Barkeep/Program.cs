@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Cantina.Barkeep;
 using Cantina.Barkeep.Access;
+using Cantina.Barkeep.Acquisition;
 using Cantina.Barkeep.Library;
 using Cantina.Barkeep.Network;
 using Cantina.Barkeep.Setlist;
@@ -168,6 +169,41 @@ if (OperatingSystem.IsWindows())
     builder.Services.AddSingleton<IYargActuator, Win32YargActuator>();
     builder.Services.AddSingleton<YargCueService>();
     builder.Services.AddHostedService<CueConfirmationPoller>();
+
+    // Acquisition: the Geomitron Bridge filesystem handoff (D-007, D-030). Off unless a
+    // watch directory is named, and Windows-only because the refresh drives YARG's menus.
+    builder.Services.Configure<AcquisitionOptions>(
+        builder.Configuration.GetSection(AcquisitionOptions.SectionName));
+
+    if (!string.IsNullOrWhiteSpace(
+        builder.Configuration[$"{AcquisitionOptions.SectionName}:WatchDirectory"]))
+    {
+        builder.Services.AddSingleton<ISongArrivalPort, FileArrivalPort>();
+        builder.Services.AddSingleton<ISongIndexPort, LibraryIndexPort>();
+        builder.Services.AddSingleton<IYargSessionPort, TrackerSessionPort>();
+        builder.Services.AddSingleton<ISetlistPort, JournalSetlistPort>();
+        builder.Services.AddSingleton(provider => AcquisitionJournal.Open(
+            provider.GetRequiredService<IOptions<SetlistOptions>>().Value.ResolveDataDirectory()));
+        builder.Services.AddSingleton<IImportPlayNextJournal>(provider =>
+            provider.GetRequiredService<AcquisitionJournal>());
+        builder.Services.AddSingleton<ImportPlayNextCoordinator>(provider =>
+            new ImportPlayNextCoordinator(
+                provider.GetRequiredService<ISongArrivalPort>(),
+                provider.GetRequiredService<ISongIndexPort>(),
+                provider.GetRequiredService<IYargSessionPort>(),
+                provider.GetRequiredService<ISetlistPort>(),
+                provider.GetRequiredService<IImportPlayNextJournal>(),
+                provider.GetRequiredService<TimeProvider>(),
+                new ImportPlayNextOptions
+                {
+                    // The real handoff is a cross-volume move that can take a while to
+                    // stabilize; the harness default of 3 probes fits fakes, not disks.
+                    MaximumStabilizationAttempts = 40,
+                }));
+        builder.Services.AddSingleton<AcquisitionWatcher>();
+        builder.Services.AddHostedService(provider =>
+            provider.GetRequiredService<AcquisitionWatcher>());
+    }
 }
 
 var app = builder.Build();
@@ -349,6 +385,18 @@ app.MapPost("/api/cue", (CueRequest request, IServiceProvider services) =>
     .RequireRateLimiting("commands")
     .WithName("PostCue");
 
+// What arrived through the Geomitron Bridge handoff and what became of each item — the
+// honest acquisition progress the roadmap promises the iPad. Empty when acquisition is
+// not configured, which is itself information.
+app.MapGet("/api/acquisition/recent", (IServiceProvider services) =>
+    {
+        var watcher = services.GetService<AcquisitionWatcher>();
+        return watcher is null
+            ? Results.Ok(Array.Empty<AcquisitionRecord>())
+            : Results.Ok(watcher.Recent);
+    })
+    .WithName("GetRecentAcquisitions");
+
 app.MapGet("/api/cue/current", (IServiceProvider services) =>
     {
         var service = services.GetService<YargCueService>();
@@ -525,6 +573,12 @@ app.MapFallback(context =>
         return Task.CompletedTask;
     }
 
+    // The content type has to be set explicitly. SendFileAsync does not infer one, and
+    // Barkeep sends X-Content-Type-Options: nosniff, so a browser is both unable to guess
+    // and forbidden from trying: Safari offered to *download* the home page rather than
+    // render it. curl reported 200 and said nothing, which is why this survived every
+    // automated check and failed on the first real device.
+    context.Response.ContentType = "text/html; charset=utf-8";
     return context.Response.SendFileAsync(index);
 });
 
