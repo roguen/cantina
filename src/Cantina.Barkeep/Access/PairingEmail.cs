@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 using System.Collections.Concurrent;
-using System.Net.Mail;
 using Microsoft.Extensions.Options;
 
 namespace Cantina.Barkeep.Access;
@@ -30,8 +29,26 @@ public sealed class PairingEmailOptions
 
     public bool UseStartTls { get; set; } = true;
 
+    /// <summary>
+    /// The name EHLO announces. The house mail host rejects a bare machine name by
+    /// policy (need fully-qualified hostname), so empty resolves to the sender's domain,
+    /// which is fully qualified by construction.
+    /// </summary>
+    public string HelloName { get; set; } = string.Empty;
+
     /// <summary>Emailed codes per rolling hour. Pairing is rare; asking often is a signal.</summary>
     public int RequestsPerHour { get; set; } = 3;
+
+    public string ResolveHelloName()
+    {
+        if (HelloName.Length > 0)
+        {
+            return HelloName;
+        }
+
+        var at = From.IndexOf('@', StringComparison.Ordinal);
+        return at >= 0 && at < From.Length - 1 ? From[(at + 1)..] : "cantina.invalid";
+    }
 
     public bool Enabled => To.Length > 0 && From.Length > 0 && SmtpHost.Length > 0;
 }
@@ -46,22 +63,6 @@ public sealed record PairingEmailStatus(string State, string Detail);
 public interface IPairingMailTransport
 {
     Task SendAsync(string sender, string recipient, string subject, string body, CancellationToken cancellation);
-}
-
-/// <summary>One message over SMTP with STARTTLS — the house mail host accepts local
-/// delivery credential-free, so there is no credential here to protect.</summary>
-public sealed class SmtpPairingMailTransport(IOptions<PairingEmailOptions> options) : IPairingMailTransport
-{
-    public async Task SendAsync(string sender, string recipient, string subject, string body, CancellationToken cancellation)
-    {
-        using var client = new SmtpClient(options.Value.SmtpHost, options.Value.SmtpPort)
-        {
-            EnableSsl = options.Value.UseStartTls,
-        };
-        using var message = new MailMessage(sender, recipient, subject, body);
-
-        await client.SendMailAsync(message, cancellation).ConfigureAwait(false);
-    }
 }
 
 /// <summary>
@@ -115,7 +116,8 @@ public sealed class PairingEmailService(
                 options.Value.From, options.Value.To,
                 "Cantina pairing code", body, cancellation).ConfigureAwait(false);
         }
-        catch (Exception error) when (error is SmtpException or IOException or InvalidOperationException or OperationCanceledException)
+        catch (Exception error) when (error is IOException or System.Net.Sockets.SocketException
+            or System.Security.Authentication.AuthenticationException or InvalidOperationException or OperationCanceledException)
         {
             return new("failed", $"the email could not be sent: {error.Message}");
         }
