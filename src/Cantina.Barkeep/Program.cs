@@ -121,6 +121,8 @@ builder.Services.Configure<SetlistOptions>(
 builder.Services.Configure<LibraryOptions>(
     builder.Configuration.GetSection(LibraryOptions.SectionName));
 builder.Services.AddSingleton<SongIndex>();
+builder.Services.AddSingleton(provider => FavoritesStore.Open(
+    provider.GetRequiredService<IOptions<SetlistOptions>>().Value.ResolveDataDirectory()));
 builder.Services.AddHostedService<LibraryService>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<YargSessionTracker>();
@@ -355,6 +357,23 @@ app.MapGet("/api/songs", (string? query, int? limit, SongIndex index) =>
             index.Count,
             index.LastScan))
     .WithName("SearchSongs");
+
+// Starred songs: the filter that narrows the library to what the house plays.
+app.MapGet("/api/favorites", (FavoritesStore favorites) => Results.Ok(favorites.All))
+    .WithName("GetFavorites");
+
+app.MapPost("/api/favorites", (FavoriteRequest request, FavoritesStore favorites) =>
+    {
+        if (string.IsNullOrWhiteSpace(request.Location))
+        {
+            return Results.BadRequest(new CommandRejected("location is required"));
+        }
+
+        favorites.Set(request.Location, request.Favored);
+        return Results.Ok(favorites.All);
+    })
+    .RequireRateLimiting("commands")
+    .WithName("SetFavorite");
 
 app.MapPost("/api/library/rescan", (
         SongIndex index,

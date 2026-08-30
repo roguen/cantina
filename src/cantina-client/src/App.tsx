@@ -25,6 +25,8 @@ import {
   type StandInStatus,
   debugView,
   deviceLabel,
+  fetchFavorites,
+  setFavorite,
   providerDownload,
   providerDownloads,
   providerEnabled,
@@ -82,6 +84,9 @@ function App() {
   const [downloads, setDownloads] = useState<ProviderDownload[]>([])
   const [advance, setAdvanceState] = useState<AdvanceStatus | null>(null)
   const [ownLabel, setOwnLabel] = useState<string | null>(null)
+  const [favorites, setFavorites] = useState<Set<string>>(new Set())
+  const [favoritesOnly, setFavoritesOnly] = useState(false)
+  const [groupByArtist, setGroupByArtist] = useState(false)
   const [standIn, setStandIn] = useState<StandInStatus | null>(null)
   const [standInBusy, setStandInBusy] = useState(false)
 
@@ -113,6 +118,11 @@ function App() {
     deviceLabel()
       .then(setOwnLabel)
       .catch(() => setOwnLabel(null))
+    fetchFavorites()
+      .then((list) => setFavorites(new Set(list)))
+      .catch(() => {
+        // The connection banner already reports an unreachable Barkeep.
+      })
   }, [paired])
 
   // While armed, the advance loop's sentence changes with each episode.
@@ -292,6 +302,15 @@ function App() {
       })
   }
 
+  const onStar = (song: IndexedSong) => {
+    const favored = !favorites.has(song.location)
+    setFavorite(song.location, favored)
+      .then((list) => setFavorites(new Set(list)))
+      .catch((error: unknown) => {
+        if (!unpair(error)) setActionError('The favorite could not reach Barkeep.')
+      })
+  }
+
   const onRemove = (index: number, location: string | null) => {
     setActionError(null)
     removeFromSetlist(index, location)
@@ -300,6 +319,19 @@ function App() {
         if (!unpair(error)) setActionError('The setlist change could not reach Barkeep.')
       })
   }
+
+  // The library, as the toggles ask for it: optionally favorites-only, optionally
+  // grouped under artist headers. Grouping preserves the search ranking within groups.
+  const visibleSongs = favoritesOnly ? songs.filter((song) => favorites.has(song.location)) : songs
+  const byArtist = new Map<string, IndexedSong[]>()
+  for (const song of visibleSongs) {
+    const group = byArtist.get(song.artist)
+    if (group) group.push(song)
+    else byArtist.set(song.artist, [song])
+  }
+  const groupedSongs: Array<[string | null, IndexedSong[]]> = groupByArtist
+    ? [...byArtist.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+    : [[null, visibleSongs]]
 
   if (!paired) {
     return (
@@ -462,28 +494,58 @@ function App() {
 
             {searchError && <p className="error">{searchError}</p>}
 
-            <ul className="songs">
-              {songs.map((song) => (
-                <li key={song.location}>
-                  <div className="songs__meta">
-                    <strong>{song.title}</strong>
-                    <span>
-                      {song.artist}
-                      {song.charter && ` · ${stripColorTags(song.charter)}`}
-                    </span>
-                    <InstrumentChips instruments={song.instruments} />
-                  </div>
-                  <div className="songs__actions">
-                    <button type="button" onClick={() => onAdd(song)}>
-                      {justAdded === song.location ? 'Added ✓' : 'Add to setlist'}
-                    </button>
-                    <button type="button" className="primary" onClick={() => onCue(song)}>
-                      Play now
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <div className="library__view">
+              <button
+                type="button"
+                className={favoritesOnly ? 'library__toggle library__toggle--on' : 'library__toggle'}
+                onClick={() => setFavoritesOnly((current) => !current)}
+              >
+                ★ Favorites
+              </button>
+              <button
+                type="button"
+                className={groupByArtist ? 'library__toggle library__toggle--on' : 'library__toggle'}
+                onClick={() => setGroupByArtist((current) => !current)}
+              >
+                Group by artist
+              </button>
+            </div>
+
+            {groupedSongs.map(([artist, grouped]) => (
+              <div key={artist ?? 'flat'}>
+                {artist !== null && <h3 className="songs__artist">{artist}</h3>}
+                <ul className="songs">
+                  {grouped.map((song) => (
+                    <li key={song.location}>
+                      <div className="songs__meta">
+                        <strong>{song.title}</strong>
+                        <span>
+                          {song.artist}
+                          {song.charter && ` · ${stripColorTags(song.charter)}`}
+                        </span>
+                        <InstrumentChips instruments={song.instruments} />
+                      </div>
+                      <div className="songs__actions">
+                        <button
+                          type="button"
+                          className={favorites.has(song.location) ? 'songs__star songs__star--on' : 'songs__star'}
+                          aria-label={favorites.has(song.location) ? `Unstar ${song.title}` : `Star ${song.title}`}
+                          onClick={() => onStar(song)}
+                        >
+                          ★
+                        </button>
+                        <button type="button" onClick={() => onAdd(song)}>
+                          {justAdded === song.location ? 'Added ✓' : 'Add to setlist'}
+                        </button>
+                        <button type="button" className="primary" onClick={() => onCue(song)}>
+                          Play now
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </section>
         </>
       )}
