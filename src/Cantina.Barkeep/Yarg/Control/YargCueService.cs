@@ -220,9 +220,20 @@ public sealed class YargCueService(
             return "clearing the search field was refused by Windows";
         }
 
-        if (!actuator.TypeQuery(request.Query))
+        // Type what the keyboard map can produce. Titles carry characters no scan code
+        // makes ("(Bang Your Head) Metal Health" has two); refusing the whole cue for
+        // them was the first bug the real iPad found. A lossy query is safe here because
+        // the outcome is verified by reading back what actually loaded.
+        var typed = actuator.TypeablePortion(request.Query);
+
+        if (typed.Length == 0)
         {
-            return $"the query \"{request.Query}\" contains a character with no key mapping; nothing was typed";
+            return $"no character of \"{request.Query}\" can be typed; nothing was sent";
+        }
+
+        if (!actuator.TypeQuery(typed))
+        {
+            return "typing the query was refused by Windows";
         }
 
         Thread.Sleep(900);   // let YARG's filter settle (D-017 measured cadence)

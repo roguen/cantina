@@ -58,6 +58,11 @@ public sealed class YargCueServiceTests : IDisposable
             return true;
         }
 
+        public string TypeablePortion(string query) =>
+            string.Join(' ',
+                new string([.. query.Where(c => char.IsLetterOrDigit(c) || c is ' ' or '-' or '\'' or ',' or '.')])
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
         public bool TypeQuery(string query)
         {
             Actions.Add($"type:{query}");
@@ -124,6 +129,23 @@ public sealed class YargCueServiceTests : IDisposable
         Assert.Equal("refused", status.State);
         Assert.Equal("YARG is not running", status.Detail);
         Assert.Empty(_actuator.Actions);
+    }
+
+    [Fact]
+    public void ATitleWithUnmappableCharactersTypesItsTypeablePortion()
+    {
+        // The first live iPad cue died on "(Bang Your Head) Metal Health": the whole
+        // query was refused because two characters had no scan code. The cue now types
+        // what the keyboard can produce and lets verify-by-outcome judge the match.
+        FeedMenu();
+
+        var status = _service.Cue(new CueRequest(
+            "cue-parens",
+            new SetlistEntry("h9", "(Bang Your Head) Metal Health", "Quiet Riot"),
+            "(Bang Your Head) Metal Health"));
+
+        Assert.Equal("pending-players", status.State);
+        Assert.Contains("type:Bang Your Head Metal Health", _actuator.Actions);
     }
 
     [Fact]
@@ -261,6 +283,6 @@ public sealed class YargCueServiceTests : IDisposable
         var status = _service.Cue(Request());
 
         Assert.Equal("failed", status.State);
-        Assert.Contains("no key mapping", status.Detail, StringComparison.Ordinal);
+        Assert.Contains("refused by Windows", status.Detail, StringComparison.Ordinal);
     }
 }

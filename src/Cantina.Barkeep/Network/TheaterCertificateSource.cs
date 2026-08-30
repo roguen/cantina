@@ -38,14 +38,14 @@ public sealed class TheaterCertificateSource : IDisposable
     private readonly ILogger _log;
 
     private TheaterCertificates _current;
-    private SslStreamCertificateContext _context;
+    private SslStreamCertificateContext? _context;
     private (DateTime Written, long Length) _stamp;
 
     public TheaterCertificateSource(TheaterCertificates initial, NetworkOptions options, ILogger log)
     {
         _current = initial;
         _log = log;
-        _context = ContextFor(initial);
+        _context = ContextFor(initial, log);
 
         // Only a supplied certificate is watched. The theater authority reissues its own
         // leaf at startup and has a ten-year anchor, so there is nothing arriving from
@@ -83,7 +83,11 @@ public sealed class TheaterCertificateSource : IDisposable
     {
         lock (_gate)
         {
-            return new SslServerAuthenticationOptions { ServerCertificateContext = _context };
+            // The context (leaf + intermediates, pre-built) is preferred; a bare
+            // certificate is the fallback when the chain engine refused to build one.
+            return _context is not null
+                ? new SslServerAuthenticationOptions { ServerCertificateContext = _context }
+                : new SslServerAuthenticationOptions { ServerCertificate = _current.Server };
         }
     }
 
@@ -108,7 +112,7 @@ public sealed class TheaterCertificateSource : IDisposable
         try
         {
             var reloaded = TheaterCertificateAuthority.LoadSupplied(_watchedPath, _password, _keyPath);
-            var context = ContextFor(reloaded);
+            var context = ContextFor(reloaded, _log);
 
             lock (_gate)
             {
@@ -138,8 +142,25 @@ public sealed class TheaterCertificateSource : IDisposable
         }
     }
 
-    private static SslStreamCertificateContext ContextFor(TheaterCertificates certificates) =>
-        SslStreamCertificateContext.Create(certificates.Server, certificates.Chain);
+    /// <summary>
+    /// Null when Windows' chain engine refuses to build a context — observed on the
+    /// theater PC on 2026-08-30 for certificates it had accepted an hour earlier, with
+    /// CryptographicException("unknown chain building error"). The context only pre-packs
+    /// the intermediates; serving the bare certificate is what Barkeep did for weeks
+    /// before the reload work, so degrading beats dying, and the reason is logged.
+    /// </summary>
+    private static SslStreamCertificateContext? ContextFor(TheaterCertificates certificates, ILogger log)
+    {
+        try
+        {
+            return SslStreamCertificateContext.Create(certificates.Server, certificates.Chain);
+        }
+        catch (CryptographicException error)
+        {
+            NetworkLog.CertificateContextUnavailable(log, error.Message);
+            return null;
+        }
+    }
 
     private static (DateTime Written, long Length) StampOf(string path)
     {

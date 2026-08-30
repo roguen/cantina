@@ -14,4 +14,7 @@ public static partial class NetworkLog
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Certificate file changed but could not be loaded: {Reason}. Still serving the previous one; will retry.")]
     public static partial void CertificateReloadFailed(ILogger logger, string reason);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The chain engine refused to build a certificate context ({Reason}); serving the bare certificate instead. Clients that lack the intermediate may fail validation.")]
+    public static partial void CertificateContextUnavailable(ILogger logger, string reason);
 }

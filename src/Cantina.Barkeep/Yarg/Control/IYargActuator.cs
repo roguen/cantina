@@ -54,9 +54,19 @@ public interface IYargActuator
     bool ClickAt(int x, int y);
 
     /// <summary>
+    /// The subset of a query this actuator can actually type, in order. The scan-code map
+    /// covers letters, digits, space, and a little punctuation; real titles carry
+    /// parentheses and worse — the first live iPad cue died on "(Bang Your Head) Metal
+    /// Health" because the whole query was refused for two characters. The composer types
+    /// this portion instead: a lossy query is safe, because selection is verified by
+    /// reading back what loaded, and a near-miss fails by name rather than silently.
+    /// </summary>
+    string TypeablePortion(string query);
+
+    /// <summary>
     /// Types the query with virtual key + scan code — the shape a real keyboard produces.
-    /// Returns false without typing anything when a character has no mapping, because a
-    /// query that types differently from what was requested invalidates the selection.
+    /// Returns false without typing anything when a character has no mapping; callers
+    /// pass <see cref="TypeablePortion"/> output, so that is a fault, not a title.
     /// </summary>
     bool TypeQuery(string query);
 
