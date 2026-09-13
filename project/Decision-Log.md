@@ -1510,3 +1510,47 @@ noticed.
 
 Registering the task is a standing change to the operator's machine, so it runs on
 the operator's explicit go, not as part of a merge. YARG's own lifecycle stays #23.
+
+## D-038 · Barkeep launches and restarts YARG, and a launch is done only when the library is open
+
+**2026-09-13.** The owner decided #23: Barkeep launches YARG. The resolution checklist
+the issue carried, answered item by item and measured on the theater PC the same day:
+
+- **Direct executable, explicit path.** `YargProcess:ExecutablePath` names
+  `YARG.exe`; never discovered from YARC Launcher's files, never taken from a client.
+  Two installs exist; both of YARG's recent logs (`Player.log`, `Player-prev.log`) ran
+  `12f5ee72…` (Unity 6000.3.5f2, YARG v0.15), and that is the configured one. The other
+  is an older December build.
+- **A launch is observed, not assumed.** Measured timings: window at 6.5 s, data stream
+  live at 11.3 s, library loaded and a real scene at about 49 s. The service reports
+  `starting`, then `loading`, then `running`, and only datagrams that arrived *after* the
+  launch count, because right after a restart the tracker still holds the old process's
+  last Menu reading. Pressing Enter on that would land on nothing; a test pins it.
+- **A launched YARG does not take the screen** (measured: it came up behind other
+  windows), so the service focuses it through the cue's actuator, under the actuation
+  gate.
+- **One Enter opens the Music Library.** A fresh process has no remembered cursor: it
+  sits on QUICKPLAY, and Enter opens the library, verified by screenshot. Blind-menu
+  honesty holds: this is the one menu state a fresh process makes knowable, and a
+  dialog that ever intervenes makes the next cue fail by name.
+- **The data stream survives a restart.** `DataStreamEnable` is persisted in
+  `settings.json`; the relaunched process broadcast within five seconds.
+- **Restart semantics.** Refused during a song unless the operator confirms (the iPad
+  makes that a two-tap arm-then-commit). A polite close gets 15 s, then the process is
+  terminated, and a process that survives even that is reported by name. Measured: the
+  polite close took 0.6 s, the whole restart 62 s. The setlist and its cursor are
+  Barkeep's and survive; a cue waiting on the players is failed by name, since its
+  screen no longer exists.
+- **Process state is first-class.** `GET /api/yarg` reports `not-running`, `starting`,
+  `loading`, `running`, `stopping`, or `unknown` (more than one instance), separate from
+  the data stream's freshness.
+- **Interactive session.** Barkeep runs in the operator's session (D-037), which is
+  what lets it start a GUI process and focus it; measured working.
+- **Security.** Launch and restart are authenticated like every `/api` route,
+  rate-limited, idempotent (a launch while starting or running changes nothing), and
+  accept no path, arguments, or working directory.
+- **Startup.** `YargProcess:LaunchAtStartup` brings YARG up after Barkeep does, so a
+  reboot, then the operator's sign-in, restores the whole theater.
+- **Not solved, recorded:** #8's exclusive-mode audio case cannot be seen from a launch.
+  A game can come up with no audio (it did on 2026-08-30, via Steam Streaming
+  Speakers). The honest status says "ready", not "audible".

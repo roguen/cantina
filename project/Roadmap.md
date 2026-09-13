@@ -231,8 +231,10 @@ target-environment evidence.
 - [x] Barkeep survives a reboot (D-037): one opt-in settings file, a sign-in scheduled
   task with a five-minute watchdog, and a one-command deploy that publishes before it
   stops anything. Operator doc: `docs/theater-deployment.md`
-- [ ] Whether Barkeep launches and restarts YARG itself —
-  [#23](https://github.com/roguen/cantina/issues/23), the owner's call
+- [x] Barkeep launches and restarts YARG (#23, D-038): explicit executable path, a
+  launch that is done only when the Music Library is open, restart that never ends a
+  song without confirmation, and process state distinct from the data stream. Measured
+  live: polite close 0.6 s, full restart 62 s
 
 ## Beyond
 
