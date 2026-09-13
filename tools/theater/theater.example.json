@@ -1,0 +1,26 @@
+{
+  "Network": {
+    "Mode": "Lan",
+    "Address": "192.168.1.50",
+    "HostNames": [ "cantina.example.com" ],
+    "Port": 80,
+    "SecurePort": 443,
+    "CertificatePath": "C:\\ProgramData\\Cantina\\certs\\fullchain.cer",
+    "CertificateKeyPath": "C:\\ProgramData\\Cantina\\certs\\cantina.key"
+  },
+  "Acquisition": {
+    "WatchDirectory": "C:\\Users\\operator\\Documents\\Clone Hero\\Songs\\Bridge"
+  },
+  "Debug": {
+    "Enabled": false
+  },
+  "PairingEmail": {
+    "To": "operator@example.com",
+    "From": "cantina@example.com",
+    "SmtpHost": "mail.example.com",
+    "SmtpPort": 587,
+    "SmtpUsername": "cantina@example.com",
+    "SmtpPasswordPath": "C:\\ProgramData\\Cantina\\secrets\\smtp-password",
+    "AllowRequesterAddresses": false
+  }
+}
