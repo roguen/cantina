@@ -226,6 +226,14 @@ target-environment evidence.
   age, so ≤ 263 ms at p95 — because measuring it directly needs a scene change, which needs
   input the suite does not send
 
+## M6 · Running unattended
+
+- [x] Barkeep survives a reboot (D-037): one opt-in settings file, a sign-in scheduled
+  task with a five-minute watchdog, and a one-command deploy that publishes before it
+  stops anything. Operator doc: `docs/theater-deployment.md`
+- [ ] Whether Barkeep launches and restarts YARG itself —
+  [#23](https://github.com/roguen/cantina/issues/23), the owner's call
+
 ## Beyond
 
 Two upstream contributions, in increasing order of difficulty.

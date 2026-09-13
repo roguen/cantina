@@ -28,6 +28,10 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
     WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot"),
 });
 
+// The theater's settings file, when the startup task names one (D-037). Attached before
+// anything reads configuration, because the network binding below is decided once.
+TheaterConfiguration.Attach(builder.Configuration, builder.Configuration);
+
 // Where Barkeep listens is decided once, before anything is built, so the certificate's
 // subject names, the accepted Host headers, the accepted browser origins, and the firewall
 // rule printed for the operator are all derived from the same answer (D-026). The default

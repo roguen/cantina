@@ -1482,3 +1482,31 @@ Also proven live in the same session: the D-035 requester-addressed email loop (
 delivery via SMTP2GO, operator notification, hourly ceiling), the index-targeted
 setlist remove (used to restore the setlist after the test), and the score screen's
 "no input device assigned" banner NOT blocking a synthetic ready confirm.
+
+## D-037 · The theater survives a reboot: one settings file, a sign-in task, and a watchdog
+
+**2026-09-13.** The theater PC rebooted overnight and cantina.aero4ge.com went dark.
+Barkeep had only ever run as a process started by hand with a dozen environment
+variables, and nothing on the machine remembered how to bring it back. The
+certificate renewal had landed on schedule; everything else was down until someone
+noticed.
+
+- **One settings file, opt-in by name.** `C:\ProgramData\Cantina\theater.json` holds
+  every theater setting and is attached only when `--TheaterConfig` names it. Opt-in
+  because the in-process test hosts run on this same PC: a file that loaded itself
+  would switch every test run into LAN mode with the real certificate. It sits beneath
+  environment variables and the command line, and a named file that is missing fails
+  startup by name rather than booting a healthy-looking loopback server nobody can
+  reach. No secrets: the SMTP password stays a separate ACL-restricted file.
+- **A sign-in task with a watchdog, not a service.** A per-user scheduled task runs an
+  idempotent launcher at the operator's sign-in and every five minutes after. A
+  Windows service or a logged-off task would put Barkeep in a session whose keystrokes
+  reach no desktop (D-024), so the honest consequence is recorded rather than worked
+  around: after a reboot the theater comes up when the operator's account signs in.
+  Unattended sign-in is a Windows setting and the operator's call.
+- **Deploys are one script.** Publish to staging first, then stop, copy, start through
+  the same launcher, and verify by an HTTPS 200. A failed build never takes the
+  theater down.
+
+Registering the task is a standing change to the operator's machine, so it runs on
+the operator's explicit go, not as part of a merge. YARG's own lifecycle stays #23.
