@@ -104,6 +104,23 @@ main {
 
 .arrivals { display: grid; gap: 0.4rem; }
 
+.yarg {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 0.95rem;
+}
+
+.yarg--not-running { border: 1px solid var(--warning); }
+
+.yarg__restart--armed { border-color: var(--warning); color: var(--warning); }
+
+.yarg__notice { margin: 0; font-size: 0.9rem; opacity: 0.85; }
+
 .stage__continue { width: 100%; padding: 0.8rem; font-size: 1.05rem; }
 
 .arrivals__dismiss {

@@ -36,8 +36,12 @@ That is deliberate. Barkeep sends keystrokes to YARG, and a Windows service, or 
 (D-024). If the PC should come back unattended, sign-in must happen unattended too. That is
 a Windows setting (automatic sign-in) and the operator's call; Cantina does not change it.
 
-YARG itself is not started by this task. Whether Barkeep launches and restarts YARG is issue
-#23, still open.
+YARG is started by Barkeep, not by the task (D-038). With
+`YargProcess:LaunchAtStartup` on, Barkeep launches YARG a few seconds after it starts, waits
+until the library has loaded, and opens the Music Library, so a reboot followed by the
+operator's sign-in brings the whole theater back. The iPad's Stage tab shows YARG's state and
+offers **Start YARG** when it is not running and **Restart YARG** (two taps) when controllers
+stop responding.
 
 ## Deploying a build
 

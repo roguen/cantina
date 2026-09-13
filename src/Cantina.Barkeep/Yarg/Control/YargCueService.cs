@@ -100,6 +100,25 @@ public sealed class YargCueService(
     }
 
     /// <summary>
+    /// Fails a cue that is still waiting on the players, naming why. Used when YARG is
+    /// restarted: the instrument-setup screen the cue was waiting on no longer exists, and
+    /// a cue left pending would hold the stage's status forever.
+    /// </summary>
+    public void Abandon(string reason)
+    {
+        lock (_gate)
+        {
+            if (_current is not { State: "pending-players" } pending)
+            {
+                return;
+            }
+
+            journal.Resolve(pending.CommandId, SetlistOutcome.Failed, clock);
+            _current = pending with { State = "failed", Detail = reason };
+        }
+    }
+
+    /// <summary>
     /// Called by the confirmation poller with each snapshot. Resolves a pending cue when
     /// gameplay is observed: the requested hash is Done; a different hash is Failed and
     /// names what actually loaded (D-015's honest failure, load-bearing since D-017

@@ -2,7 +2,9 @@
   "Network": {
     "Mode": "Lan",
     "Address": "192.168.1.50",
-    "HostNames": [ "cantina.example.com" ],
+    "HostNames": [
+      "cantina.example.com"
+    ],
     "Port": 80,
     "SecurePort": 443,
     "CertificatePath": "C:\\ProgramData\\Cantina\\certs\\fullchain.cer",
@@ -10,6 +12,10 @@
   },
   "Acquisition": {
     "WatchDirectory": "C:\\Users\\operator\\Documents\\Clone Hero\\Songs\\Bridge"
+  },
+  "YargProcess": {
+    "ExecutablePath": "C:\\YARC\\YARG Installs\\<install-id>\\installation\\YARG.exe",
+    "LaunchAtStartup": true
   },
   "Debug": {
     "Enabled": false

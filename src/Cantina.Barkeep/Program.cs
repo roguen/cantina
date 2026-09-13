@@ -12,6 +12,7 @@ using Cantina.Barkeep.Providers;
 using Cantina.Barkeep.Setlist;
 using Cantina.Barkeep.Yarg;
 using Cantina.Barkeep.Yarg.Control;
+using Cantina.Barkeep.Yarg.Lifecycle;
 using Cantina.YargSession;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
@@ -203,6 +204,14 @@ if (OperatingSystem.IsWindows())
     builder.Services.AddSingleton<ScoreContinueService>();
     builder.Services.AddHostedService<CueConfirmationPoller>();
     builder.Services.AddHostedService<ScoreAdvancePoller>();
+
+    // YARG's own lifecycle (#23, D-038): launch and restart from the iPad, and optionally at
+    // Barkeep's startup, from an executable path the theater names explicitly.
+    builder.Services.Configure<YargProcessOptions>(
+        builder.Configuration.GetSection(YargProcessOptions.SectionName));
+    builder.Services.AddSingleton<IYargProcessHost, Win32YargProcessHost>();
+    builder.Services.AddSingleton<YargLifecycleService>();
+    builder.Services.AddHostedService<YargAutoLaunch>();
 
     // Acquisition: the Geomitron Bridge filesystem handoff (D-007, D-030). Off unless a
     // watch directory is named, and Windows-only because the refresh drives YARG's menus.
@@ -483,6 +492,38 @@ app.MapPost("/api/advance", (AdvanceArmRequest request, IServiceProvider service
 // The score screen's one key, from the iPad (#39's decision, manually). Gated on the
 // wire actually showing Score — one of the three scenes it can distinguish — so this
 // never presses blind.
+// YARG's process, as a first-class state distinct from the data stream (#23). Launch and
+// restart take no path, arguments, or working directory from the client: the executable is
+// theater configuration only. Authenticated like every /api route, and rate-limited.
+app.MapGet("/api/yarg", (IServiceProvider services) =>
+    {
+        var lifecycle = services.GetService<YargLifecycleService>();
+        return lifecycle is null
+            ? Results.Ok(new YargProcessStatus("unknown", "YARG's process is managed only on the Windows theater host", false, DateTimeOffset.UtcNow))
+            : Results.Ok(lifecycle.Status);
+    })
+    .WithName("GetYargProcess");
+
+app.MapPost("/api/yarg/launch", (IServiceProvider services) =>
+    {
+        var lifecycle = services.GetService<YargLifecycleService>();
+        return lifecycle is null
+            ? Results.Ok(new YargProcessStatus("refused", "launching YARG requires the Windows theater host", false, DateTimeOffset.UtcNow))
+            : Results.Ok(lifecycle.Launch());
+    })
+    .RequireRateLimiting("commands")
+    .WithName("LaunchYarg");
+
+app.MapPost("/api/yarg/restart", (YargRestartRequest request, IServiceProvider services) =>
+    {
+        var lifecycle = services.GetService<YargLifecycleService>();
+        return lifecycle is null
+            ? Results.Ok(new YargProcessStatus("refused", "restarting YARG requires the Windows theater host", false, DateTimeOffset.UtcNow))
+            : Results.Ok(lifecycle.Restart(request.Confirm));
+    })
+    .RequireRateLimiting("commands")
+    .WithName("RestartYarg");
+
 app.MapPost("/api/score/continue", (IServiceProvider services) =>
     {
         var continues = services.GetService<ScoreContinueService>();

@@ -191,6 +191,37 @@ export async function setFavorite(location: string, favored: boolean): Promise<s
   return response.json() as Promise<string[]>
 }
 
+// YARG's process, distinct from its data stream (#23): not running means launch it;
+// a stale stream means look at the game. The executable is theater configuration only.
+export type YargProcessStatus = {
+  state: 'not-running' | 'starting' | 'loading' | 'running' | 'stopping' | 'unknown' | 'refused'
+  detail: string
+  launchConfigured: boolean
+  updatedAt: string
+}
+
+export async function yargProcess(): Promise<YargProcessStatus> {
+  const response = await call('/api/yarg')
+  if (!response.ok) throw new Error(`yarg status failed: ${response.status}`)
+  return response.json() as Promise<YargProcessStatus>
+}
+
+export async function launchYarg(): Promise<YargProcessStatus> {
+  const response = await call('/api/yarg/launch', { method: 'POST' })
+  if (!response.ok) throw new Error(`launch failed: ${response.status}`)
+  return response.json() as Promise<YargProcessStatus>
+}
+
+export async function restartYarg(confirm: boolean): Promise<YargProcessStatus> {
+  const response = await call('/api/yarg/restart', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ confirm }),
+  })
+  if (!response.ok) throw new Error(`restart failed: ${response.status}`)
+  return response.json() as Promise<YargProcessStatus>
+}
+
 // The score screen's one key, pressed from the iPad. Refused unless the wire shows
 // the score screen, so it can never land blind.
 export async function scoreContinue(): Promise<{ state: string; detail: string }> {

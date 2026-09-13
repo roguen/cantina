@@ -17,6 +17,10 @@ import {
   type CueStatus,
   advanceStatus,
   scoreContinue,
+  launchYarg,
+  restartYarg,
+  yargProcess,
+  type YargProcessStatus,
   setAdvance,
   type AdvanceStatus,
   type DebugView,
@@ -91,6 +95,9 @@ function App() {
   const [standIn, setStandIn] = useState<StandInStatus | null>(null)
   const [standInBusy, setStandInBusy] = useState(false)
   const [continueBusy, setContinueBusy] = useState(false)
+  const [yarg, setYarg] = useState<YargProcessStatus | null>(null)
+  const [yargNotice, setYargNotice] = useState<string | null>(null)
+  const [restartArmed, setRestartArmed] = useState(false)
   const [dismissedArrivals, setDismissedArrivals] = useState<Set<string>>(() => {
     try {
       return new Set(JSON.parse(window.localStorage.getItem('cantina.dismissed-arrivals') ?? '[]') as string[])
@@ -133,6 +140,22 @@ function App() {
         // The connection banner already reports an unreachable Barkeep.
       })
   }, [paired])
+
+  const yargChanging = yarg?.state === 'starting' || yarg?.state === 'loading' || yarg?.state === 'stopping'
+  useEffect(() => {
+    if (!paired) return
+
+    const read = () =>
+      yargProcess()
+        .then(setYarg)
+        .catch(() => {
+          // The connection banner already reports an unreachable Barkeep.
+        })
+
+    read()
+    const timer = window.setInterval(read, yargChanging ? 2000 : 15000)
+    return () => window.clearInterval(timer)
+  }, [paired, yargChanging])
 
   // While armed, the advance loop's sentence changes with each episode.
   useEffect(() => {
@@ -282,6 +305,46 @@ function App() {
       )
       .catch((error: unknown) => {
         if (!unpair(error)) setFindError('The download request could not reach Barkeep.')
+      })
+  }
+
+  const onLaunchYarg = () => {
+    setYargNotice(null)
+    launchYarg()
+      .then((status) => {
+        if (status.state === 'refused') setYargNotice(status.detail)
+        else setYarg(status)
+      })
+      .catch((error: unknown) => {
+        if (!unpair(error)) setYargNotice('The launch could not reach Barkeep.')
+      })
+  }
+
+  // Restart is two taps: the first arms it and says what it will do, the second commits.
+  // A song in progress is named in the arming sentence, and only then is the server told
+  // the operator confirmed ending it.
+  const songInProgress = live?.scene === 'Gameplay' || live?.scene === 'Practice' || live?.playState === 'Paused' || live?.playState === 'Playing'
+  const onRestartYarg = () => {
+    if (!restartArmed) {
+      setRestartArmed(true)
+      setYargNotice(
+        songInProgress
+          ? 'A song is in progress. Tap Restart again to end it and restart YARG.'
+          : 'Tap Restart again to close and relaunch YARG (for controllers that stopped responding).',
+      )
+      window.setTimeout(() => setRestartArmed(false), 6000)
+      return
+    }
+
+    setRestartArmed(false)
+    setYargNotice(null)
+    restartYarg(songInProgress)
+      .then((status) => {
+        if (status.state === 'refused') setYargNotice(status.detail)
+        else setYarg(status)
+      })
+      .catch((error: unknown) => {
+        if (!unpair(error)) setYargNotice('The restart could not reach Barkeep.')
       })
   }
 
@@ -450,6 +513,23 @@ function App() {
           </div>
         )}
       </section>
+
+      {yarg && yarg.state !== 'unknown' && (
+        <section className={`yarg yarg--${yarg.state}`} aria-live="polite">
+          <span className="yarg__state">{yargCopy(yarg)}</span>
+          {yarg.state === 'not-running' && yarg.launchConfigured && (
+            <button type="button" className="primary" onClick={onLaunchYarg}>
+              Start YARG
+            </button>
+          )}
+          {yarg.state === 'running' && yarg.launchConfigured && (
+            <button type="button" className={restartArmed ? 'yarg__restart--armed' : undefined} onClick={onRestartYarg}>
+              {restartArmed ? 'Tap again to restart' : 'Restart YARG'}
+            </button>
+          )}
+        </section>
+      )}
+      {yargNotice && <p className="yarg__notice">{yargNotice}</p>}
 
       {live?.scene === 'Score' && (
         <button type="button" className="primary stage__continue" onClick={onContinue} disabled={continueBusy}>
@@ -744,6 +824,23 @@ function InstrumentChips({ instruments }: { instruments: SongInstruments | undef
 function chipTitle(label: string, diff: number): string {
   const names: Record<string, string> = { G: 'Guitar', B: 'Bass', D: 'Drums', K: 'Keys' }
   return `${names[label]} difficulty ${diff}`
+}
+
+/// YARG's process state in the stage's own voice. "Starting" and "loading" are separate
+/// because the library load is most of the wait (about 40 of the 49 seconds, measured).
+function yargCopy(status: YargProcessStatus): string {
+  switch (status.state) {
+    case 'not-running':
+      return status.detail === 'YARG is not running' ? 'YARG is not running.' : status.detail
+    case 'starting':
+      return 'Starting YARG…'
+    case 'loading':
+      return 'YARG is loading its library…'
+    case 'stopping':
+      return 'Closing YARG…'
+    default:
+      return status.detail
+  }
 }
 
 function lengthCopy(milliseconds: number): string {
